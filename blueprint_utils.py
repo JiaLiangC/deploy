@@ -1,7 +1,11 @@
+# -*- coding: UTF-8 -*-
 import json
 import re
 import os
 import yaml
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 class InvalidConfigurationException(Exception):
     pass
@@ -310,7 +314,7 @@ class BlueprintUtils:
     def load_conf(self):
         file_path = os.path.join(self.conf_path, 'conf.yml')
         with open(file_path, 'r') as f:
-            data = yaml.load(f, Loader=yaml.FullLoader)
+            data = yaml.load(f)
         self.conf = data
 
 
@@ -369,13 +373,13 @@ class BlueprintUtils:
                 continue
 
             if count < rule["min_instances"]:
-                messages.append(f"{component} 的实例数 {count} 小于最小实例数 {rule['min_instances']}")
+                messages.append("{} 的实例数 {} 小于最小实例数 {}".format(component,count,rule['min_instances']))
 
             if rule["max_instances"] is not None and count > rule["max_instances"]:
-                messages.append(f"{component} 的实例数 {count} 大于最大实例数 {rule['max_instances']}")
+                messages.append("{} 的实例数 {} 大于最大实例数 {}".format(component,count, rule['max_instances']))
 
             if rule.get("odd_only") and count % 2 == 0:
-                messages.append(f"{component} 的实例数 {count} 不是奇数")
+                messages.append("{} 的实例数 {} 不是奇数".format(component,count))
 
         for relation in component_relations:
             services = set(relation["service"])
@@ -389,7 +393,7 @@ class BlueprintUtils:
                         installed_components = ",".join(res)
                         correct_relations = ",".join(services)
                         messages.append(
-                            f"配置安装的组件 {installed_components} 不完整, 该服务的组件必须全部配置安装，完整列表如: {correct_relations}")
+                            "配置安装的组件 {} 不完整, 该服务的组件必须全部配置安装，完整列表如: {}".format(installed_components,correct_relations))
 
         if len(messages) > 0:
             return False, messages

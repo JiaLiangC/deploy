@@ -1,10 +1,14 @@
+# -*- coding: UTF-8 -*-
+#!/usr/bin/python2
 import os
 import subprocess
 import time
 import re
 # import requests
-from blueprint_utils import BlueprintUtils
 
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 class InvalidConfigurationException(Exception):
     pass
@@ -17,17 +21,22 @@ ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-udh')
 PKG_BASE_DIR = os.path.join(SCRIPT_DIR, "pkgs")
 OS_RELEASE_NAME = "centos7"
 
+jdk_install_path="/usr/local"
 jdk_package_name = "jdk-8u322.zip"
 nexus_package_name = "nexus-3.49.0.tar.gz"
 pigz_package_name = "pigz-2.3.4-1.el7.x86_64.rpm"
 
 
-# 安装nexus 到指定目录下
+def get_java_home():
+    file_name = os.path.splitext(jdk_package_name)[0]
+    java_home = os.path.join(jdk_install_path,file_name)
+    return  java_home
+
+
 def nexus_install(data_dir):
     command = "ps -ef | grep org.sonatype.nexus.karaf.NexusMain | grep -v grep | wc -l"
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, _ = process.communicate()
-    # 获取命令输出的结果
     is_nexus_installed = int(output.decode().strip())
 
     # 检查 Nexus 进程是否已安装
@@ -51,15 +60,16 @@ def nexus_install(data_dir):
     # 4. 解压 Nexus
     nexus_dir = os.path.join(data_dir, "nexus")
     if os.path.isdir(nexus_dir):
-        print(f"{nexus_dir} 目录已经存在，请先删除", "error")
+        print("{} 目录已经存在，请先删除".format(nexus_dir))
         exit(1)
 
     nexus_pkg = os.path.join(PKG_BASE_DIR, "nexus", nexus_package_name)
     if os.path.exists(nexus_pkg):
-        print(f"解压 {nexus_pkg} 软件包到 {data_dir} 目录")
+        print("解压 {} 软件包到 {} 目录".format(nexus_pkg,data_dir))
+        print(f)
         subprocess.run(["tar", "-I", "pigz", "-xf", nexus_package_name, "-C", data_dir])
     else:
-        print(f"请将 {nexus_package_name} 放置到 nexus 目录下", "error")
+        print("请将 {} 放置到 nexus 目录下", "error".format(nexus_package_name))
         exit(1)
 
     jdk_install()
@@ -84,25 +94,26 @@ def nexus_install(data_dir):
             NEXUS_SERVICE_OK = 0
             break
         else:
-            print("nexus 正在启动中，服务还不可用，等待3秒后重试...", "warn")
+            print("nexus 正在启动中，服务还不可用，等待3秒后重试...")
             time.sleep(3)
 
     if NEXUS_SERVICE_OK == 0:
         print("nexus 安装启动完成")
     else:
-        print("nexus 安装启动未完成，请先排除问题再重新安装", "error")
+        print("nexus 安装启动未完成，请先排除问题再重新安装")
 
 
 # 安装jdk 作为nexus 的依赖
 def jdk_install():
+    java_home = get_java_home()
     jdk_pkg = os.path.join(PKG_BASE_DIR, "jdk", jdk_package_name)
     if os.path.exists(jdk_pkg):
-        print(f"解压 {jdk_package_name}")
+        print("解压 {}".format(jdk_package_name))
         subprocess.run(["tar", "-I", "pigz", "-xf", jdk_package_name, "-C", "/usr/local/"])
 
     # 设置 JAVA_HOME 和 PATH
     env_lines = [
-        'export JAVA_HOME=/usr/local/jdk-8u322',
+        'export JAVA_HOME={}'.format(java_home),
         'export PATH=.:$JAVA_HOME/bin:$PATH'
     ]
 
@@ -111,37 +122,72 @@ def jdk_install():
 
 
 def ansible_install():
-    ansible_pkg_dir = os.path.join(PKG_BASE_DIR, "ansible")
-    rpm_cmds = ansible_pkg_dir + "/*.rpm"
-    if os.path.exists(ansible_pkg_dir):
+    rpm_dir = os.path.join(PKG_BASE_DIR, "ansible")
+    # 获取目录下所有 RPM 文件的列表
+    rpm_files = [file for file in os.listdir(rpm_dir) if file.endswith(".rpm")]
+
+    # 构建安装命令
+    install_command = ["yum", "install", "-y"]
+
+    # 添加所有 RPM 文件到安装命令中
+    install_command.extend(os.path.join(rpm_dir, file) for file in rpm_files)
+
+    test_install_cmd = "rpm -qa|grep ansible | wc -l"
+    # 执行命令并获取输出
+    test_output = subprocess.check_output(test_install_cmd, shell=True)
+    # 将输出转换为整数
+    component_installed = int(test_output.strip())
+    if component_installed >0:
+        return
+
+    # 执行安装命令
+    if os.path.exists(rpm_dir):
         print("安装 ansible")
-        subprocess.run(["yum", "install", "-y", rpm_cmds])
+        subprocess.run(install_command, check=True)
 
 
 def setup_nexus_service(data_dir):
-    # 6. 设置 nexus3.service
-    print("生成 nexus3.service")
-    subprocess.run(["cp", "-rp", "nexus3.service.template", "nexus3.service"])
-    subprocess.run(["sed", "-i", f"s#data_dir#{data_dir}#", "nexus3.service"])
-    subprocess.run(["cp", "-rp", "nexus3.service", "/usr/lib/systemd/system"])
+    jdk_home = get_java_home()
+    nexus_basename = os.path.splitext(nexus_package_name)[0]
+    nexus_bin_dir = os.path.join(data_dir,"nexus",nexus_basename,"bin")
+
+    file_content = '''\
+[Unit]
+Description=nexus3 - private repository
+After=network.target remote-fs.target nss-lookup.target
+
+[Service]
+User=root
+Type=forking
+Environment=JAVA_HOME={java_home}
+ExecStart={nexus_bin_path}/nexus start
+ExecReload={nexus_bin_path}/nexus restart
+ExecStop={nexus_bin_path}/bin/nexus stop
+
+[Install]
+WantedBy=multi-user.target
+    '''.format(java_home=jdk_home, nexus_bin_path=nexus_bin_dir)
+
+    file_path = '/usr/lib/systemd/system/nexus3.service'
+
+    with open(file_path, 'w') as file:
+        file.write(file_content)
+
     subprocess.run(["systemctl", "enable", "nexus3"])
 
 
 # 设置本地仓库，作为ansible 安装其他依赖时的仓库
 def setup_local_repo(server_url):
-    # cp -f zeta-nexus/ansible-nexus.repo.template /etc/yum.repos.d/ansible-nexus.repo
-    # sed -i "s#YUM_SERVER#${YUM_SERVER}#g" /etc/yum.repos.d/ansible-nexus.repo
-    # sed -i "s#OS_RELEASE_NAME#${OS_RELEASE_NAME}#g" /etc/yum.repos.d/ansible-nexus.repo
-    import shutil
-    import fileinput
+    repo = '''\
+[ansible-nexus]
+name=Nexus Repository for Ansible
+baseurl={}/repository/yum/{}/$releasever
+enabled=1
+gpgcheck=0
+    '''.format(server_url,OS_RELEASE_NAME)
     # 复制文件
-    shutil.copyfile("zeta-nexus/ansible-nexus.repo.template", "/etc/yum.repos.d/ansible-nexus.repo")
-    # 替换文件中的内容
-    with fileinput.FileInput("/etc/yum.repos.d/ansible-nexus.repo", inplace=True) as file:
-        for line in file:
-            line = line.replace("YUM_SERVER", server_url)
-            line = line.replace("OS_RELEASE_NAME", OS_RELEASE_NAME)
-            print(line, end="")
+    with open("/etc/yum.repos.d/ansible-nexus.repo", 'w') as file:
+        file.write(repo)
 
 
 # 加载配置文件
@@ -149,7 +195,7 @@ def load_conf():
     import yaml
     file_path = os.path.join(CONF_DIR, 'conf.yml')
     with open(file_path, 'r') as f:
-        data = yaml.load(f, Loader=yaml.FullLoader)
+        data = yaml.load(f)
     return data
 
 
@@ -178,7 +224,7 @@ def setup_nexus(conf):
     else:
         nexus_host = conf["nexus_options"]["external_nexus_server_ip"]
 
-    nexus_url = f"http://{nexus_host}:{nexus_port}"
+    nexus_url = "http://{}:{}".format(nexus_host,nexus_port)
     setup_local_repo(nexus_url)
 
 
@@ -220,7 +266,7 @@ def generate_ansible_hosts(conf):
 
     hosts_content = ""
     for group, hosts in node_groups.items():
-        hosts_content += f"[{group}]\n"
+        hosts_content += "[{}]\n".format(group)
         for host_name in hosts:
             info = hosts_dict.get(host_name)
             if not info:
@@ -228,7 +274,7 @@ def generate_ansible_hosts(conf):
             ip = info[0]
             passwd = info[1]
             # arm-1 ansible_host=10.202.62.78 ansible_ssh_pass=
-            hosts_content += f"{host_name} ansible_host={ip} ansible_ssh_pass={passwd}\n"
+            hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name,ip,passwd)
         hosts_content += "\n"
 
     ansible_user = user
@@ -236,7 +282,7 @@ def generate_ansible_hosts(conf):
     # ansible_ssh_port = conf["ansible_options"]["ansible_ssh_port"]
 
     hosts_content += "[all:vars]\n"
-    hosts_content += f"ansible_user={ansible_user}\n"
+    hosts_content += "ansible_user={}\n".format(ansible_user)
     # hosts_content += f"ansible_ssh_pass={ansible_ssh_pass}\n"
     # hosts_content += f"ansible_ssh_port={ansible_ssh_port}\n"
 
@@ -279,7 +325,7 @@ def parse_hosts_config():
     import yaml
     file_path = os.path.join(CONF_DIR, 'hosts_info.yml')
     with open(file_path, 'r') as f:
-        data = yaml.load(f, Loader=yaml.FullLoader)
+        data = yaml.load(f)
     configurations = data["hosts"]
     user = data["user"]
     parsed_configs = []
@@ -343,6 +389,7 @@ def main():
     conf = load_conf()
     generate_ansible_hosts(conf)
     setup_nexus(conf)
+    from blueprint_utils import BlueprintUtils
     b = BlueprintUtils()
     b.build()
     # run_playbook()
