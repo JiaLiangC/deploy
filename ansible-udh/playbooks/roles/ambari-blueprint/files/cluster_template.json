@@ -1,0 +1,67 @@
+{
+    "blueprint": "GdpThreeTest_blueprint",
+    "default_password": "Zeta_ambari4321!",
+    "host_groups": [
+        {
+            "name": "group0",
+            "hosts": [
+                {
+                    "fqdn": "gs-server0"
+                }
+            ]
+        },
+        {
+            "name": "group1",
+            "hosts": [
+                {
+                    "fqdn": "gs-server2"
+                }
+            ]
+        },
+        {
+            "name": "group2",
+            "hosts": [
+                {
+                    "fqdn": "gs-server3"
+                },
+                {
+                    "fqdn": "gs-server4"
+                }
+            ]
+        },
+        {
+            "name": "group3",
+            "hosts": [
+                {
+                    "fqdn": "gs-server5"
+                },
+                {
+                    "fqdn": "gs-server6"
+                },
+                {
+                    "fqdn": "gs-server7"
+                },
+                {
+                    "fqdn": "gs-server8"
+                },
+                {
+                    "fqdn": "gs-server9"
+                },
+                {
+                    "fqdn": "gs-server10"
+                }
+            ]
+        }
+    ],
+    "credentials": [
+        {
+            "alias": "kdc.admin.credential",
+            "principal": "admin/admin@{{realm}}@GDPTHREETEST.COM",
+            "key": "Kerberos_gdpthreetest-123",
+            "type": "TEMPORARY"
+        }
+    ],
+    "security": {
+        "type": "KERBEROS"
+    }
+}

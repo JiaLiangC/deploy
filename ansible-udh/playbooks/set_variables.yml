@@ -1,0 +1,211 @@
+---
+- name: Create the required Ansible groups
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+    - name: Initialize the ambari_groups list
+      set_fact:
+        ambari_groups: []
+
+    - block:
+        - name: Set the blueprint path (relative to ambari-blueprint role)
+          set_fact:
+            blueprint_file_path: "{{ 'roles/ambari-blueprint/files/' + blueprint_file }}"
+          when: blueprint_file|list|first != '/' and blueprint_file|list|first != '~'
+
+        - name: Set the blueprint path (absolute)
+          set_fact:
+            blueprint_file_path: "{{ blueprint_file }}"
+          when: blueprint_file|list|first == '/' or blueprint_file|list|first == '~'
+
+        - name: Read the static blueprint content
+          set_fact:
+            blueprint_static: "{{ lookup('file', blueprint_file_path) }}"
+
+        - name: Fail if the static blueprint is not a valid JSON
+          fail:
+            msg: "The blueprint {{ blueprint_file }} is not a valid JSON or it doesn't have a 'host_groups' element."
+          when: blueprint_static['host_groups'] is not defined
+
+        - name: Populate the ambari_groups list (static blueprint)
+          set_fact:
+            ambari_groups: "{{ ambari_groups }} + [ '{{ item.name }}' ]"
+          when: item | string is search("AMBARI_SERVER")
+          with_items: "{{ blueprint_static['host_groups'] }}"
+          no_log: True
+      when: blueprint_file != 'blueprint_dynamic.j2'
+
+    - name: Fail if the ambari_groups list is empty
+      fail:
+        msg: "The ambari_groups list is empty. This usually means there is no 'AMBARI_SERVER' component defined in the blueprint or there is no Ansible inventory group corresponding with the name of the blueprint's host_group."
+      when: ambari_groups|length == 0
+
+    - name: Fail if there is no Ansible inventory group matching the blueprint's host_groups
+      fail:
+        msg: "The {{ item }} host_group is defined in the blueprint but there is no matching Ansible inventory group called {{ item }} or there are no hosts in this group."
+      when: groups[item] is not defined or groups[item]|length == 0
+      with_items: "{{ ambari_groups }}"
+
+    - name: Add nodes to the ambari-server group
+      add_host:
+        name: "{{ groups[ambari_groups|first]|first }}"
+        groups: "ambari-server"
+
+    - name: Fail if no Ansible inventory group called 'hadoop-cluster' exists
+      fail:
+        msg: "The 'hadoop-cluster' Ansible inventory group is required before continuing. Check the inventory for possible issues."
+      when: groups['hadoop-cluster'] is not defined or (groups['hadoop-cluster'] is defined and groups['hadoop-cluster']|length == 0)
+
+    - name: Fail if no Ansible inventory group called 'ambari-server' exists
+      fail:
+        msg: "The 'ambari-server' Ansible inventory group is required before continuing. Check the inventory for possible issues."
+      when: groups['ambari-server'] is not defined or (groups['ambari-server'] is defined and groups['ambari-server']|length == 0)
+
+- name: Create the Ansible helper variables for the ambari-server
+  hosts: ambari-server
+  gather_facts: False
+  tasks:
+    - name: Initialize the control variables
+      set_fact:
+        namenode_groups: []
+        zkfc_groups: []
+        hive_mysql_embedded_group: ''
+        resourcemanager_groups: []
+        journalnode_groups: []
+        zookeeper_groups: []
+        zookeeper_hosts: []
+        hiveserver_hosts: []
+        oozie_hosts: []
+        atlas_hosts: []
+        druid_hosts: []
+        superset_hosts: []
+        kafka_groups: []
+        kafka_hosts: []
+        rangeradmin_groups: []
+        rangeradmin_hosts: []
+        rangerkms_hosts: []
+        streamline_hosts: []
+        registry_hosts: []
+        hdf_hosts: []
+        solr_hosts: []
+        blueprint_all_services: []
+        blueprint_all_clients: []
+        install_hdp: False
+        install_hdf: False
+        install_hdpsearch: False
+        blueprint_static: ""
+      no_log: True
+
+    - block:
+        - name: Set the blueprint path (relative to ambari-blueprint role)
+          set_fact:
+            blueprint_file_path: "{{ 'roles/ambari-blueprint/files/' + blueprint_file }}"
+          when: blueprint_file|list|first != '/' and blueprint_file|list|first != '~'
+
+        - name: Set the blueprint path (absolute)
+          set_fact:
+            blueprint_file_path: "{{ blueprint_file }}"
+          when: blueprint_file|list|first == '/' or blueprint_file|list|first == '~'
+
+        - name: Read the static blueprint content
+          set_fact:
+            blueprint_static: "{{ lookup('file', blueprint_file_path) }}"
+
+        - name: Fail if the the static blueprint is not a valid JSON
+          fail:
+            msg: "The blueprint {{ blueprint_file }} is not a valid JSON or it doesn't have a 'host_groups' element."
+          when: blueprint_static['host_groups'] is not defined
+
+        - name: Set the install_hdp variable
+          set_fact:
+            install_hdp: True
+          when: blueprint_static['host_groups'] | string is search("NAMENODE")
+
+        - name: Populate the hiveserver hosts list
+          set_fact:
+            hiveserver_hosts: "{{ groups['hadoop-cluster'] }}"
+          when: blueprint_static['host_groups'] | string is search("HIVE_SERVER") or blueprint_static['host_groups'] | string is search("HIVE_METASTORE") or blueprint_static['host_groups'] | string is search("SPARK2_JOBHISTORYSERVER")
+
+        - name: Populate the oozie hosts list
+          set_fact:
+            oozie_hosts: "{{ groups['hadoop-cluster'] }}"
+          when: blueprint_static['host_groups'] | string is search("OOZIE_SERVER")
+
+        - name: Populate the druid hosts list
+          set_fact:
+            druid_hosts: "{{ groups['hadoop-cluster'] }}"
+          when: blueprint_static['host_groups'] | string is search("DRUID_BROKER") or blueprint_static['host_groups'] | string is search("DRUID_COORDINATOR") or blueprint_static['host_groups'] | string is search("DRUID_ROUTER") or blueprint_static['host_groups'] | string is search("DRUID_HISTORICAL") or blueprint_static['host_groups'] | string is search("DRUID_OVERLORD")
+
+        - name: Populate the superset hosts list
+          set_fact:
+            superset_hosts: "{{ groups['hadoop-cluster'] }}"
+          when: blueprint_static['host_groups'] | string is search("SUPERSET")
+
+        - name: Populate the rangeradmin hosts list
+          set_fact:
+            rangeradmin_hosts: "{{ groups['hadoop-cluster'] }}"
+          when: blueprint_static['host_groups'] | string is search("RANGER_ADMIN") or blueprint_static['host_groups'] | string is search("RANGER_USERSYNC")
+
+        - name: Populate the rangerkms hosts list
+          set_fact:
+            rangerkms_hosts: "{{ groups['hadoop-cluster'] }}"
+          when: blueprint_static['host_groups'] | string is search("RANGER_KMS_SERVER")
+
+        - name: Populate the streamline hosts list
+          set_fact:
+            streamline_hosts: "{{ groups['hadoop-cluster'] }}"
+          when: blueprint_static['host_groups'] | string is search("STREAMLINE_SERVER")
+
+        - name: Populate the registry hosts list
+          set_fact:
+            registry_hosts: "{{ groups['hadoop-cluster'] }}"
+          when: blueprint_static['host_groups'] | string is search("REGISTRY_SERVER")
+
+        - name: Set the install_hdf variable
+          set_fact:
+            install_hdf: True
+          when: blueprint_static['host_groups'] | string is search("NIFI_MASTER") or blueprint_static['host_groups'] | string is search("STREAMLINE_SERVER") or blueprint_static['host_groups'] | string is search("REGISTRY_SERVER")
+
+        - name: Set the install_hdpsearch variable
+          set_fact:
+            install_hdpsearch: True
+          when: blueprint_static['host_groups'] | string is search("SOLR_SERVER")
+      when: blueprint_file != 'blueprint_dynamic.j2'
+
+- name: Create the Ansible helper variables for all nodes
+  hosts: hadoop-cluster
+  gather_facts: False
+  tasks:
+    - block:
+        - name: Check if /usr/bin/python exists
+          raw: bash -c "test -e /usr/bin/python && echo -n exists || echo -n"
+          register: default_python2_path
+
+        - name: Check if /usr/bin/python3 exists
+          raw: bash -c "test -e /usr/bin/python3 && echo -n exists || echo -n"
+          register: default_python3_path
+          when: default_python2_path.stdout == ""
+
+        - name: Fail if no standard python path could be found
+          fail:
+            msg: "Python could not be found at /usr/bin/python or /usr/bin/python3. If using a custom python path, set the 'ansible_python_interpreter' inventory variable to the valid path for your environment."
+          when: default_python2_path.stdout == "" and default_python3_path.stdout != "exists"
+
+        - name: Set the ansible_python_interpreter to /usr/bin/python3
+          set_fact:
+            ansible_python_interpreter: "/usr/bin/python3"
+          when: default_python3_path.stdout is defined and default_python3_path.stdout == "exists"
+      when: ansible_python_interpreter is not defined
+
+    - name: Set the install_hdp variable to all nodes
+      set_fact:
+        install_hdp: "{{ hostvars[groups['ambari-server']|first]['install_hdp'] }}"
+
+    - name: Set the install_hdf variable to all nodes
+      set_fact:
+        install_hdf: "{{ hostvars[groups['ambari-server']|first]['install_hdf'] }}"
+
+    - name: Set the install_hdpsearch variable to all nodes
+      set_fact:
+        install_hdpsearch: "{{ hostvars[groups['ambari-server']|first]['install_hdpsearch'] }}"

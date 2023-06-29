@@ -1,0 +1,483 @@
+{
+    "configurations": [
+        {
+            "yarn-site": {
+                "hadoop.registry.zk.quorum": "%HOSTGROUP::group2%:2181,%HOSTGROUP::group1%:2181",
+                "yarn.resourcemanager.recovery.enabled": "true",
+                "yarn.resourcemanager.store.class": "org.apache.hadoop.yarn.server.resourcemanager.recovery.ZKRMStateStore",
+                "yarn.resourcemanager.cluster-id": "yarn-cluster",
+                "yarn.resourcemanager.ha.enabled": "true",
+                "yarn.resourcemanager.ha.automatic-failover.zk-base-path": "/yarn-leader-election",
+                "yarn.resourcemanager.ha.rm-ids": "rm1,rm2",
+                "yarn.resourcemanager.address": "%HOSTGROUP::group1%:8050",
+                "yarn.resourcemanager.scheduler.address": "%HOSTGROUP::group1%:8030",
+                "yarn.resourcemanager.resource-tracker.address": "%HOSTGROUP::group1%:8025",
+                "yarn.resourcemanager.admin.address": "%HOSTGROUP::group1%:8141",
+                "yarn.resourcemanager.hostname": "%HOSTGROUP::group1%:8088",
+                "yarn.resourcemanager.hostname.rm1": "%HOSTGROUP::group1%",
+                "yarn.resourcemanager.hostname.rm2": "%HOSTGROUP::%",
+                "yarn.resourcemanager.webapp.address": "%HOSTGROUP::group1%:8088",
+                "yarn.resourcemanager.webapp.address.rm1": "%HOSTGROUP::group1%:8088",
+                "yarn.resourcemanager.webapp.address.rm2": "%HOSTGROUP::%:8088",
+                "yarn.resourcemanager.webapp.https.address": "%HOSTGROUP::group1%:8090",
+                "yarn.resourcemanager.webapp.https.address.rm1": "%HOSTGROUP::group1%:8090",
+                "yarn.resourcemanager.webapp.https.address.rm2": "%HOSTGROUP::%:8090",
+                "yarn.resourcemanager.zk-address": "%HOSTGROUP::group2%:2181,%HOSTGROUP::group1%:2181",
+                "yarn.acl.enable": "true",
+                "yarn.authorization-provider": "org.apache.ranger.authorization.yarn.authorizer.RangerYarnAuthorizer",
+                "yarn.nodemanager.local-dirs": "",
+                "yarn.nodemanager.log-dirs": ""
+            }
+        },
+        {
+            "hdfs-site": {
+                "dfs.namenode.checkpoint.dir": "/hadoop/hdfs/namesecondary",
+                "dfs.namenode.name.dir": "",
+                "dfs.journalnode.edits.dir": "/hadoop/hdfs/journal",
+                "dfs.client.failover.proxy.provider.": "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider",
+                "dfs.ha.automatic-failover.enabled": "true",
+                "dfs.ha.fencing.methods": "shell(/bin/true)",
+                "dfs.ha.namenodes.": "nn1,nn2",
+                "dfs.namenode.http-address..nn1": "%HOSTGROUP::group0%:50070",
+                "dfs.namenode.http-address..nn2": "%HOSTGROUP::%:50070",
+                "dfs.namenode.https-address..nn1": "%HOSTGROUP::group0%:50470",
+                "dfs.namenode.https-address..nn2": "%HOSTGROUP::%:50470",
+                "dfs.namenode.rpc-address..nn1": "%HOSTGROUP::group0%:8020",
+                "dfs.namenode.rpc-address..nn2": "%HOSTGROUP::%:8020",
+                "dfs.namenode.shared.edits.dir": "qjournal:///",
+                "dfs.nameservices": "",
+                "dfs.internal.nameservices": "",
+                "dfs.namenode.inode.attributes.provider.class": "org.apache.ranger.authorization.hadoop.RangerHdfsAuthorizer",
+                "dfs.datanode.data.dir": ""
+            },
+            "core-site": {
+                "hadoop.proxyuser.*": "*",
+                "fs.defaultFS": "hdfs://",
+                "ha.zookeeper.quorum": "%HOSTGROUP::group2%:2181,%HOSTGROUP::group1%:2181",
+                "hadoop.http.authentication.simple.anonymous.allowed": "true",
+                "hadoop.http.authentication.type": "simple",
+                "fs.trash.interval": "360",
+                "hadoop.security.authorization": "true",
+                "hadoop.security.authentication": "kerberos"
+            }
+        },
+        {
+            "hbase-site": {
+                "hbase.rootdir": "hdfs:///apps/hbase/data",
+                "hbase.security.authorization": "true",
+                "hbase.coprocessor.master.classes": "org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
+                "hbase.coprocessor.region.classes": "org.apache.hadoop.hbase.security.access.SecureBulkLoadEndpoint,org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
+                "hbase.coprocessor.regionserver.classes": "org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor"
+            }
+        },
+        {
+            "admin-properties": {
+                "properties_attributes": {},
+                "properties": {
+                    "db_root_user": "",
+                    "db_root_password": "",
+                    "DB_FLAVOR": "POSTGRES",
+                    "db_name": "ranger",
+                    "policymgr_external_url": "http://%HOSTGROUP::group1%:6080",
+                    "db_user": "",
+                    "db_password": "",
+                    "db_host": ""
+                }
+            },
+            "ranger-admin-site": {
+                "xasecure.audit.jaas.Client.option.principal": "rangeradmin/_HOST@",
+                "ranger.jpa.jdbc.driver": "org.postgresql.Driver",
+                "ranger.jpa.jdbc.url": "jdbc:postgresql://:/ranger",
+                "ranger.audit.source.type": "solr",
+                "ranger.audit.solr.zookeepers": "gs-server2:2181,gs-server4:2181,gs-server3:2181/infra-solr"
+            },
+            "ranger-hdfs-plugin-properties": {
+                "ranger-hdfs-plugin-enabled": "Yes",
+                "REPOSITORY_CONFIG_USERNAME": "hdfs"
+            },
+            "ranger-hdfs-security": {
+                "ranger.plugin.hdfs.policy.rest.url": "http://gs-server2:6080"
+            },
+            "ranger-hdfs-audit": {
+                "xasecure.audit.destination.hdfs": "true",
+                "xasecure.audit.destination.hdfs.dir": "hdfs:///ranger/audit",
+                "xasecure.audit.destination.hdfs.batch.filespool.dir": "/var/log/kafka/audit/hdfs/spool",
+                "xasecure.audit.destination.solr": "true",
+                "xasecure.audit.destination.solr.zookeepers": "gs-server2:2181,gs-server4:2181,gs-server3:2181/infra-solr",
+                "xasecure.audit.destination.solr.batch.filespool.dir": "/var/log/hive/audit/solr/spool"
+            },
+            "hadoop-policy": {
+                "properties": {
+                    "security.refresh.usertogroups.mappings.protocol.acl": "hdfs",
+                    "security.admin.operations.protocol.acl": "hdfs",
+                    "security.refresh.policy.protocol.acl": "hdfs"
+                }
+            },
+            "ranger-hive-plugin-properties": {
+                "ranger-hive-plugin-enabled": "Yes"
+            },
+            "ranger-hive-security": {
+                "ranger.plugin.hive.policy.rest.url": "http://gs-server2:6080",
+                "ranger.plugin.hive.policy.pollIntervalMs": "30000"
+            },
+            "ranger-hive-audit": {
+                "xasecure.audit.destination.hdfs": "false",
+                "xasecure.audit.destination.hdfs.dir": "hdfs:///ranger/audit",
+                "xasecure.audit.destination.hdfs.batch.filespool.dir": "/var/log/kafka/audit/hdfs/spool",
+                "xasecure.audit.destination.solr": "true",
+                "xasecure.audit.destination.solr.zookeepers": "gs-server2:2181,gs-server4:2181,gs-server3:2181/infra-solr",
+                "xasecure.audit.destination.solr.batch.filespool.dir": "/var/log/hive/audit/solr/spool"
+            },
+            "ranger-yarn-plugin-properties": {
+                "ranger-yarn-plugin-enabled": "Yes"
+            },
+            "ranger-yarn-security": {
+                "ranger.plugin.yarn.policy.rest.url": "http://gs-server2:6080",
+                "ranger.plugin.yarn.policy.pollIntervalMs": "30000"
+            },
+            "ranger-yarn-audit": {
+                "xasecure.audit.destination.db": "false",
+                "xasecure.audit.destination.hdfs": "true",
+                "xasecure.audit.destination.hdfs.dir": "hdfs:///ranger/audit",
+                "xasecure.audit.destination.hdfs.batch.filespool.dir": "/var/log/kafka/audit/hdfs/spool",
+                "xasecure.audit.destination.solr": "true",
+                "xasecure.audit.destination.solr.zookeepers": "gs-server2:2181,gs-server4:2181,gs-server3:2181/infra-solr",
+                "xasecure.audit.destination.solr.batch.filespool.dir": "/var/log/hive/audit/solr/spool"
+            },
+            "ranger-hbase-plugin-properties": {
+                "ranger-hbase-plugin-enabled": "Yes"
+            },
+            "ranger-hbase-security": {
+                "ranger.plugin.hbase.policy.rest.url": "http://gs-server2:6080",
+                "ranger.plugin.hbase.policy.pollIntervalMs": "30000"
+            },
+            "ranger-hbase-audit": {
+                "xasecure.audit.destination.db": "false",
+                "xasecure.audit.destination.hdfs": "true",
+                "xasecure.audit.destination.hdfs.dir": "hdfs:///ranger/audit",
+                "xasecure.audit.destination.hdfs.batch.filespool.dir": "/var/log/kafka/audit/hdfs/spool",
+                "xasecure.audit.destination.solr": "true",
+                "xasecure.audit.destination.solr.zookeepers": "gs-server2:2181,gs-server4:2181,gs-server3:2181/infra-solr",
+                "xasecure.audit.destination.solr.batch.filespool.dir": "/var/log/hive/audit/solr/spool"
+            },
+            "ranger-kafka-plugin-properties": {
+                "ranger-kafka-plugin-enabled": "Yes"
+            },
+            "ranger-kafka-security": {
+                "ranger.plugin.kafka.policy.rest.url": "http://gs-server2:6080",
+                "ranger.plugin.kafka.policy.pollIntervalMs": "30000"
+            },
+            "ranger-kafka-audit": {
+                "xasecure.audit.destination.db": "false",
+                "xasecure.audit.destination.hdfs": "true",
+                "xasecure.audit.destination.hdfs.dir": "hdfs:///ranger/audit",
+                "xasecure.audit.destination.hdfs.batch.filespool.dir": "/var/log/kafka/audit/hdfs/spool",
+                "xasecure.audit.destination.solr": "true",
+                "xasecure.audit.destination.solr.zookeepers": "gs-server2:2181,gs-server4:2181,gs-server3:2181/infra-solr",
+                "xasecure.audit.destination.solr.batch.filespool.dir": "/var/log/hive/audit/solr/spool"
+            },
+            "ranger-env": {
+                "is_solrCloud_enabled": "true",
+                "ranger-hdfs-plugin-enabled": "Yes",
+                "ranger-hive-plugin-enabled": "Yes",
+                "ranger-yarn-plugin-enabled": "Yes",
+                "ranger-hbase-plugin-enabled": "Yes",
+                "ranger-kafka-plugin-enabled": "Yes",
+                "ranger_admin_username": "",
+                "ranger_admin_password": "",
+                "admin_username": "admin",
+                "admin_password": "",
+                "rangerusersync_user_password": "",
+                "rangertagsync_user_password": "",
+                "keyadmin_user_password": "",
+                "xasecure.audit.destination.db": "false",
+                "xasecure.audit.destination.hdfs": "true",
+                "xasecure.audit.destination.hdfs.dir": "hdfs:///ranger/audit",
+                "xasecure.audit.destination.solr": "true",
+                "create_db_dbuser": "true"
+            },
+            "ranger-ugsync-site": {
+                "ranger.usersync.enabled": "true"
+            }
+        },
+        {
+            "hive-site": {
+                "javax.jdo.option.ConnectionDriverName": "org.postgresql.Driver",
+                "javax.jdo.option.ConnectionURL": "jdbc:postgresql://:/hive",
+                "ambari.hive.db.schema.name": "hive",
+                "javax.jdo.option.ConnectionUserName": "hive",
+                "javax.jdo.option.ConnectionPassword": "",
+                "hive.security.authorization.enabled": "true",
+                "hive.server2.logging.operation.log.location": "/tmp/hive/operation_logs"
+            },
+            "hiveserver2-site": {
+                "hive.security.authorization.enabled": "true",
+                "hive.security.authorization.manager": "org.apache.ranger.authorization.hive.authorizer.RangerHiveAuthorizerFactory",
+                "hive.conf.restricted.list": "hive.security.authenticator.manager,hive.security.authorization.manager,hive.security.metastore.authorization.manager,hive.security.metastore.authenticator.manager,hive.users.in.admin.role,hive.server2.xsrf.filter.enabled,hive.security.authorization.enabled",
+                "hive.metastore.metrics.enabled": "true"
+            },
+            "hive-env": {
+                "hive_database": "Existing PostgreSQL Database",
+                "hive_database_type": "postgres",
+                "hive_database_name": "hive",
+                "hive_security_authorization": "Ranger",
+                "hive_user": "hive"
+            }
+        },
+        {
+            "kafka-broker": {
+                "authorizer.class.name": "org.apache.ranger.authorization.kafka.authorizer.RangerKafkaAuthorizer"
+            }
+        }
+    ],
+    "host_groups": [
+        {
+            "name": "group0",
+            "configurations": [],
+            "cardinality": "1",
+            "components": [
+                {
+                    "name": "AMBARI_SERVER"
+                },
+                {
+                    "name": "NAMENODE"
+                },
+                {
+                    "name": "HIVE_METASTORE"
+                },
+                {
+                    "name": "WEBHCAT_SERVER"
+                },
+                {
+                    "name": "SPARK_THRIFTSERVER"
+                },
+                {
+                    "name": "SOLR_SERVER"
+                },
+                {
+                    "name": "FLINK_HISTORYSERVER"
+                },
+                {
+                    "name": "HISTORYSERVER"
+                },
+                {
+                    "name": "RANGER_TAGSYNC"
+                },
+                {
+                    "name": "RANGER_USERSYNC"
+                },
+                {
+                    "name": "SPARK_CLIENT"
+                },
+                {
+                    "name": "MAPREDUCE2_CLIENT"
+                },
+                {
+                    "name": "FLINK_CLIENT"
+                },
+                {
+                    "name": "INFRA_SOLR_CLIENT"
+                },
+                {
+                    "name": "ZOOKEEPER_CLIENT"
+                },
+                {
+                    "name": "HDFS_CLIENT"
+                },
+                {
+                    "name": "HIVE_CLIENT"
+                },
+                {
+                    "name": "KERBEROS_CLIENT"
+                },
+                {
+                    "name": "YARN_CLIENT"
+                },
+                {
+                    "name": "HCAT"
+                },
+                {
+                    "name": "HBASE_CLIENT"
+                }
+            ]
+        },
+        {
+            "name": "group1",
+            "configurations": [],
+            "cardinality": "1",
+            "components": [
+                {
+                    "name": "SECONDARY_NAMENODE"
+                },
+                {
+                    "name": "RANGER_ADMIN"
+                },
+                {
+                    "name": "HBASE_MASTER"
+                },
+                {
+                    "name": "ZOOKEEPER_SERVER"
+                },
+                {
+                    "name": "DATANODE"
+                },
+                {
+                    "name": "NODEMANAGER"
+                },
+                {
+                    "name": "RESOURCEMANAGER"
+                },
+                {
+                    "name": "KAFKA_BROKER"
+                },
+                {
+                    "name": "SPARK_JOBHISTORYSERVER"
+                },
+                {
+                    "name": "INFRA_SOLR"
+                },
+                {
+                    "name": "SPARK_CLIENT"
+                },
+                {
+                    "name": "MAPREDUCE2_CLIENT"
+                },
+                {
+                    "name": "FLINK_CLIENT"
+                },
+                {
+                    "name": "INFRA_SOLR_CLIENT"
+                },
+                {
+                    "name": "ZOOKEEPER_CLIENT"
+                },
+                {
+                    "name": "HDFS_CLIENT"
+                },
+                {
+                    "name": "HIVE_CLIENT"
+                },
+                {
+                    "name": "KERBEROS_CLIENT"
+                },
+                {
+                    "name": "YARN_CLIENT"
+                },
+                {
+                    "name": "HCAT"
+                },
+                {
+                    "name": "HBASE_CLIENT"
+                }
+            ]
+        },
+        {
+            "name": "group2",
+            "configurations": [],
+            "cardinality": "1",
+            "components": [
+                {
+                    "name": "HBASE_REGIONSERVER"
+                },
+                {
+                    "name": "ZOOKEEPER_SERVER"
+                },
+                {
+                    "name": "DATANODE"
+                },
+                {
+                    "name": "NODEMANAGER"
+                },
+                {
+                    "name": "HIVE_SERVER"
+                },
+                {
+                    "name": "SPARK_CLIENT"
+                },
+                {
+                    "name": "MAPREDUCE2_CLIENT"
+                },
+                {
+                    "name": "FLINK_CLIENT"
+                },
+                {
+                    "name": "INFRA_SOLR_CLIENT"
+                },
+                {
+                    "name": "ZOOKEEPER_CLIENT"
+                },
+                {
+                    "name": "HDFS_CLIENT"
+                },
+                {
+                    "name": "HIVE_CLIENT"
+                },
+                {
+                    "name": "KERBEROS_CLIENT"
+                },
+                {
+                    "name": "YARN_CLIENT"
+                },
+                {
+                    "name": "HCAT"
+                },
+                {
+                    "name": "HBASE_CLIENT"
+                }
+            ]
+        },
+        {
+            "name": "group3",
+            "configurations": [],
+            "cardinality": "1",
+            "components": [
+                {
+                    "name": "DATANODE"
+                },
+                {
+                    "name": "NODEMANAGER"
+                },
+                {
+                    "name": "SPARK_CLIENT"
+                },
+                {
+                    "name": "MAPREDUCE2_CLIENT"
+                },
+                {
+                    "name": "FLINK_CLIENT"
+                },
+                {
+                    "name": "INFRA_SOLR_CLIENT"
+                },
+                {
+                    "name": "ZOOKEEPER_CLIENT"
+                },
+                {
+                    "name": "HDFS_CLIENT"
+                },
+                {
+                    "name": "HIVE_CLIENT"
+                },
+                {
+                    "name": "KERBEROS_CLIENT"
+                },
+                {
+                    "name": "YARN_CLIENT"
+                },
+                {
+                    "name": "HCAT"
+                },
+                {
+                    "name": "HBASE_CLIENT"
+                }
+            ]
+        }
+    ],
+    "Blueprints": {
+        "security": {
+            "type": "KERBEROS"
+        },
+        "stack_name": "BIGTOP",
+        "stack_version": "3.2.0"
+    }
+}

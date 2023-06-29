@@ -1,0 +1,9 @@
+{
+    "hbase-site" : {
+        "hbase.rootdir": "hdfs://{{ cluster_name }}/apps/hbase/data",
+        "hbase.security.authorization" : "true",
+        "hbase.coprocessor.master.classes" : "org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
+        "hbase.coprocessor.region.classes" : "org.apache.hadoop.hbase.security.access.SecureBulkLoadEndpoint,org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
+        "hbase.coprocessor.regionserver.classes" : "org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor"
+    }
+}

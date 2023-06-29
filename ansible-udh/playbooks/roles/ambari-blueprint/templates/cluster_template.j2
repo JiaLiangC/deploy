@@ -1,0 +1,47 @@
+{
+  "blueprint" : "{{ blueprint_name }}",
+  "config_recommendation_strategy" : "{{ config_recommendation_strategy }}",
+{% if ambari_version is version_compare('2.6', '>=') %}
+  "repository_version_id": "{{ vdf_id }}",
+{% endif %}
+  "default_password" : "{{ default_password }}",
+{% if security|lower != "none" %}
+  "credentials" : [
+    {
+      "alias" : "kdc.admin.credential",
+{% if security|lower == "mit-kdc" %}
+      "principal" : "{{ security_options.admin_principal }}/admin@{{ security_options.realm | upper }}",
+{% else %}
+      "principal" : "{{ security_options.admin_principal }}@{{ security_options.realm | upper }}",
+{% endif %}
+      "key" : "{{ security_options.admin_password }}",
+      "type" : "TEMPORARY"
+    }
+  ],
+  "security" : {
+    "type" : "KERBEROS"
+  },
+{% endif %}
+{#
+  The following attempts to find out the Ansible groups that map on the blueprint's host_groups.
+  When using a dynamic blueprint this should work fine as it knows the host_groups from the 'blueprint_dynamic' variable.
+  When using a static blueprint, this might sometimes fail, as it simply does the regex check in the blueprint's content.
+#}
+  "host_groups" :[
+    {% for group in groups|sort if group not in ['all', 'ungrouped'] and groups[group]|length > 0 and (blueprint_file == 'blueprint_dynamic.j2' and group in blueprint_dynamic|map(attribute='host_group')|list) or (blueprint_file != 'blueprint_dynamic.j2' and blueprint_static['host_groups'] | string is search(group)) %}
+
+    {
+      "name" : "{{ group }}",
+      "hosts" : [
+        {% for node in groups[group]|sort -%}
+
+        { "fqdn" : "{{ hostvars[node]['ansible_fqdn'] | lower }}", "rack_info": "{{ hostvars[node]['rack'] | default('/default-rack') }}" }{% if not loop.last %},{% endif %}
+
+        {% endfor %}
+
+      ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+
+  ]
+}

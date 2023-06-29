@@ -1,0 +1,124 @@
+---
+- name: Load variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}-{{ ansible_distribution_version }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../database/vars
+
+- name: Fail if trying to install MariaDB on unsupported OS
+  fail:
+    msg: "MariaDB is not available or supported on SLES 11 and Debian/Ubuntu"
+  when: database == "mariadb" and ((ansible_os_family|lower == "suse" and ansible_distribution_major_version|int == 11) or ansible_os_family|lower == "debian")
+
+- name: Install {{ database }} database packages
+  package:
+    name: "{{ item }}"
+    update_cache: yes
+    state: present
+  with_items: "{{ hostvars[inventory_hostname][database + '_packages'] | join(',') }}"
+
+- block:
+    - name: Initiate postgres
+      become: yes
+      shell: "{{ postgres_initdb_command }}"
+      args:
+        creates: "{{ postgres_hba_file }}"
+        warn: false
+
+    - name: Configure postgres to listen on all interfaces
+      lineinfile:
+        path: "{{ postgres_config_file }}"
+        line: "listen_addresses = '*'"
+        regexp: '^#?listen_addresses\s+='
+        state: present
+      notify: Restart postgres
+
+    - name: Set postgres max_connections
+      lineinfile:
+        path: "{{ postgres_config_file }}"
+        line: "max_connections = {{ max_connections }}"
+        regexp: '^#?max_connections\s+='
+        state: present
+      notify: Restart postgres
+  when: database == "postgres"
+
+- block:
+    - name: Configure mysql to listen on all interfaces
+      ini_file:
+        path: "{{ (database == 'mariadb') | ternary(mariadb_config_file, mysql_config_file) }}"
+        create: no
+        section: "mysqld"
+        option: "bind-address"
+        value: "*"
+        no_extra_spaces: yes
+        state: present
+      notify: Restart {{ database }}
+
+    - name: Set mysql max_connections
+      ini_file:
+        path: "{{ (database == 'mariadb') | ternary(mariadb_config_file, mysql_config_file) }}"
+        create: no
+        section: "mysqld"
+        option: "max_connections"
+        value: "{{ max_connections }}"
+        no_extra_spaces: yes
+        state: present
+      notify: Restart {{ database }}
+  when: database == "mysql" or database == "mariadb"
+
+- meta: flush_handlers
+
+- name: Make sure the {{ database }} service is started
+  service:
+    name: "{{ hostvars[inventory_hostname][database + '_service_name'] }}"
+    state: started
+
+- name: Make sure the {{ database }} service is enabled
+  service:
+    name: "{{ hostvars[inventory_hostname][database + '_service_name'] }}"
+    enabled: yes
+  ignore_errors: true
+
+- name: Prepare the ambari database
+  include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
+  vars:
+    db_name: "{{ database_options.ambari_db_name }}"
+    db_username: "{{ database_options.ambari_db_username }}"
+    db_password: "{{ database_options.ambari_db_password }}"
+    db_client_hosts: "{{ inventory_hostname }}"
+
+- name: Prepare the hive database
+  include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
+  vars:
+    db_name: "{{ database_options.hive_db_name }}"
+    db_username: "{{ database_options.hive_db_username }}"
+    db_password: "{{ database_options.hive_db_password }}"
+    db_client_hosts: "{{ hiveserver_hosts }}"
+  when: hiveserver_hosts is defined and hiveserver_hosts|length > 0
+
+- name: Prepare the ranger database
+  include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
+  vars:
+    db_name: "{{ database_options.rangeradmin_db_name }}"
+    db_username: "{{ database_options.rangeradmin_db_username }}"
+    db_password: "{{ database_options.rangeradmin_db_password }}"
+    db_client_hosts: "{{ rangeradmin_hosts }}"
+  when: rangeradmin_hosts is defined and rangeradmin_hosts|length > 0
+
+- name: Prepare the rangerkms database
+  include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
+  vars:
+    db_name: "{{ database_options.rangerkms_db_name }}"
+    db_username: "{{ database_options.rangerkms_db_username }}"
+    db_password: "{{ database_options.rangerkms_db_password }}"
+    db_client_hosts: "{{ rangerkms_hosts }}"
+  when: rangerkms_hosts is defined and rangerkms_hosts|length > 0
+
+

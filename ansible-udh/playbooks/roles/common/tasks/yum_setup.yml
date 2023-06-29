@@ -1,0 +1,233 @@
+- name: create /etc/yum.repos.d/bak directory to backup original repos
+  file:
+    path: '{{ item }}'
+    state: directory
+  with_items:
+    - /etc/yum.repos.d/bak
+
+- name: backup original repos
+  shell: '{{ item }}'
+  with_items:
+    - "mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak"
+  ignore_errors: True
+
+
+#todo 需要建立一个 centos7 nexus 仓库
+- name: configure nexus repo
+  tags: config
+  template:
+    src: nexus.repo
+    dest: /etc/yum.repos.d/nexus.repo
+
+- name: configure ambari repo
+  tags: config
+  template:
+    src: ambari.repo
+    dest: /etc/yum.repos.d/ambari.repo
+
+
+- name: yum clean repo
+  shell: 'yum clean all'
+
+#安装一些依赖
+#- name: copy perl packages
+#  copy:
+#   src: perl-ExtUtils-Install-1.58-292.el7.noarch.rpm
+#   dest: /tmp/perl-ExtUtils-Install-1.58-292.el7.noarch.rpm
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+#
+#- name: copy perl packages
+#  copy:
+#   src: perl-ExtUtils-MakeMaker-6.68-3.el7.noarch.rpm
+#   dest: /tmp/perl-ExtUtils-MakeMaker-6.68-3.el7.noarch.rpm
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+#
+#- name: copy perl packages
+#  copy:
+#   src: perl-Test-Harness-3.28-3.el7.noarch.rpm
+#   dest: /tmp/perl-Test-Harness-3.28-3.el7.noarch.rpm
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+
+#- name: copy perl packages
+#  copy:
+#   src: perl-5.16.3-292.el7.x86_64.rpm
+#   dest: /tmp/perl-5.16.3-292.el7.x86_64.rpm
+
+#- name: copy perl packages
+#  copy:
+#   src: perl-devel-5.16.3-292.el7.x86_64.rpm
+#   dest: /tmp/perl-devel-5.16.3-292.el7.x86_64.rpm
+
+
+#- name: remove perl packages
+#  shell: yum remove perl* -y
+#  ignore_errors: True
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+#
+#- name: remove vim packages
+#  shell: yum remove vim-common -y
+#  ignore_errors: True
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+
+
+#兼容centos7.8 做的依赖降级操作
+# ansible -m setup localhost > out 查看所有fact 变量
+
+#- name: downgrade packages
+#  shell: '{{ item }}'
+#  with_items:
+#    - "yum downgrade cyrus-sasl-lib cyrus-sasl-gssapi -y"
+#    - "yum downgrade libselinux libselinux-python libselinux-utils  libselinux-devel -y"
+#    - "yum downgrade libdb libdb-utils libdb-devel -y"
+#    - "yum downgrade e2fsprogs e2fsprogs-libs libcom_err  libcom_err-devel libss -y"
+#    - "yum downgrade python  python-libs  python-devel -y"
+#    - "yum downgrade openssl openssl-libs openssl-devel -y"
+#    - "yum downgrade zlib zlib-devel -y"
+#    - "yum downgrade glibc-headers glibc glibc-common glibc-devel -y"
+#    - "yum downgrade cpp libgomp gcc libstdc++-devel libstdc++ -y"
+#    - "yum downgrade ntpdate ntp -y "
+#  ignore_errors: True
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+#    - ansible_facts['distribution_version'] == "7.8.2003"
+
+#- name: install perl packages
+#  shell: '{{ item }}'
+#  with_items:
+#    - "rpm -ivh --nodeps /tmp/perl*"
+#    - "rpm -y install perl perl-devel"
+#  ignore_errors: True
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+#
+#- name: downgrade packages
+#  shell: '{{ item }}'
+#  with_items:
+#    - "rpm -e --nodeps cups-filesystem-1.6.3-43.el7.noarch cups-1.6.3-43.el7.x86_64"
+#    - "yum -y downgrade cups-client*1.6.3-35* cups-libs*1.6.3-35*"
+#  ignore_errors: True
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+
+
+#- name: copy krb5-libs package
+#  copy:
+#   src: '{{ item.srcfile }}'
+#   dest: '{{ item.dest }}'
+#  with_items:
+#   - {dest: '/tmp', srcfile: 'krb5-libs-1.15.1-19.el7.x86_64.rpm'}
+#   - {dest: '/tmp', srcfile: 'remove_install_krb5.sh'}
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+#
+#- name: reinstall krb5-libs and libkadm5 packages
+#  shell: 'sh /tmp/remove_install_krb5.sh'
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#    - ansible_facts['architecture'] == "x86_64"
+#
+#- name: reinstall krb5-libs and libkadm5 packages using yum
+#  yum:
+#    name: '{{ item }}'
+#    state: present
+#  with_items:
+#      - krb5-devel
+#      - krb5-workstation
+#      - krb5-libs
+#      - libkadm5
+#  when:
+#    - ansible_facts['distribution'] == "Kylin Linux Advanced Server"
+
+#- name: check policycoreutils
+#  shell: rpm -qa|grep policycoreutils | wc -l
+#  register: check_policycoreutils_install
+
+#- name: install net-tools rsync  expect
+#  yum:
+#    name: '{{ item }}'
+#    state: present
+#  with_items:
+#      - net-tools
+#      - rsync
+#      - wget
+#      - expect
+#      - policycoreutils
+#      - rpm-python
+#      - tar
+#      - jq
+#      - vim
+
+#- name: rm python3 pkg
+#  shell: 'rm -rf /tmp/p3rpm'
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#
+#- name: unarchive python3 pkg
+#  unarchive:
+#    src: p3rpm.tar.gz
+#    dest: /tmp
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+#
+#- name: rpm install python3
+#  shell: '{{ item }}'
+#  with_items:
+#    - "yum install -y /tmp/p3rpm/python3-*.rpm"
+#  ignore_errors: True
+#  when:
+#    - ansible_facts['distribution'] == "CentOS"
+
+
+#安装诊断工具
+
+- name: Remove a directory if it exist
+  file:
+    path: '{{ item }}'
+    state: absent
+  with_items:
+    - /usr/local/linux_diagnose
+
+- name: Create a directory if it does not exist
+  file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  with_items:
+    - /usr/local/linux_diagnose
+
+- name: unarchive linux_diagnose:arthas
+  unarchive:
+    src: "{{linux_diagnose_arthas_url}}"
+    dest: "/usr/local/linux_diagnose"
+    remote_src: yes
+
+- name: unarchive linux_diagnose:perf-tools
+  unarchive:
+    src: "{{linux_diagnose_perf_tools_url}}"
+    dest: "/usr/local/linux_diagnose"
+    remote_src: yes
+
+- name: install diagnose utilities on CentOS.x86_64
+  yum:
+    name: '{{ item }}'
+    state: present
+  with_items:
+      - perf
+      - sysstat
+      - tcpdump
+      - dstat
+  when: ansible_facts['distribution'] == "CentOS"

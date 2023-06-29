@@ -1,0 +1,130 @@
+{
+    "admin-properties" : {
+        "properties_attributes" : { },
+        "properties" : {
+            "db_root_user" : "{{ pg_username }}",
+            "db_root_password" : "{{ pg_password }}",
+            "DB_FLAVOR" : "POSTGRES",
+            "db_name" : "ranger",
+            "policymgr_external_url" : "http://%HOSTGROUP::{{ rangeradmin_groups[0] }}%:6080",
+            "db_user" : "{{ ranger_db_user }}",
+            "db_password" : "{{ ranger_db_password }}",
+            "db_host" : "{{ pg_ip }}"
+        }
+    },
+    "ranger-admin-site" : {
+        "xasecure.audit.jaas.Client.option.principal": "rangeradmin/_HOST@{{ realm }}",
+        "ranger.jpa.jdbc.driver": "org.postgresql.Driver",
+        "ranger.jpa.jdbc.url" : "jdbc:postgresql://{{ pg_ip }}:{{ pg_port }}/ranger",
+        "ranger.audit.source.type" : "solr",
+        "ranger.audit.solr.zookeepers" : "{% for zk in zookeeper_hosts %}{{ zk }}:2181{% if not loop.last %},{% endif %}{% endfor %}/infra-solr"
+    },
+    "ranger-hdfs-plugin-properties" : {
+        "ranger-hdfs-plugin-enabled" : "Yes",
+        "REPOSITORY_CONFIG_USERNAME" : "hdfs"
+    },
+    "ranger-hdfs-security" : {
+        "ranger.plugin.hdfs.policy.rest.url" : "http://{{ rangeradmin_hosts[0] }}:6080"
+    },
+    "ranger-hdfs-audit" : {
+        "xasecure.audit.destination.hdfs" : "true",
+        "xasecure.audit.destination.hdfs.dir" : "hdfs://{{ cluster_name }}/ranger/audit",
+        "xasecure.audit.destination.hdfs.batch.filespool.dir" : "/var/log/kafka/audit/hdfs/spool",
+        "xasecure.audit.destination.solr" : "true",
+        "xasecure.audit.destination.solr.zookeepers" : "{% for zk in zookeeper_hosts %}{{zk}}:2181{% if not loop.last %},{% endif %}{% endfor %}/infra-solr",
+        "xasecure.audit.destination.solr.batch.filespool.dir" : "/var/log/hive/audit/solr/spool"
+    },
+    "hadoop-policy": {
+        "properties": {
+            "security.refresh.usertogroups.mappings.protocol.acl": "hdfs",
+            "security.admin.operations.protocol.acl": "hdfs",
+            "security.refresh.policy.protocol.acl": "hdfs"
+        }
+    },
+    "ranger-hive-plugin-properties" : {
+        "ranger-hive-plugin-enabled" : "Yes"
+    },
+    "ranger-hive-security" : {
+        "ranger.plugin.hive.policy.rest.url" : "http://{{ rangeradmin_hosts[0] }}:6080",
+        "ranger.plugin.hive.policy.pollIntervalMs" : "30000"
+    },
+    "ranger-hive-audit" : {
+        "xasecure.audit.destination.hdfs" : "false",
+        "xasecure.audit.destination.hdfs.dir" : "hdfs://{{ cluster_name }}/ranger/audit",
+        "xasecure.audit.destination.hdfs.batch.filespool.dir" : "/var/log/kafka/audit/hdfs/spool",
+        "xasecure.audit.destination.solr" : "true",
+        "xasecure.audit.destination.solr.zookeepers" : "{% for zk in zookeeper_hosts %}{{zk}}:2181{% if not loop.last %},{% endif %}{% endfor %}/infra-solr",
+        "xasecure.audit.destination.solr.batch.filespool.dir" : "/var/log/hive/audit/solr/spool"
+    },
+    "ranger-yarn-plugin-properties" : {
+        "ranger-yarn-plugin-enabled" : "Yes"
+    },
+    "ranger-yarn-security" : {
+        "ranger.plugin.yarn.policy.rest.url" : "http://{{ rangeradmin_hosts[0] }}:6080",
+        "ranger.plugin.yarn.policy.pollIntervalMs" : "30000"
+    },
+    "ranger-yarn-audit" : {
+        "xasecure.audit.destination.db" : "false",
+        "xasecure.audit.destination.hdfs" : "true",
+        "xasecure.audit.destination.hdfs.dir" : "hdfs://{{ cluster_name }}/ranger/audit",
+        "xasecure.audit.destination.hdfs.batch.filespool.dir" : "/var/log/kafka/audit/hdfs/spool",
+        "xasecure.audit.destination.solr" : "true",
+        "xasecure.audit.destination.solr.zookeepers" : "{% for zk in zookeeper_hosts %}{{zk}}:2181{% if not loop.last %},{% endif %}{% endfor %}/infra-solr",
+        "xasecure.audit.destination.solr.batch.filespool.dir" : "/var/log/hive/audit/solr/spool"
+    },
+    "ranger-hbase-plugin-properties" : {
+        "ranger-hbase-plugin-enabled" : "Yes"
+    },
+    "ranger-hbase-security" : {
+        "ranger.plugin.hbase.policy.rest.url" : "http://{{ rangeradmin_hosts[0] }}:6080",
+        "ranger.plugin.hbase.policy.pollIntervalMs" : "30000"
+    },
+    "ranger-hbase-audit" : {
+        "xasecure.audit.destination.db" : "false",
+        "xasecure.audit.destination.hdfs" : "true",
+        "xasecure.audit.destination.hdfs.dir" : "hdfs://{{ cluster_name }}/ranger/audit",
+        "xasecure.audit.destination.hdfs.batch.filespool.dir" : "/var/log/kafka/audit/hdfs/spool",
+        "xasecure.audit.destination.solr" : "true",
+        "xasecure.audit.destination.solr.zookeepers" : "{% for zk in zookeeper_hosts %}{{zk}}:2181{% if not loop.last %},{% endif %}{% endfor %}/infra-solr",
+        "xasecure.audit.destination.solr.batch.filespool.dir" : "/var/log/hive/audit/solr/spool"
+    },
+    "ranger-kafka-plugin-properties" : {
+        "ranger-kafka-plugin-enabled" : "Yes"
+    },
+    "ranger-kafka-security" : {
+        "ranger.plugin.kafka.policy.rest.url" : "http://{{ rangeradmin_hosts[0] }}:6080",
+        "ranger.plugin.kafka.policy.pollIntervalMs" : "30000"
+    },
+    "ranger-kafka-audit" : {
+        "xasecure.audit.destination.db" : "false",
+        "xasecure.audit.destination.hdfs" : "true",
+        "xasecure.audit.destination.hdfs.dir" : "hdfs://{{ cluster_name }}/ranger/audit",
+        "xasecure.audit.destination.hdfs.batch.filespool.dir" : "/var/log/kafka/audit/hdfs/spool",
+        "xasecure.audit.destination.solr" : "true",
+        "xasecure.audit.destination.solr.zookeepers" : "{% for zk in zookeeper_hosts %}{{zk}}:2181{% if not loop.last %},{% endif %}{% endfor %}/infra-solr",
+        "xasecure.audit.destination.solr.batch.filespool.dir" : "/var/log/hive/audit/solr/spool"
+    },
+    "ranger-env" : {
+        "is_solrCloud_enabled": "true",
+        "ranger-hdfs-plugin-enabled" : "Yes",
+        "ranger-hive-plugin-enabled" : "Yes",
+        "ranger-yarn-plugin-enabled" : "Yes",
+        "ranger-hbase-plugin-enabled" : "Yes",
+        "ranger-kafka-plugin-enabled" : "Yes",
+        "ranger_admin_username" : "{{ ranger_db_user }}",
+        "ranger_admin_password" : "{{ ranger_db_password }}",
+        "admin_username" : "admin",
+        "admin_password" : "{{ ranger_db_password }}",
+        "rangerusersync_user_password" : "{{ ranger_db_password }}",
+        "rangertagsync_user_password" : "{{ ranger_db_password }}",
+        "keyadmin_user_password" : "{{ ranger_db_password }}",
+        "xasecure.audit.destination.db" : "false",
+        "xasecure.audit.destination.hdfs" : "true",
+        "xasecure.audit.destination.hdfs.dir" : "hdfs://{{ cluster_name }}/ranger/audit",
+        "xasecure.audit.destination.solr" : "true",
+        "create_db_dbuser": "true"
+    },
+    "ranger-ugsync-site" : {
+        "ranger.usersync.enabled" : "true"
+    }
+}

@@ -1,0 +1,161 @@
+---
+
+host_groups:
+  group0: [gs-server0]
+  group1: [gs-server2]
+  group2: [gs-server3, gs-server4]
+  group3: gs-server[5-10]
+
+group_services:
+  group0: [AMBARI_SERVER, NAMENODE, HIVE_METASTORE, WEBHCAT_SERVER, SPARK_THRIFTSERVER, SOLR_SERVER,FLINK_HISTORYSERVER,HISTORYSERVER,RANGER_TAGSYNC, RANGER_USERSYNC]
+  group1: [SECONDARY_NAMENODE, RANGER_ADMIN, HBASE_MASTER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER, RESOURCEMANAGER, KAFKA_BROKER, SPARK_JOBHISTORYSERVER, INFRA_SOLR]
+  group2: [HBASE_REGIONSERVER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER,HIVE_SERVER]
+  group3: [DATANODE, NODEMANAGER]
+
+
+###########################
+## cluster configuration ##
+###########################
+ansible_options:
+  ansible_ssh_port: 22
+
+nexus_options:
+  external_nexus_server_ip: 10.202.60.164                 # if this is empty, nexus server will install and prepare on the ambari-server node
+  port: 8081
+  user: test
+  password: nexus_Test123
+  data_dir:                                               # if need install nexus ,set this data dirtory to store nexus data
+
+cluster_name: 'mytestcluster'
+
+#(可默认)ntp时钟同步主机，ntp_server为空则默认为主机第一台，不为空则为指定的ip
+ntpserver: ''                                             # if this is empty, ntp server will install and prepare on the ambari-server node
+
+data_dir: ["/data1"]
+
+
+ambari_version: '2.7.4.0'                                 # must be the 4-part full version number
+
+#暂时无用的变量
+#hdp_version: '3.1.4.0'                                    # must be the 4-part full version number
+#hdp_build_number: 'auto'                                  # the HDP build number from docs.hortonworks.com (if set to 'auto', Ansible will try to get it from the repository)
+
+repo_base_url: 'http://public-repo-1.hortonworks.com'     # change this if using a Local Repository
+
+
+###########################
+## general configuration ##
+###########################
+
+external_dns: yes                                         # set to yes to use the existing DNS (when no, it will update the /etc/hosts file - must be set to 'no' when using Azure)
+disable_firewall: no                                      # set to yes to disable the existing local firewall service (iptables, firewalld, ufw)
+timezone: UTC
+
+############################
+## database configuration ##
+############################
+database: 'postgres'                                      # can be set to  'postgres', 'mysql' or 'mariadb'
+
+database_options:
+  repo_url: ''
+  external_hostname: ''                                   # if this is empty, Ansible will install and prepare the databases on the ambari-server node
+  ambari_db_name: 'ambari'
+  ambari_db_username: 'ambari'
+  ambari_db_password: 'bigdata'
+  hive_db_name: 'hive'
+  hive_db_username: 'hive'
+  hive_db_password: 'hive'
+  rangeradmin_db_name: 'ranger'
+  rangeradmin_db_username: 'ranger'
+  rangeradmin_db_password: 'ranger'
+  rangerkms_db_name: 'rangerkms'
+  rangerkms_db_username: 'rangerkms'
+  rangerkms_db_password: 'rangerkms'
+
+
+#####################################
+## kerberos security configuration ##                     # useful if blueprint is dynamic, but can also be used to deploy the MIT KDC
+#####################################
+
+security: 'none'                                          # can be set to 'none', 'mit-kdc', 'ipa' or 'active-directory'
+security_options:
+  external_hostname: ''                                   # if this is empty, Ansible will install and prepare the MIT KDC on the Ambari node
+  realm: 'EXAMPLE.COM'
+  admin_principal: 'admin'                                # the Kerberos principal that has the permissions to create new users (don't append the realm)
+  admin_password: "{{ default_password }}"
+  kdc_master_key: "{{ default_password }}"                # only used when security is set to 'mit-kdc'
+  ldap_url: 'ldaps://ad.example.com:636'                  # only used when security is set to 'active-directory'
+  container_dn: 'OU=hadoop,DC=example,DC=com'             # only used when security is set to 'active-directory'
+  http_authentication: yes                                # set to yes to enable HTTP authentication (SPNEGO)
+  manage_krb5_conf: yes                                   # set to no if using FreeIPA/IdM
+
+##########################
+## ranger configuration ##                                # only useful if blueprint is dynamic
+##########################
+
+ranger_options:                                           # only used if RANGER_ADMIN is part of the blueprint stack
+  enable_plugins: yes                                     # set to 'yes' if the plugins should be enabled for all of the installed services
+
+ranger_security_options:                                  # only used if RANGER_ADMIN is part of the blueprint stack
+  ranger_admin_password: "{{ default_password }}"         # the password for the Ranger admin users (both admin and amb_ranger_admin)
+  ranger_keyadmin_password: "{{ default_password }}"      # the password for the Ranger keyadmin user (will only be set in HDP3, in HDP2 it will remain the default keyadmin)
+  kms_master_key_password: "{{ default_password }}"       # password used for encrypting the Master Key
+
+
+##################################
+## other security configuration ##                        # only useful if blueprint is dynamic
+##################################
+
+ambari_admin_password: 'admin'                            # the password for the Ambari admin user
+default_password: 'AsdQwe123456'                          # a default password for all required passwords which are not specified in the blueprint,
+                                                          # dependency: NiFi password needs to be at least 12 characters
+
+##########################
+## ambari configuration ##
+##########################
+# ambari_server
+ambari_options:
+  ambari_server: '192.168.133.150'
+  ambari_server_hostname: 'rancher01.test.com'
+  ambari_run_user: 'ambari'
+  ambari_repo_name: 'sdp_3.1'
+  ambari_admin_user: 'admin'
+  ambari_admin_default_password: 'admin'                    # no need to change this (unless the Ambari default changes)
+  config_recommendation_strategy: 'NEVER_APPLY'             # choose between 'NEVER_APPLY', 'ONLY_STACK_DEFAULTS_APPLY', 'ALWAYS_APPLY', 'ALWAYS_APPLY_DONT_OVERRIDE_CUSTOM_VALUES'
+
+wait: true                                                # wait for the cluster to finish installing
+wait_timeout: 3600                                        # 60 minutes
+accept_gpl: yes                                           # set to yes to allow Ambari to install GPL licensed libraries
+
+cluster_template_file: 'cluster_template.j2'              # the cluster creation template file
+
+
+###########################
+## folders configuration ##
+###########################
+
+base_log_dir: '/var/log'
+base_tmp_dir: '/tmp'
+
+
+#hdp_minor_version: "{{ hdp_version | regex_replace('.[0-9]+.[0-9]+[0-9_-]*$','') }}"
+#hdp_major_version: "{{ hdp_minor_version.split('.').0 }}"
+#hdfs_ha_name: "{{ cluster_name | regex_replace('_','-') }}"
+#is_vm_docker_containers: 'no'                             # docker containers have some specifics like mount points for example
+
+#blueprint
+blueprint_name: 'udhThree_blueprint'            # the name of the blueprint as it will be stored in Ambari
+default_password: 'udh_ambari4321!'
+blueprint_file: 'cluster.json'
+
+os_release_name: 'centos'
+yum_server: 'http://test:nexus_Test123@{{yum_server}}:8081'
+ambari_jdk_uri: '{{yum_server}}/repository/raw/tools/bigdata/jdk.tar.gz'
+ambari_mysql_conn_jar: '{{yum_server}}/repository/raw/tools/bigdata/mysql-connector-java.jar'
+ambari_postgres_conn_jar: '{{yum_server}}/repository/raw/tools/bigdata/postgresql-42.2.2.jar'
+linux_diagnose_arthas_url: '{{yum_server}}/repository/raw/tools/linux_diagnose/arthas.tar.gz'
+linux_diagnose_perf_tools_url: '{{yum_server}}/repository/raw/tools/linux_diagnose/perf-tools.tar.gz'
+
+
+
+

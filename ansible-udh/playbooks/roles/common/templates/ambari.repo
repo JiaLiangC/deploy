@@ -1,0 +1,5 @@
+[sdp-ambari-base]
+name=sdp-ambari-base
+baseurl={{nexus_options.nexus_server_ip}}/repository/yum/{{ambari_options.ambari_repo_name}}/packages
+gpgcheck=0
+

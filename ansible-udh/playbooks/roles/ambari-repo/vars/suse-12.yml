@@ -1,0 +1,2 @@
+---
+ambari_repo_url: "{{ repo_base_url }}/ambari/sles{{ ansible_distribution_major_version }}/2.x/updates/{{ ambari_version }}"

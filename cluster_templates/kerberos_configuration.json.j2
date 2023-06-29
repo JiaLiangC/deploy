@@ -1,0 +1,14 @@
+{
+    "kerberos-env": {
+        "ldap_url": "",
+        "manage_identities": "true",
+        "install_packages": "true",
+        "realm" : "{{ realm }}",
+        "kdc_type" : "mit-kdc",
+        "kdc_hosts" : "{{ kdc_hostname }}",
+        "admin_server_host" : "{{ kdc_hostname }}"
+    },
+    "krb5-conf": {
+        "manage_krb5_conf" : "true"
+    }
+}

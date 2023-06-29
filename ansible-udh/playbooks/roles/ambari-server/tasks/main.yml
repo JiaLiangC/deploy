@@ -1,0 +1,159 @@
+---
+- name: Load variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}-{{ ansible_distribution_version }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../ambari-server/vars
+
+- name: Install the ambari-server package
+  package:
+    name: ambari-server
+    update_cache: yes
+    state: latest
+  notify: Reload systemd
+
+#todo download jdbc to
+- name: get jdbc jar
+  get_url:
+    url: '{{ item }}'
+    dest: usr/share/java/
+    owner: ambari_options.ambari_run_user
+    group: ambari_options.ambari_run_user
+  with_items:
+    - '{{ java_mysql_conn_jar }}'
+    - '{{ java_postgres_conn_jar }}'
+
+- meta: flush_handlers
+
+- block:
+    - name: Install mysql required packages (for hive embedded)
+      package:
+        name: "{{ item }}"
+        update_cache: yes
+        state: present
+      with_items: "{{ mysql_packages | join(',') }}"
+
+    - block:
+        - name: Install mysql-server on Ubuntu 16 (for hive embedded)
+          apt:
+            name: 'mysql-server'
+            update_cache: yes
+            state: present
+
+        - name: Configure mysql to listen on all interfaces (Ubuntu 16)
+          ini_file:
+            path: '/etc/mysql/mysql.conf.d/mysqld.cnf'
+            create: no
+            section: 'mysqld'
+            option: 'bind-address'
+            value: '*'
+            no_extra_spaces: yes
+            state: present
+      when: ansible_distribution|lower == "ubuntu" and ansible_distribution_major_version|int == 16
+      run_once: true
+      delegate_to: "{{ hiveserver_hosts[0] }}"
+
+    - name: Configure the Ambari JDBC driver for mysql (for hive embedded)
+      shell: /usr/sbin/ambari-server setup --jdbc-db=mysql --jdbc-driver={{ mysql_jdbc_location }}
+      notify: Restart ambari-server
+  when: database == "embedded" and hiveserver_hosts is defined and hiveserver_hosts|length > 0
+
+- block:
+    - name: Install {{ database }} required packages
+      package:
+        name: "{{ item }}"
+        update_cache: yes
+        state: present
+      with_items: "{{ lookup('vars', database + '_packages') | join(',') }}"
+
+    - block:
+        - name: Load the Ambari Server schema (postgres)
+          postgresql_db:
+            name: "{{ database_options.ambari_db_name }}"
+            maintenance_db: "{{ database_options.ambari_db_name }}"
+            login_host: "{{ database_options.external_hostname|default(ansible_fqdn,true) }}"
+            port: "{{ postgres_port }}"
+            login_user: "{{ database_options.ambari_db_username }}"
+            login_password: "{{ database_options.ambari_db_password }}"
+            state: restore
+            target: /var/lib/ambari-server/resources/Ambari-DDL-Postgres-CREATE.sql
+          when: ansible_os_family|lower != "suse"
+      when: database == "postgres"
+
+    - block:
+        - name: Load the Ambari Server schema (mysql)
+          mysql_db:
+            name: "{{ database_options.ambari_db_name }}"
+            login_host: "{{ database_options.external_hostname|default(ansible_fqdn,true) }}"
+            login_port: "{{ mysql_port }}"
+            login_user: "{{ database_options.ambari_db_username }}"
+            login_password: "{{ database_options.ambari_db_password }}"
+            state: import
+            target: /var/lib/ambari-server/resources/Ambari-DDL-MySQL-CREATE.sql
+          register: import_results
+          ignore_errors: true
+
+        - name: Fail if the mysql schema could not be loaded
+          fail:
+            msg: Schema could not be loaded. Error is {{ import_results.msg }}!
+          when: import_results is failed and not import_results.msg is search("Table .* already exists")
+      when: database == "mysql" or database == "mariadb"
+
+    - name: Configure the Ambari JDBC driver
+      shell: /usr/sbin/ambari-server setup --jdbc-db={{ database | regex_replace('mariadb', 'mysql') }} --jdbc-driver={{ lookup('vars', database + '_jdbc_location') }}
+      notify: Restart ambari-server
+
+    - name: Set the Ambari Server database setup options
+      set_fact:
+        ambari_database_options: "--database={{ database | regex_replace('mariadb', 'mysql') }} \
+                                  --databasehost={{ database_options.external_hostname|default(ansible_fqdn,true) }} \
+                                  --databaseport={{ lookup('vars', database | regex_replace('mariadb', 'mysql') + '_port') }} \
+                                  --databasename={{ database_options.ambari_db_name }} \
+                                  --databaseusername={{ database_options.ambari_db_username }} \
+                                  --databasepassword={{ database_options.ambari_db_password }}"
+  when: database != "embedded"
+
+- name: Set the Ambari Server Java setup option (OpenJDK)
+  set_fact:
+    ambari_java_options: "-j {{ openjdk_path }}"
+  when: java == "openjdk"
+
+
+- name: Run Ambari Server setup
+  shell: /usr/sbin/ambari-server setup -s {{ ambari_java_options|default("") }} {{ ambari_database_options|default("") }}
+  notify: Restart ambari-server
+
+- name: Update ambari-server log dir
+  lineinfile:
+    dest: /etc/ambari-server/conf/log4j.properties
+    regexp: '^ambari.log.dir='
+    line: 'ambari.log.dir={{ base_log_dir }}/ambari-server'
+  notify: Restart ambari-server
+
+- name: Increase the Ambari Server startup timeout
+  lineinfile:
+    path: /etc/ambari-server/conf/ambari.properties
+    state: present
+    line: 'server.startup.web.timeout=120'
+  notify: Restart ambari-server
+
+- meta: flush_handlers
+
+- name: Make sure the ambari-server service is started
+  service:
+    name: ambari-server
+    state: started
+
+#增加开机启动
+- name: Make sure the ambari-server service is enabled
+  service:
+    name: ambari-server
+    enabled: yes
+  ignore_errors: true

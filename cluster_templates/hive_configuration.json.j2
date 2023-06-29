@@ -1,0 +1,24 @@
+{
+    "hive-site" : {
+        "javax.jdo.option.ConnectionDriverName": "org.postgresql.Driver",
+        "javax.jdo.option.ConnectionURL" : "jdbc:postgresql://{{ pg_ip }}:{{ pg_port }}/hive",
+        "ambari.hive.db.schema.name" : "hive",
+        "javax.jdo.option.ConnectionUserName": "hive",
+        "javax.jdo.option.ConnectionPassword" : "{{ hive_pg_password }}",
+        "hive.security.authorization.enabled" : "true",
+        "hive.server2.logging.operation.log.location" : "/tmp/hive/operation_logs"
+    },
+    "hiveserver2-site" : {
+        "hive.security.authorization.enabled" : "true",
+        "hive.security.authorization.manager" : "org.apache.ranger.authorization.hive.authorizer.RangerHiveAuthorizerFactory",
+        "hive.conf.restricted.list" : "hive.security.authenticator.manager,hive.security.authorization.manager,hive.security.metastore.authorization.manager,hive.security.metastore.authenticator.manager,hive.users.in.admin.role,hive.server2.xsrf.filter.enabled,hive.security.authorization.enabled",
+        "hive.metastore.metrics.enabled" : "true"
+    },
+    "hive-env" : {
+        "hive_database": "Existing PostgreSQL Database",
+        "hive_database_type": "postgres",
+        "hive_database_name": "hive",
+        "hive_security_authorization" : "Ranger",
+        "hive_user" : "hive"
+    }
+}

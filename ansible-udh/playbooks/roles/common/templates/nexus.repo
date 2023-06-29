@@ -1,0 +1,5 @@
+[nexus-centos7]
+name=Nexus-Centos7
+baseurl={{nexus_options.nexus_server_ip}}/repository/yum/Centos7/$releasever
+enabled=1
+gpgcheck=0

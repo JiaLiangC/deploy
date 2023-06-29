@@ -1,0 +1,29 @@
+{
+      "yarn-site" : {
+          "hadoop.registry.zk.quorum": "{% for zk in zookeeper_groups %}%HOSTGROUP::{{ zk }}%:2181{% if not loop.last %},{% endif %}{% endfor %}",
+          "yarn.resourcemanager.recovery.enabled": "true",
+          "yarn.resourcemanager.store.class" : "org.apache.hadoop.yarn.server.resourcemanager.recovery.ZKRMStateStore",
+          "yarn.resourcemanager.cluster-id" : "yarn-cluster",
+          "yarn.resourcemanager.ha.enabled" : "true",
+          "yarn.resourcemanager.ha.automatic-failover.zk-base-path" : "/yarn-leader-election",
+          "yarn.resourcemanager.ha.rm-ids" : "rm1,rm2",
+          "yarn.resourcemanager.address": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8050",
+          "yarn.resourcemanager.scheduler.address": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8030",
+          "yarn.resourcemanager.resource-tracker.address": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8025",
+          "yarn.resourcemanager.admin.address": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8141",
+          "yarn.resourcemanager.hostname": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8088",
+          "yarn.resourcemanager.hostname.rm1": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%",
+          "yarn.resourcemanager.hostname.rm2": "%HOSTGROUP::{{ resourcemanager_groups[1] }}%",
+          "yarn.resourcemanager.webapp.address": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8088",
+          "yarn.resourcemanager.webapp.address.rm1": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8088",
+          "yarn.resourcemanager.webapp.address.rm2": "%HOSTGROUP::{{ resourcemanager_groups[1] }}%:8088",
+          "yarn.resourcemanager.webapp.https.address": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8090",
+          "yarn.resourcemanager.webapp.https.address.rm1": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8090",
+          "yarn.resourcemanager.webapp.https.address.rm2": "%HOSTGROUP::{{ resourcemanager_groups[1] }}%:8090",
+          "yarn.resourcemanager.zk-address": "{% for zk in zookeeper_groups %}%HOSTGROUP::{{ zk }}%:2181{% if not loop.last %},{% endif %}{% endfor %}",
+          "yarn.acl.enable" : "true",
+          "yarn.authorization-provider": "org.apache.ranger.authorization.yarn.authorizer.RangerYarnAuthorizer",
+          "yarn.nodemanager.local-dirs" : "{% for dr in data_dir %}{{ dr }}/hadoop/yarn/local{% if not loop.last %},{% endif %}{% endfor %}",
+          "yarn.nodemanager.log-dirs" : "{% for dr in data_dir %}{{ dr }}/hadoop/yarn/log{% if not loop.last %},{% endif %}{% endfor %}"
+      }
+}

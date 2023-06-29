@@ -1,0 +1,17 @@
+---
+- import_playbook: "set_variables.yml"
+
+- name: Gather facts from all nodes
+  hosts: hadoop-cluster
+  any_errors_fatal: true
+  become: yes
+
+- import_playbook: "check_dynamic_blueprint.yml"
+  when: blueprint_file == 'blueprint_dynamic.j2'
+
+- name: Apply the ambari-config role to the ambari-server group
+  hosts: ambari-server
+  any_errors_fatal: true
+  become: yes
+  roles:
+    - ambari-config
