@@ -25,19 +25,18 @@
   shell: 'python2 /tmp/cluster_clear.py bigtop | tee -a /tmp/cluster_clear.log'
   failed_when: false
 
-
-#- name: Install required packages
-#  package:
-#    name: "{{ item }}"
-#    update_cache: yes
-#    state: present
-#  with_items: "{{ packages | join(',') }}"
-
 # 给所有主机linux 进行必要配置，关闭防火墙，透明大页，SElinux ,设置swap,nproc,vm，创建用户等
 - include: node_setup.yml
 
 # 给所有主机配置yum源，准备基础软件环境,安装基础的依赖
 - include: yum_setup.yml
+
+- name: Install required packages
+  package:
+    name: "{{ item }}"
+    update_cache: yes
+    state: present
+  with_items: "{{ packages | join(',') }}"
 
 #设置ntp
 - include: ntp_setup.yml
@@ -50,46 +49,3 @@
     owner: root
     group: root
     mode: 0755
-
-
-#- name: Add mappings to /etc/hosts
-#  lineinfile:
-#    path: /etc/hosts
-#    regexp: "^{{ hostvars[item]['ansible_'~hostvars[item].ansible_default_ipv4.alias | regex_replace('-','_')]['ipv4']['address'] }}.*"
-#    line: "{{ hostvars[item]['ansible_'~hostvars[item].ansible_default_ipv4.alias | regex_replace('-','_')]['ipv4']['address'] }} {{ hostvars[item]['ansible_nodename'] }}"
-#    insertafter: "^127..*$"
-#    state: present
-#  with_items:
-#    - "{{ groups['hadoop-cluster']|sort(reverse=True) }}"
-#  when: not external_dns
-
-#- name: Make sure /etc/security/limits.d exists
-#  file:
-#    path: /etc/security/limits.d
-#    mode: 0755
-#    state: directory
-#
-#- name: Set nofile and nproc limits
-#  blockinfile:
-#    path: /etc/security/limits.d/99-hadoop.conf
-#    create: yes
-#    mode: 0644
-#    block: |
-#      * soft nofile 32768
-#      * hard nofile 32768
-#      * soft nproc 32768
-#      * hard nproc 32768
-#      root       soft    nproc     unlimited
-#      ams        -       nofile   64000
-#      atlas      -       nofile   64000
-#      druid      -       nofile   64000
-#      hive       -       nofile   64000
-#      infra-solr -       nofile   64000
-#      kms        -       nofile   64000
-#      knox       -       nofile   64000
-#      logsearch  -       nofile   64000
-#      ranger     -       nofile   64000
-#      spark      -       nofile   64000
-#      zeppelin   -       nofile   64000
-#      zookeeper  -       nofile   64000
-#    marker: "# {mark} ANSIBLE MANAGED BLOCK"

@@ -57,7 +57,7 @@
     return_content: no
   when: ambari_admin_user == 'admin' and ambari_admin_password != ambari_admin_default_password
 
-#todo mpack install for all services
+
 #- block:
 #    - name: Set the HDP Search mpack filename
 #      set_fact:

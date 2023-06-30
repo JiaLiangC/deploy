@@ -27,7 +27,7 @@
 - name: Disable selinux
   selinux:
     state: disabled
-  when: ansible_os_family|lower == "redhat" and ansible_distribution|lower != "amazon" and is_vm_docker_containers != "yes"
+  when: ansible_os_family|lower == "redhat"
 
 #关闭透明大页
 - name: Disable Transparent Huge Pages until the next reboot
@@ -71,14 +71,13 @@
 
 - name: modify nproc.conf
   shell: 'sed -i "s/^\*.*/*          soft    nproc     655350/g" /etc/security/limits.d/20-nproc.conf'
-  when:
-    - ansible_facts['distribution'] == "CentOS"
+  when: ansible_os_family|lower == "redhat" and ansible_distribution_major_version|int == 7
 
 # 创建大数据集群的用户，ambari run user 等
 - name: create user
   user: name={{ item.user }} password={{ item.pass| password_hash('sha512') }}
   with_items:
-    - { user: '{{ ambari_options.ambari_run_user }}', pass: '{{ panel_shell_password }}' }
+    - { user: '{{ ambari_options.ambari_run_user }}', pass: '{{ ambari_options.ambari_shell_password }}' }
   ignore_errors: True
 
 # 给用户配置sudo权限
@@ -98,15 +97,15 @@
     regexp: '.*{{ item }}$'
     line: "{{ hostvars[item].ansible_host }} {{item}}"
   when: hostvars[item].ansible_host is defined
-  with_items: "{{ groups['panel'] }}"
+  with_items: "{{ groups['hadoop-cluster'] }}"
 
 
 # todo 使用外部Kdc 需要创建host 映射
-#- name: add kadmin host
-#  lineinfile:
-#    path: /etc/hosts
-#    line: "{{kerberos_domain_ip}} {{kerberos_domain}}"
-#  when: security == 'mit-kdc' and security_options.external_hostname != ''
+- name: add kadmin host
+  lineinfile:
+    path: /etc/hosts
+    line: "{{security_options.external_hostip}} {{security_options.external_hostname}}"
+  when: security == 'mit-kdc' and security_options.external_hostname != ''
 
 
 # 创建keytab文件目录

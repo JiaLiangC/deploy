@@ -4,11 +4,14 @@ import re
 import os
 import yaml
 import sys
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+
 class InvalidConfigurationException(Exception):
     pass
+
 
 class BlueprintUtils:
     CONF_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -16,7 +19,6 @@ class BlueprintUtils:
     BLUEPRINT_FILES_DIR = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/roles/ambari-blueprint/files/')
 
     def __init__(self):
-        # todo path set
         self.ambari_blueprint_files_path = BlueprintUtils.BLUEPRINT_FILES_DIR
         self.cluster_templates_path = os.path.join(BlueprintUtils.CONF_DIR, "cluster_templates")
         self.conf_path = BlueprintUtils.CONF_DIR
@@ -109,7 +111,7 @@ class BlueprintUtils:
         for service_key, service_info in self.services_map().items():
             if service_name in service_info["server"]:
                 file_name = service_key + "_configuration.json.j2"
-                file_path = os.path.join(self.cluster_templates_path,file_name)
+                file_path = os.path.join(self.cluster_templates_path, file_name)
                 return file_path
 
     # 组装各个组件的配置
@@ -152,7 +154,9 @@ class BlueprintUtils:
     def get_confs_from_j2template(self, file, context):
         from jinja2 import Template
         # 读取模板文件
-        # todo if os.path.exists(file):
+        # todo 增加异常检测
+        # if not os.path.exists(file):
+        #     raise Exception("s")
 
         with open(file, 'r') as f:
             template_str = f.read()
@@ -216,6 +220,29 @@ class BlueprintUtils:
         with open(file_name, 'w') as f:
             json.dump(blueprint, f, indent=4)
 
+    def get_nexus_base_url(self):
+        group_services = self.conf["group_services"]
+        host_groups = self.conf["host_groups"]
+        ambari_server_group = ""
+
+        install_nexus = False
+        external_nexus_server_ip = self.conf["nexus_options"]["external_nexus_server_ip"]
+        nexus_port = self.conf["nexus_options"]["port"]
+        if len(external_nexus_server_ip.strip()) == 0:
+            install_nexus = True
+
+        if install_nexus:
+            for group_name, services in group_services.items():
+                if "AMBARI_SERVER" in services:
+                    ambari_server_group = group_name
+                    break
+            nexus_host = host_groups[ambari_server_group][0]
+        else:
+            nexus_host = self.conf["nexus_options"]["external_nexus_server_ip"]
+
+        nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
+        return  nexus_url
+
     def generate_ambari_cluster_template(self):
         conf = self.conf
         security = conf["security"]
@@ -253,7 +280,17 @@ class BlueprintUtils:
         with open(file_name, 'w') as f:
             json.dump(res, f, indent=4)
 
-    # todo conf j2 变量设置, 比如cluster_name
+    def generate_ansible_variables_file(self, variables):
+        variables["repo_base_url"] = self.get_nexus_base_url()
+
+        for key in ["host_groups", "group_services"]:
+            variables.pop(key, None)
+
+        variables_file_path = os.path.join(self.ANSIBLE_PRJ_DIR, 'playbooks/group_vars/all')
+        with open(variables_file_path, 'w') as f:
+            yaml.dump(variables, f)
+
+
     def conf_j2template_variables(self):
         group_hosts = {}
         groups_var = {}
@@ -304,6 +341,7 @@ class BlueprintUtils:
             raise InvalidConfigurationException("Configuration is invalid")
 
         j2template_variables = self.conf_j2template_variables()
+        self.generate_ansible_variables_file(j2template_variables)
         blueprint_configurations = self.assemble_service_configurations(j2template_variables)
         blueprint_service_host_groups = self.assemble_service_by_host_groups()
         print(blueprint_configurations)
@@ -316,7 +354,6 @@ class BlueprintUtils:
         with open(file_path, 'r') as f:
             data = yaml.load(f)
         self.conf = data
-
 
     def get_services_need_install(self):
         services = []
@@ -340,7 +377,6 @@ class BlueprintUtils:
         unique_services = list(set(services))
         return unique_services, service_counter
 
-    # todo 检测每个组的机器不可以有重复
     # group 名不能重复，不可以出现在多个组中
     def check_config_rules(self):
         all_services, service_counter = self.get_service_distribution()
@@ -373,13 +409,13 @@ class BlueprintUtils:
                 continue
 
             if count < rule["min_instances"]:
-                messages.append("{} 的实例数 {} 小于最小实例数 {}".format(component,count,rule['min_instances']))
+                messages.append("{} 的实例数 {} 小于最小实例数 {}".format(component, count, rule['min_instances']))
 
             if rule["max_instances"] is not None and count > rule["max_instances"]:
-                messages.append("{} 的实例数 {} 大于最大实例数 {}".format(component,count, rule['max_instances']))
+                messages.append("{} 的实例数 {} 大于最大实例数 {}".format(component, count, rule['max_instances']))
 
             if rule.get("odd_only") and count % 2 == 0:
-                messages.append("{} 的实例数 {} 不是奇数".format(component,count))
+                messages.append("{} 的实例数 {} 不是奇数".format(component, count))
 
         for relation in component_relations:
             services = set(relation["service"])
@@ -393,7 +429,8 @@ class BlueprintUtils:
                         installed_components = ",".join(res)
                         correct_relations = ",".join(services)
                         messages.append(
-                            "配置安装的组件 {} 不完整, 该服务的组件必须全部配置安装，完整列表如: {}".format(installed_components,correct_relations))
+                            "配置安装的组件 {} 不完整, 该服务的组件必须全部配置安装，完整列表如: {}".format(
+                                installed_components, correct_relations))
 
         if len(messages) > 0:
             return False, messages
@@ -409,11 +446,6 @@ def main():
     b = BlueprintUtils()
     b.build()
 
-# todo
-#  1.增加组件配置,可选组件
-#  2.增加Kerberos配置
-#  3.增加ranger 配置
-#  4.增加ranger plugin是否开启配置
 
 if __name__ == '__main__':
     main()

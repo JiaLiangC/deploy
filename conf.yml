@@ -36,13 +36,6 @@ data_dir: ["/data1"]
 
 ambari_version: '2.7.4.0'                                 # must be the 4-part full version number
 
-#暂时无用的变量
-#hdp_version: '3.1.4.0'                                    # must be the 4-part full version number
-#hdp_build_number: 'auto'                                  # the HDP build number from docs.hortonworks.com (if set to 'auto', Ansible will try to get it from the repository)
-
-repo_base_url: 'http://public-repo-1.hortonworks.com'     # change this if using a Local Repository
-
-
 ###########################
 ## general configuration ##
 ###########################
@@ -80,6 +73,7 @@ database_options:
 security: 'none'                                          # can be set to 'none', 'mit-kdc', 'ipa' or 'active-directory'
 security_options:
   external_hostname: ''                                   # if this is empty, Ansible will install and prepare the MIT KDC on the Ambari node
+  external_hostip: ''                                      # used to config /etc/hosts dns look up
   realm: 'EXAMPLE.COM'
   admin_principal: 'admin'                                # the Kerberos principal that has the permissions to create new users (don't append the realm)
   admin_password: "{{ default_password }}"
@@ -118,6 +112,7 @@ ambari_options:
   ambari_server: '192.168.133.150'
   ambari_server_hostname: 'rancher01.test.com'
   ambari_run_user: 'ambari'
+  ambari_shell_password: 'ambari'
   ambari_repo_name: 'sdp_3.1'
   ambari_admin_user: 'admin'
   ambari_admin_default_password: 'admin'                    # no need to change this (unless the Ambari default changes)
@@ -138,19 +133,22 @@ base_log_dir: '/var/log'
 base_tmp_dir: '/tmp'
 
 
-#hdp_minor_version: "{{ hdp_version | regex_replace('.[0-9]+.[0-9]+[0-9_-]*$','') }}"
-#hdp_major_version: "{{ hdp_minor_version.split('.').0 }}"
-#hdfs_ha_name: "{{ cluster_name | regex_replace('_','-') }}"
-#is_vm_docker_containers: 'no'                             # docker containers have some specifics like mount points for example
+hdfs_ha_name: "{{ cluster_name | regex_replace('_','-') }}"
 
 #blueprint
 blueprint_name: 'udhThree_blueprint'            # the name of the blueprint as it will be stored in Ambari
 blueprint_file: 'cluster.json'
 
 yum_server: 'http://test:nexus_Test123@{{yum_server}}:8081'
+
+#todo install jdk on all host
 ambari_jdk_uri: '{{yum_server}}/repository/raw/tools/bigdata/jdk.tar.gz'
+
+#todo install connjar on ambari server
 ambari_mysql_conn_jar: '{{yum_server}}/repository/raw/tools/bigdata/mysql-connector-java.jar'
 ambari_postgres_conn_jar: '{{yum_server}}/repository/raw/tools/bigdata/postgresql-42.2.2.jar'
+
+#todo install diagnose
 linux_diagnose_arthas_url: '{{yum_server}}/repository/raw/tools/linux_diagnose/arthas.tar.gz'
 linux_diagnose_perf_tools_url: '{{yum_server}}/repository/raw/tools/linux_diagnose/perf-tools.tar.gz'
 

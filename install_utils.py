@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-#!/usr/bin/python2
+# !/usr/bin/python2
 import os
 import subprocess
 import time
@@ -7,8 +7,10 @@ import re
 # import requests
 
 import sys
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
 
 class InvalidConfigurationException(Exception):
     pass
@@ -21,7 +23,7 @@ ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-udh')
 PKG_BASE_DIR = os.path.join(SCRIPT_DIR, "pkgs")
 OS_RELEASE_NAME = "centos7"
 
-jdk_install_path="/usr/local"
+jdk_install_path = "/usr/local"
 jdk_package_name = "jdk-8u322.zip"
 nexus_package_name = "nexus-3.49.0.tar.gz"
 pigz_package_name = "pigz-2.3.4-1.el7.x86_64.rpm"
@@ -29,8 +31,8 @@ pigz_package_name = "pigz-2.3.4-1.el7.x86_64.rpm"
 
 def get_java_home():
     file_name = os.path.splitext(jdk_package_name)[0]
-    java_home = os.path.join(jdk_install_path,file_name)
-    return  java_home
+    java_home = os.path.join(jdk_install_path, file_name)
+    return java_home
 
 
 def nexus_install(data_dir):
@@ -65,7 +67,7 @@ def nexus_install(data_dir):
 
     nexus_pkg = os.path.join(PKG_BASE_DIR, "nexus", nexus_package_name)
     if os.path.exists(nexus_pkg):
-        print("解压 {} 软件包到 {} 目录".format(nexus_pkg,data_dir))
+        print("解压 {} 软件包到 {} 目录".format(nexus_pkg, data_dir))
         print(f)
         subprocess.run(["tar", "-I", "pigz", "-xf", nexus_package_name, "-C", data_dir])
     else:
@@ -137,7 +139,7 @@ def ansible_install():
     test_output = subprocess.check_output(test_install_cmd, shell=True)
     # 将输出转换为整数
     component_installed = int(test_output.strip())
-    if component_installed >0:
+    if component_installed > 0:
         return
 
     # 执行安装命令
@@ -149,7 +151,7 @@ def ansible_install():
 def setup_nexus_service(data_dir):
     jdk_home = get_java_home()
     nexus_basename = os.path.splitext(nexus_package_name)[0]
-    nexus_bin_dir = os.path.join(data_dir,"nexus",nexus_basename,"bin")
+    nexus_bin_dir = os.path.join(data_dir, "nexus", nexus_basename, "bin")
 
     file_content = '''\
 [Unit]
@@ -184,7 +186,7 @@ name=Nexus Repository for Ansible
 baseurl={}/repository/yum/{}/$releasever
 enabled=1
 gpgcheck=0
-    '''.format(server_url,OS_RELEASE_NAME)
+    '''.format(server_url, OS_RELEASE_NAME)
     # 复制文件
     with open("/etc/yum.repos.d/ansible-nexus.repo", 'w') as file:
         file.write(repo)
@@ -224,7 +226,7 @@ def setup_nexus(conf):
     else:
         nexus_host = conf["nexus_options"]["external_nexus_server_ip"]
 
-    nexus_url = "http://{}:{}".format(nexus_host,nexus_port)
+    nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
     setup_local_repo(nexus_url)
 
 
@@ -274,7 +276,7 @@ def generate_ansible_hosts(conf):
             ip = info[0]
             passwd = info[1]
             # arm-1 ansible_host=10.202.62.78 ansible_ssh_pass=
-            hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name,ip,passwd)
+            hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name, ip, passwd)
         hosts_content += "\n"
 
     ansible_user = user
@@ -394,7 +396,6 @@ def main():
     b.build()
     # run_playbook()
 
+
 if __name__ == '__main__':
     main()
-# todo ansible 到所有节点的免密登录
-# todo 多次执行幂等

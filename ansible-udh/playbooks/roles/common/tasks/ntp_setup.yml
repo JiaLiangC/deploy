@@ -22,10 +22,6 @@
     daemon_reload: yes
   ignore_errors: True
 
-#- name: autostart ntpd
-#  shell: 'systemctl restart ntpd && systemctl enable ntpd'
-#  ignore_errors: True
-
 - name: restart crontab service
   service:
     name: crond

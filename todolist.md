@@ -1,0 +1,8 @@
+* todo ansible 到所有节点的免密登录
+* todo 多次执行幂等
+* path等通用变量优化
+* 完善增加各种异常检测，增强建壮性
+* 增加完善配置检测(检测每个组的机器不可以有重复）
+* todo 需要建立一个 完整的centos7 nexus 仓库
+* mpack install for all services
+* 检查所有template 防止没有成功覆盖老文件

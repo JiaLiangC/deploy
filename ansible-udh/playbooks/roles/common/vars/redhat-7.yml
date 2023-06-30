@@ -10,11 +10,16 @@ packages:
   - openssl-devel           # openssl-devel recommended for Ranger KMS
   - libtirpc-devel          # libtirpc required by HDP 2.6+
   - libselinux-python       # libselinux-python required by Ansible
+  - perf
+  - sysstat
+  - tcpdump
+  - dstat
+  - net-tools
+  - expect
+  - rpm-python
 
 openjdk_package: java-1.8.0-openjdk-devel
 
 ntp_service_name: chronyd
 
 firewall_service_name: firewalld
-
-update_grub_command: 'grub2-mkconfig -o "$(readlink -n /etc/grub2.cfg)"'

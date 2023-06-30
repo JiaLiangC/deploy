@@ -1,5 +1,5 @@
+# -*- coding: UTF-8 -*-
 import unittest
-
 import re
 class InvalidConfigurationException(Exception):
     pass
@@ -86,11 +86,11 @@ class TestConfigParser(unittest.TestCase):
             ('1hostname3', '10.11.1.1', 'password'),
             ('2hostname3', '10.12.1.1', 'password'),
         ]
-        self.assertCountEqual(parse_config(configs), expected_output)
+        self.assertItemsEqual(parse_config(configs), expected_output)
 
         # 测试当主机名和IP都没有范围的情况
         no_range_config = ["10.1.1.1 hostname password"]
-        self.assertCountEqual(parse_config(no_range_config), [('10.1.1.1', 'hostname', 'password')])
+        self.assertItemsEqual(parse_config(no_range_config), [('10.1.1.1', 'hostname', 'password')])
 
         # 测试当范围只在主机名的情况,报错
         hostname_range_config = ["hostname[1-3] 10.1.1.1 password"]
