@@ -145,10 +145,8 @@ base_tmp_dir: '/tmp'
 
 #blueprint
 blueprint_name: 'udhThree_blueprint'            # the name of the blueprint as it will be stored in Ambari
-default_password: 'udh_ambari4321!'
 blueprint_file: 'cluster.json'
 
-os_release_name: 'centos'
 yum_server: 'http://test:nexus_Test123@{{yum_server}}:8081'
 ambari_jdk_uri: '{{yum_server}}/repository/raw/tools/bigdata/jdk.tar.gz'
 ambari_mysql_conn_jar: '{{yum_server}}/repository/raw/tools/bigdata/mysql-connector-java.jar'

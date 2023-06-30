@@ -219,8 +219,8 @@ class BlueprintUtils:
     def generate_ambari_cluster_template(self):
         conf = self.conf
         security = conf["security"]
-        kerberos_admin_principal = conf["kerberos_admin_user"] + "@" + conf["realm"]
-        kerberos_admin_password = conf["kerberos_admin_password"]
+        kerberos_admin_principal = conf["security_options"]["admin_principal"] + "@" + conf["security_options"]["realm"]
+        kerberos_admin_password = conf["security_options"]["admin_password"]
         host_groups = []
         for group_name, group_hosts in self.host_groups.items():
             result = [{'fqdn': host} for host in group_hosts]
@@ -288,7 +288,7 @@ class BlueprintUtils:
         for k, v in groups_var.items():
             groups_var[k] = list(set(v))
 
-        print(groups_var)
+        groups_var.update(self.conf)
         return groups_var
 
     def build(self):
