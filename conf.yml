@@ -109,8 +109,6 @@ default_password: 'AsdQwe123456'                          # a default password f
 ##########################
 # ambari_server
 ambari_options:
-  ambari_server: '192.168.133.150'
-  ambari_server_hostname: 'rancher01.test.com'
   ambari_run_user: 'ambari'
   ambari_shell_password: 'ambari'
   ambari_repo_name: 'sdp_3.1'

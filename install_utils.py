@@ -4,13 +4,11 @@ import os
 import subprocess
 import time
 import re
-# import requests
-
+import urllib2
 import sys
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
 
 class InvalidConfigurationException(Exception):
     pass
@@ -34,8 +32,16 @@ def get_java_home():
     java_home = os.path.join(jdk_install_path, file_name)
     return java_home
 
+def run_shell_cmd(cmd_list):
+    process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
 
-def nexus_install(data_dir):
+    if process.returncode == 0:
+        print("Execution successful")
+    else:
+        print("Execution failed. Error:", error)
+
+def nexus_install(data_dir, nexus_base_url):
     command = "ps -ef | grep org.sonatype.nexus.karaf.NexusMain | grep -v grep | wc -l"
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, _ = process.communicate()
@@ -54,7 +60,13 @@ def nexus_install(data_dir):
 
     pigz_rpm = os.path.join(PKG_BASE_DIR, "tools", pigz_package_name)
     # 2. 安装 pigz 工具以加快解压速度
-    subprocess.run(["yum", "install", "-y", pigz_rpm])
+    process = subprocess.Popen(["yum", "install", "-y", pigz_rpm], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+
+    if process.returncode == 0:
+        print("Installation successful")
+    else:
+        print("Installation failed. Error:", error)
 
     # 3. 显示信息消息
     print("即将开始安装nexus，该过程预计等待时间小于5分钟")
@@ -68,8 +80,7 @@ def nexus_install(data_dir):
     nexus_pkg = os.path.join(PKG_BASE_DIR, "nexus", nexus_package_name)
     if os.path.exists(nexus_pkg):
         print("解压 {} 软件包到 {} 目录".format(nexus_pkg, data_dir))
-        print(f)
-        subprocess.run(["tar", "-I", "pigz", "-xf", nexus_package_name, "-C", data_dir])
+        run_shell_cmd(["tar", "-I", "pigz", "-xf", nexus_package_name, "-C", data_dir])
     else:
         print("请将 {} 放置到 nexus 目录下", "error".format(nexus_package_name))
         exit(1)
@@ -78,28 +89,27 @@ def nexus_install(data_dir):
     setup_nexus_service(data_dir)
 
     print("nexus 启动中...")
-    subprocess.run(["systemctl", "start", "nexus3"])
+    run_shell_cmd(["systemctl", "start", "nexus3"])
 
     # 7. 设置环境变量
-    MAX_WAIT_TIME = 300
-    MAX_END_TIME = time.time() + MAX_WAIT_TIME
-
-    NEXUS_SERVICE_RESPONSE_CODE = "000"
-    NEXUS_SERVICE_OK = 1
+    max_wait_time = 300
+    max_end_time = time.time() + max_wait_time
+    nexus_service_ok = False
 
     # 通过 /service/rest/v1/status/writable 接口判断 nexus 服务是否可用
-    while time.time() <= MAX_END_TIME:
-        response = requests.get("http://localhost:8081/service/rest/v1/status/writable")
-        NEXUS_SERVICE_RESPONSE_CODE = str(response.status_code)
-        if NEXUS_SERVICE_RESPONSE_CODE == "200":
+    while time.time() <= max_end_time:
+        response = urllib2.urlopen("{}/service/rest/v1/status/writable".format(nexus_base_url))
+
+        nexus_service_response_code = str(response.getcode())
+        if nexus_service_response_code == "200":
             print("nexus 服务已经可用")
-            NEXUS_SERVICE_OK = 0
+            nexus_service_ok = True
             break
         else:
             print("nexus 正在启动中，服务还不可用，等待3秒后重试...")
             time.sleep(3)
 
-    if NEXUS_SERVICE_OK == 0:
+    if nexus_service_ok == 0:
         print("nexus 安装启动完成")
     else:
         print("nexus 安装启动未完成，请先排除问题再重新安装")
@@ -111,7 +121,7 @@ def jdk_install():
     jdk_pkg = os.path.join(PKG_BASE_DIR, "jdk", jdk_package_name)
     if os.path.exists(jdk_pkg):
         print("解压 {}".format(jdk_package_name))
-        subprocess.run(["tar", "-I", "pigz", "-xf", jdk_package_name, "-C", "/usr/local/"])
+        run_shell_cmd(["tar", "-I", "pigz", "-xf", jdk_package_name, "-C", "/usr/local/"])
 
     # 设置 JAVA_HOME 和 PATH
     env_lines = [
@@ -145,7 +155,7 @@ def ansible_install():
     # 执行安装命令
     if os.path.exists(rpm_dir):
         print("安装 ansible")
-        subprocess.run(install_command, check=True)
+        run_shell_cmd(install_command)
 
 
 def setup_nexus_service(data_dir):
@@ -175,7 +185,7 @@ WantedBy=multi-user.target
     with open(file_path, 'w') as file:
         file.write(file_content)
 
-    subprocess.run(["systemctl", "enable", "nexus3"])
+    run_shell_cmd(["systemctl", "enable", "nexus3"])
 
 
 # 设置本地仓库，作为ansible 安装其他依赖时的仓库
@@ -201,6 +211,7 @@ def load_conf():
     return data
 
 
+
 # 根据用户配置，设置nexus
 # 1.当用户配置了external_nexus_server_ip 时，整个安装都讲使用整个nexus 作为仓库，然后设置为本地repo
 # 2.默认配置，即安装nexus 到ambari 所在的机器，所有的后续安装都将使用该仓库
@@ -212,6 +223,7 @@ def setup_nexus(conf):
     install_nexus = False
     external_nexus_server_ip = conf["nexus_options"]["external_nexus_server_ip"]
     nexus_port = conf["nexus_options"]["port"]
+    nexus_url = None
     if len(external_nexus_server_ip.strip()) == 0:
         install_nexus = True
 
@@ -222,11 +234,11 @@ def setup_nexus(conf):
                 break
         nexus_data_dir = conf["nexus_options"]["data_dir"]
         nexus_host = host_groups[ambari_server_group][0]
-        nexus_install(nexus_data_dir)
+        nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
+        nexus_install(nexus_data_dir, nexus_url)
     else:
         nexus_host = conf["nexus_options"]["external_nexus_server_ip"]
-
-    nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
+        nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
     setup_local_repo(nexus_url)
 
 
@@ -399,3 +411,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# todo nexus url 检测
