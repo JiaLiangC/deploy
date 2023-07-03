@@ -25,42 +25,42 @@
   yum_repository:
     name: "centos_base"
     description: "Centos7 Base repository"
-    baseurl: "{{repo_base_url}}/repository/yum/Centos7/$releasever"
+    baseurl: "{{repo_base_url}}/repository/yum/centos/$releasever"
     file: 'centos_base'
     state: present
     gpgcheck: no
  when: ansible_os_family|lower == "redhat"
-
 
 - name: yum clean repo
   shell: 'yum clean all'
 
 
 #todo 安装arthas 和 perf tools
+
 #- name: Remove a directory if it exist
-#  file:
-#    path: '{{ item }}'
-#    state: absent
-#  with_items:
-#    - /usr/local/linux_diagnose
-#
-#- name: Create a directory if it does not exist
-#  file:
-#    path: '{{ item }}'
-#    state: directory
-#    mode: '0755'
-#  with_items:
-#    - /usr/local/linux_diagnose
-#
-#- name: unarchive linux_diagnose:arthas
-#  unarchive:
-#    src: "{{linux_diagnose_arthas_url}}"
-#    dest: "/usr/local/linux_diagnose"
-#    remote_src: yes
-#
-#- name: unarchive linux_diagnose:perf-tools
-#  unarchive:
-#    src: "{{linux_diagnose_perf_tools_url}}"
-#    dest: "/usr/local/linux_diagnose"
-#    remote_src: yes
+  file:
+    path: '{{ item }}'
+    state: absent
+  with_items:
+    - /usr/local/linux_diagnose
+
+- name: Create a directory if it does not exist
+  file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  with_items:
+    - /usr/local/linux_diagnose
+
+- name: unarchive linux_diagnose:arthas
+  unarchive:
+    src: "{{arthas_url}}"
+    dest: "/usr/local/linux_diagnose"
+    remote_src: yes
+
+- name: unarchive linux_diagnose:perf-tools
+  unarchive:
+    src: "{{perf_tools_url}}"
+    dest: "/usr/local/linux_diagnose"
+    remote_src: yes
 

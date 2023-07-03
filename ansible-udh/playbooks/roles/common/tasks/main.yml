@@ -49,3 +49,30 @@
     owner: root
     group: root
     mode: 0755
+
+# 准备需要的java环境
+# 确保系统中未安装jdk
+- name: rpm -e jdk
+  shell: rpm -qa|grep -i jdk|xargs rpm -e --nodeps
+  ignore_errors: True
+
+# 确保系统中未java
+- name: rpm -e java
+  shell: rpm -qa|grep -i java|xargs rpm -e --nodeps
+  ignore_errors: True
+
+# 从yum源获取jdk二进制包，直接解压到目标目录
+- name: unarchive jdk to /usr/local
+  unarchive:
+    src: '{{ jdk_uri }}'
+    dest: openjdk_path
+    remote_src: yes
+
+# 设置JAVA_HOME和PATH
+- name: set env /etc/profile
+  lineinfile:
+    path: /etc/profile
+    line: '{{ item }}'
+  with_items:
+    - 'export JAVA_HOME={{openjdk_path/}}'
+    - 'export PATH=.:$JAVA_HOME/bin:$PATH'

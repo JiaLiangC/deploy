@@ -23,12 +23,12 @@
 - name: get jdbc jar
   get_url:
     url: '{{ item }}'
-    dest: usr/share/java/
+    dest: /usr/share/java/
     owner: ambari_options.ambari_run_user
     group: ambari_options.ambari_run_user
   with_items:
-    - '{{ java_mysql_conn_jar }}'
-    - '{{ java_postgres_conn_jar }}'
+    - '{{ ambari_options.ambari_mysql_conn_jar }}'
+    - '{{ ambari_options.ambari_postgres_conn_jar }}'
 
 - meta: flush_handlers
 
@@ -123,7 +123,6 @@
 - name: Set the Ambari Server Java setup option (OpenJDK)
   set_fact:
     ambari_java_options: "-j {{ openjdk_path }}"
-  when: java == "openjdk"
 
 
 - name: Run Ambari Server setup

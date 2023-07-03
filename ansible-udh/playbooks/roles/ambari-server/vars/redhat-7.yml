@@ -1,6 +1,6 @@
 ---
-openjdk_path: /usr/lib/jvm/java-1.8.0-openjdk
-
+# openjdk_path: /usr/lib/jvm/java-1.8.0-openjdk
+#yum 安装的话 openjdk_path 和系统有关，会放在这里
 postgres_packages:
   - postgresql
   - python-psycopg2

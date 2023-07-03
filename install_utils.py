@@ -24,7 +24,7 @@ PKG_BASE_DIR = os.path.join(SCRIPT_DIR, "pkgs")
 OS_RELEASE_NAME = "centos7"
 
 jdk_install_path = "/usr/local"
-jdk_package_name = "jdk-8u322.zip"
+jdk_package_name = "jdk.zip"
 nexus_package_name = "nexus-3.49.0.tar.gz"
 pigz_package_name = "pigz-2.3.4-1.el7.x86_64.rpm"
 
