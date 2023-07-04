@@ -18,7 +18,7 @@
   replace:
     path: /etc/ambari-agent/conf/ambari-agent.ini
     regexp: "run_as_user=root"
-    replace: "run_as_user={{ambari_run_user}}"
+    replace: "run_as_user={{ambari_options.ambari_run_user}}"
     backup: no
 
 ### The following is done on Python >= 2.7 to prevent issues with the latest Python libraries rejecting lower TLS protocols

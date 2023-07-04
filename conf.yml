@@ -70,7 +70,7 @@ database_options:
 ## kerberos security configuration ##                     # useful if blueprint is dynamic, but can also be used to deploy the MIT KDC
 #####################################
 
-security: 'none'                                          # can be set to 'none', 'mit-kdc', 'ipa' or 'active-directory'
+security: 'mit-kdc'                                          # can be set to 'none', 'mit-kdc', 'ipa' or 'active-directory'
 security_options:
   external_hostname: ''                                   # if this is empty, Ansible will install and prepare the MIT KDC on the Ambari node
   external_hostip: ''                                      # used to config /etc/hosts dns look up
