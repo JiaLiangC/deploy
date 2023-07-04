@@ -84,7 +84,7 @@
 - name: Config /etc/sudoers
   shell: '{{ item }}'
   with_items:
-    - "echo {{ ambari_options.ambari_run_user }} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
+    - "echo '{{ ambari_options.ambari_run_user }} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
 
 # clean /etc/hosts
 - name: clean hosts
