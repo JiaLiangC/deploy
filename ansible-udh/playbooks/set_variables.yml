@@ -41,16 +41,17 @@
         msg: "The ambari_groups list is empty. This usually means there is no 'AMBARI_SERVER' component defined in the blueprint or there is no Ansible inventory group corresponding with the name of the blueprint's host_group."
       when: ambari_groups|length == 0
 
-    - name: Fail if there is no Ansible inventory group matching the blueprint's host_groups
-      fail:
-        msg: "The {{ item }} host_group is defined in the blueprint but there is no matching Ansible inventory group called {{ item }} or there are no hosts in this group."
-      when: groups[item] is not defined or groups[item]|length == 0
-      with_items: "{{ ambari_groups }}"
+#    - name: Fail if there is no Ansible inventory group matching the blueprint's host_groups
+#      fail:
+#        msg: "The {{ item }} host_group is defined in the blueprint but there is no matching Ansible inventory group called {{ item }} or there are no hosts in this group."
+#      when: groups[item] is not defined or groups[item]|length == 0
+#      with_items: "{{ ambari_groups }}"
 
-    - name: Add nodes to the ambari-server group
-      add_host:
-        name: "{{ groups[ambari_groups|first]|first }}"
-        groups: "ambari-server"
+#no group0 group
+#    - name: Add nodes to the ambari-server group
+#      add_host:
+#        name: "{{ groups[ambari_groups|first]|first }}"
+#        groups: "ambari-server"
 
     - name: Fail if no Ansible inventory group called 'hadoop-cluster' exists
       fail:
@@ -198,14 +199,14 @@
           when: default_python3_path.stdout is defined and default_python3_path.stdout == "exists"
       when: ansible_python_interpreter is not defined
 
-    - name: Set the install_hdp variable to all nodes
-      set_fact:
-        install_hdp: "{{ hostvars[groups['ambari-server']|first]['install_hdp'] }}"
-
-    - name: Set the install_hdf variable to all nodes
-      set_fact:
-        install_hdf: "{{ hostvars[groups['ambari-server']|first]['install_hdf'] }}"
-
-    - name: Set the install_hdpsearch variable to all nodes
-      set_fact:
-        install_hdpsearch: "{{ hostvars[groups['ambari-server']|first]['install_hdpsearch'] }}"
+#    - name: Set the install_hdp variable to all nodes
+#      set_fact:
+#        install_hdp: "{{ hostvars[groups['ambari-server']|first]['install_hdp'] }}"
+#
+#    - name: Set the install_hdf variable to all nodes
+#      set_fact:
+#        install_hdf: "{{ hostvars[groups['ambari-server']|first]['install_hdf'] }}"
+#
+#    - name: Set the install_hdpsearch variable to all nodes
+#      set_fact:
+#        install_hdpsearch: "{{ hostvars[groups['ambari-server']|first]['install_hdpsearch'] }}"

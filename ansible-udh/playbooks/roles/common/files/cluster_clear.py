@@ -109,7 +109,13 @@ def uninstall_packages(packages):
 
 def clean():
     print("循环关闭所有大数据用及其相关进程")
-    subprocess.call(["pgrep", "-f", "ambari|hadoop|n9e|grafana|impala", "|", "xargs", "kill", "-9"])
+    p1 = subprocess.Popen(["pgrep", "-f", "ambari|hadoop|n9e|grafana|impala"], stdout=subprocess.PIPE)
+    output, _ = p1.communicate()
+
+    if output:
+        p2 = subprocess.Popen(["xargs", "kill", "-9"], stdin=subprocess.PIPE)
+        p2.communicate(input=output)
+
     for user in user_array:
         kill_user_processes(user)
 
@@ -132,8 +138,8 @@ def clean():
 
     print("循环删除bin下的相关组件的文件")
     batch_delete(bins, "/usr/bin")
-    print("清除/etc/hosts文件中原来的主机信息")
-    subprocess.call(["sed", "-i", "3,$d", "/etc/hosts"])
+    # print("清除/etc/hosts文件中原来的主机信息")
+    # subprocess.call(["sed", "-i", "3,$d", "/etc/hosts"])
 
 def main():
     clean()

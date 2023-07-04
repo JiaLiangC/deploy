@@ -36,6 +36,8 @@ def run_shell_cmd(cmd_list):
     process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
 
+    print("run_shell_cmd: {}".format(cmd_list))
+
     if process.returncode == 0:
         print("Execution successful")
     else:
@@ -154,7 +156,7 @@ def ansible_install():
 
     # 执行安装命令
     if os.path.exists(rpm_dir):
-        print("安装 ansible")
+        print("安装 ansible {}".format(install_command))
         run_shell_cmd(install_command)
 
 
@@ -204,6 +206,7 @@ gpgcheck=0
 
 # 加载配置文件
 def load_conf():
+    print("解析配置")
     import yaml
     file_path = os.path.join(CONF_DIR, 'conf.yml')
     with open(file_path, 'r') as f:
@@ -216,6 +219,7 @@ def load_conf():
 # 1.当用户配置了external_nexus_server_ip 时，整个安装都讲使用整个nexus 作为仓库，然后设置为本地repo
 # 2.默认配置，即安装nexus 到ambari 所在的机器，所有的后续安装都将使用该仓库
 def setup_nexus(conf):
+    print("设置nexus")
     group_services = conf["group_services"]
     host_groups = conf["host_groups"]
     ambari_server_group = ""
@@ -256,6 +260,7 @@ def setup_nexus(conf):
 # ansible_ssh_pass=sys_admin
 # ansible_ssh_port=22
 def generate_ansible_hosts(conf):
+    print("动态生成ansible hosts 文件")
     parsed_hosts, user = parse_hosts_config()
     host_groups = parse_cluster_install_config(conf)
     hosts_dict = {}

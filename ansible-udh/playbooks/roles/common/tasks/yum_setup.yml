@@ -29,7 +29,7 @@
     file: 'centos_base'
     state: present
     gpgcheck: no
- when: ansible_os_family|lower == "redhat"
+  when: ansible_os_family|lower == "redhat"
 
 - name: yum clean repo
   shell: 'yum clean all'
@@ -37,7 +37,7 @@
 
 #todo 安装arthas 和 perf tools
 
-#- name: Remove a directory if it exist
+- name: Remove a directory if it exist
   file:
     path: '{{ item }}'
     state: absent

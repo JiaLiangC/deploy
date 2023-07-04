@@ -6,3 +6,6 @@
 * todo 需要建立一个 完整的centos7 nexus 仓库
 * mpack install for all services
 * 检查所有template 防止没有成功覆盖老文件
+* 测试远程nexus, 数据库是否可用
+* 重写项目中的检测逻辑, 包括set variable 中的
+* psmisc 检测并安装
