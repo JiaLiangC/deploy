@@ -241,7 +241,7 @@ class BlueprintUtils:
             nexus_host = self.conf["nexus_options"]["external_nexus_server_ip"]
 
         nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
-        return  nexus_url
+        return nexus_url
 
     def generate_ambari_cluster_template(self):
         conf = self.conf
@@ -280,8 +280,27 @@ class BlueprintUtils:
         with open(file_name, 'w') as f:
             json.dump(res, f, indent=4)
 
+    def get_ntp_server(self):
+        if len(self.conf["ntpserver"].strip()) > 0:
+            return self.conf["ntpserver"].strip()
+        else:
+            group_services = self.conf["group_services"]
+            host_groups = self.conf["host_groups"]
+            ambari_server_group = None
+            for group_name, services in group_services.items():
+                if "AMBARI_SERVER" in services:
+                    ambari_server_group = group_name
+                    break
+            if ambari_server_group:
+                ntp_host = host_groups[ambari_server_group][0]
+                return ntp_host
+            else:
+                raise InvalidConfigurationException
+
     def generate_ansible_variables_file(self, variables):
         variables["repo_base_url"] = self.get_nexus_base_url()
+        ntp_host = self.get_ntp_server()
+        variables["ntpserver"] = ntp_host
 
         for key in ["host_groups", "group_services"]:
             variables.pop(key, None)
@@ -289,7 +308,6 @@ class BlueprintUtils:
         variables_file_path = os.path.join(self.ANSIBLE_PRJ_DIR, 'playbooks/group_vars/all')
         with open(variables_file_path, 'w') as f:
             yaml.dump(variables, f)
-
 
     def conf_j2template_variables(self):
         group_hosts = {}

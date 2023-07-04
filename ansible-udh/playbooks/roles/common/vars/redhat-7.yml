@@ -7,7 +7,7 @@ packages:
   - wget                    # wget required by Ambari
   - openssl                 # openssl required by Ambari
   - chrony                  # ntp required by Hadoop
-  - openssl-devel           # openssl-devel recommended for Ranger KMS
+#  - openssl-devel           # openssl-devel recommended for Ranger KMS | too manly conflict with installed packages
   - libtirpc-devel          # libtirpc required by HDP 2.6+
   - libselinux-python       # libselinux-python required by Ansible
   - perf

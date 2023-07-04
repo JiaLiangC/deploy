@@ -150,4 +150,4 @@ perf_tools_url: '{{repo_base_url}}/repository/tools/linux/perf-tools.tar.gz'
 
 #todo nexus 安装后自动设置密码，设置blob 数据存储目录
 #http://mirrors.aliyun.com/centos/7/os/x86_64/Packages
-openjdk_path: '/usr/lib/jvm/openjdk'    #不可更改
+openjdk_path: '/usr/local'    #不可更改
