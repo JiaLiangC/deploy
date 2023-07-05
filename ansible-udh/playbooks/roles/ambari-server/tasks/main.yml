@@ -20,12 +20,21 @@
   notify: Reload systemd
 
 #todo download jdbc to
+
+# 创建ambari 临时文件目录
+- name: mkdir /usr/share/java/
+  file:
+    path: /usr/share/java/
+    state: directory
+
 - name: get jdbc jar
+  become_user: root
+  become_method: sudo
   get_url:
     url: '{{ item }}'
     dest: /usr/share/java/
-    owner: ambari_options.ambari_run_user
-    group: ambari_options.ambari_run_user
+    owner: "{{ambari_options.ambari_run_user}}"
+    group: "{{ambari_options.ambari_run_user}}"
   with_items:
     - '{{ ambari_options.ambari_mysql_conn_jar }}'
     - '{{ ambari_options.ambari_postgres_conn_jar }}'

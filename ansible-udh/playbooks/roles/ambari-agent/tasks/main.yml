@@ -1,4 +1,17 @@
 ---
+
+- name: create the ambari_run_user group or verify if its present
+  group:
+    name: "{{ambari_options.ambari_run_user}}"
+    state: present
+
+- name: create user ambari_run_user
+  user:
+    name: "{{ambari_options.ambari_run_user}}"
+    shell: /bin/bash
+    groups: "{{ambari_options.ambari_run_user}}"
+    append: yes
+
 - name: Install the ambari-agent package
   package:
     name: ambari-agent

@@ -65,7 +65,7 @@
 - name: unarchive jdk to /usr/local
   unarchive:
     src: '{{ jdk_uri }}'
-    dest: '{{openjdk_path}}'
+    dest: '/usr/local'
     remote_src: yes
 
 # 设置JAVA_HOME和PATH
@@ -76,5 +76,5 @@
     regexp: '^export {{ item.split("=")[0] }}='
     state: present
   with_items:
-    - "export JAVA_HOME={{openjdk_path/}}"
+    - "export JAVA_HOME={{openjdk_path}}"
     - "export PATH=.:$JAVA_HOME/bin:$PATH"

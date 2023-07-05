@@ -48,7 +48,8 @@ timezone: UTC
 ## database configuration ##
 ############################
 database: 'postgres'                                      # can be set to  'postgres', 'mysql' or 'mariadb'
-
+postgres_port: 5432
+mysql_port: 3306
 database_options:
   repo_url: ''
   external_hostname: ''                                   # if this is empty, Ansible will install and prepare the databases on the ambari-server node
@@ -150,4 +151,4 @@ perf_tools_url: '{{repo_base_url}}/repository/tools/linux/perf-tools.tar.gz'
 
 #todo nexus 安装后自动设置密码，设置blob 数据存储目录
 #http://mirrors.aliyun.com/centos/7/os/x86_64/Packages
-openjdk_path: '/usr/local'    #不可更改
+openjdk_path: '/usr/local/jdk'    #不可更改
