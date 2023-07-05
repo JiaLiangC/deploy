@@ -1,14 +1,17 @@
 {
     "kerberos-env": {
-        "ldap_url": "",
+        {% if security|lower == "active-directory" %}
+        "ldap_url": "{{ security_options.ldap_url }}",
+        "container_dn": "{{ security_options.container_dn }}",
+        {% endif %}
         "manage_identities": "true",
         "install_packages": "true",
-        "realm" : "{{ realm }}",
-        "kdc_type" : "mit-kdc",
-        "kdc_hosts" : "{{ kdc_hostname }}",
-        "admin_server_host" : "{{ kdc_hostname }}"
+        "realm" : "{{ security_options.realm }}",
+        "kdc_type" : "{{ security }}",
+        "kdc_hosts" : "{{ security_options.external_hostname|default(ansible_fqdn,true) }}",
+        "admin_server_host" : "{{ security_options.external_hostname|default(ansible_fqdn,true) }}"
     },
     "krb5-conf": {
-        "manage_krb5_conf" : "true"
+        "manage_krb5_conf" : "{{ security_options.manage_krb5_conf|default('yes') | ternary('true', 'false') }}"
     }
 }

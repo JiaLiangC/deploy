@@ -1,12 +1,20 @@
 {
     "hive-site" : {
+        {% if database != "embedded" -%}
+        {% if database == "mysql" or database == "mariadb" -%}
+        "javax.jdo.option.ConnectionDriverName": "com.mysql.jdbc.Driver",
+        "javax.jdo.option.ConnectionURL": "jdbc:mysql://{{ database_options.external_hostname|default(ansible_fqdn,true) }}:{{ mysql_port }}/{{ database_options.hive_db_name }}",
+        {% endif -%}
+        {% if database == "postgres" -%}
         "javax.jdo.option.ConnectionDriverName": "org.postgresql.Driver",
-        "javax.jdo.option.ConnectionURL" : "jdbc:postgresql://{{ pg_ip }}:{{ pg_port }}/hive",
-        "ambari.hive.db.schema.name" : "hive",
-        "javax.jdo.option.ConnectionUserName": "hive",
-        "javax.jdo.option.ConnectionPassword" : "{{ hive_pg_password }}",
+        "javax.jdo.option.ConnectionURL": "jdbc:postgresql://{{ database_options.external_hostname|default(ansible_fqdn,true) }}:{{ postgres_port }}/{{ database_options.hive_db_name }}",
+        {% endif -%}
+        "ambari.hive.db.schema.name": "{{ database_options.hive_db_name }}",
+        "javax.jdo.option.ConnectionUserName": "{{ database_options.hive_db_username }}",
+        "javax.jdo.option.ConnectionPassword": "{{ database_options.hive_db_password }}",
+        {% endif -%}
         "hive.security.authorization.enabled" : "true",
-        "hive.server2.logging.operation.log.location" : "/tmp/hive/operation_logs"
+        "hive.server2.logging.operation.log.location" : "{{ base_tmp_dir }}/hive/operation_logs"
     },
     "hiveserver2-site" : {
         "hive.security.authorization.enabled" : "true",
@@ -15,10 +23,26 @@
         "hive.metastore.metrics.enabled" : "true"
     },
     "hive-env" : {
-        "hive_database": "Existing PostgreSQL Database",
-        "hive_database_type": "postgres",
-        "hive_database_name": "hive",
-        "hive_security_authorization" : "Ranger",
-        "hive_user" : "hive"
+            {% if database != "embedded" -%}
+            {% if database == "mysql" or database == "mariadb" -%}
+            "hive_database": "Existing MySQL / MariaDB Database",
+            "hive_database_type": "mysql",
+            {% endif -%}
+            {% if database == "postgres" -%}
+            "hive_database": "Existing PostgreSQL Database",
+            "hive_database_type": "postgres",
+            {% endif -%}
+            "hive_database_name": "{{ database_options.hive_db_name }}",
+            {% endif -%}
+            {% if rangeradmin_hosts|length > 0 and ranger_options.enable_plugins|default(no) %}
+            "hive_security_authorization" : "Ranger",
+            {% endif %}
+            {% if 'ATLAS_SERVER' in blueprint_all_services %}
+            "hive.atlas.hook": "true",
+            {% endif %}
+            "hive_user" : "hive",
+            "hive_log_dir" : "{{ base_log_dir }}/hive",
+            "hcat_log_dir" : "{{ base_log_dir }}/webhcat",
+            "heap_dump_location" : "{{ heap_dump_location }}"
     }
 }

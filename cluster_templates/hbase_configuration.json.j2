@@ -1,9 +1,15 @@
 {
     "hbase-site" : {
-        "hbase.rootdir": "hdfs://{{ cluster_name }}/apps/hbase/data",
-        "hbase.security.authorization" : "true",
-        "hbase.coprocessor.master.classes" : "org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
-        "hbase.coprocessor.region.classes" : "org.apache.hadoop.hbase.security.access.SecureBulkLoadEndpoint,org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
-        "hbase.coprocessor.regionserver.classes" : "org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor"
+        {% if namenode_groups|length > 1 -%}
+          "hbase.rootdir": "hdfs://{{ hdfs_ha_name }}/apps/hbase/data",
+        {% endif -%}
+        {% if rangeradmin_hosts|length > 0 and ranger_options.enable_plugins|default(no) %}
+          "hbase.security.authorization" : "true",
+          "hbase.coprocessor.master.classes" : "org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
+          "hbase.coprocessor.region.classes" : "org.apache.hadoop.hbase.security.access.SecureBulkLoadEndpoint,org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
+          "hbase.coprocessor.regionserver.classes" : "org.apache.ranger.authorization.hbase.RangerAuthorizationCoprocessor",
+        {% endif %}
+        "hbase.tmp.dir" : "{{ base_tmp_dir }}/hbase-${user.name}",
+        "hbase.client.retries.number" : "35"
     }
 }

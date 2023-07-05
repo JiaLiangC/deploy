@@ -4,6 +4,7 @@ import re
 import os
 import yaml
 import sys
+from jinja2 import Template,Undefined
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -12,6 +13,9 @@ sys.setdefaultencoding('utf-8')
 class InvalidConfigurationException(Exception):
     pass
 
+class DelayedUndefined(Undefined):
+    def __getattr__(self, name):
+        return '{{{0}.{1}}}'.format(self._undefined_name, name)
 
 class BlueprintUtils:
     CONF_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +42,7 @@ class BlueprintUtils:
                 "clients": ["HBASE_CLIENT"]
             },
             "hdfs": {
-                "server": ["NAMENODE", "DATANODE", "SECONDARY_NAMENODE"],
+                "server": ["NAMENODE", "DATANODE", "SECONDARY_NAMENODE","JOURNALNODE"],
                 "clients": ["HDFS_CLIENT", "MAPREDUCE2_CLIENT"]
             },
             "yarn": {
@@ -69,7 +73,7 @@ class BlueprintUtils:
                 "server": ["RANGER_ADMIN", "RANGER_TAGSYNC", "RANGER_USERSYNC"],
                 "clients": []
             },
-            "infra-solr": {
+            "infra_solr": {
                 "server": ["INFRA_SOLR"],
                 "clients": ["INFRA_SOLR_CLIENT"]
             },
@@ -151,8 +155,7 @@ class BlueprintUtils:
         return host_groups
 
     # 解析并返回service 的多个配置
-    def get_confs_from_j2template(self, file, context):
-        from jinja2 import Template
+    def get_confs_from_j2template(self, file, context, decoder="json"):
         # 读取模板文件
         # todo 增加异常检测
         # if not os.path.exists(file):
@@ -163,10 +166,13 @@ class BlueprintUtils:
         # 创建模板对象
         if len(template_str) == 0:
             return {}
-        template = Template(template_str)
+        template = Template(template_str, undefined=DelayedUndefined)
         # 渲染模板
         result = template.render(context)
-        return json.loads(result)
+        if decoder == "json":
+            return json.loads(result)
+        else:
+            return yaml.load(result)
 
     def parse_cluster_install_config(self):
         host_groups_conf = self.conf["host_groups"]
@@ -298,11 +304,8 @@ class BlueprintUtils:
                 raise InvalidConfigurationException
 
     def generate_ansible_variables_file(self, variables):
-        variables["repo_base_url"] = self.get_nexus_base_url()
-        ntp_host = self.get_ntp_server()
-        variables["ntpserver"] = ntp_host
-
         for key in ["host_groups", "group_services"]:
+            # 删除无用的属性
             variables.pop(key, None)
 
         variables_file_path = os.path.join(self.ANSIBLE_PRJ_DIR, 'playbooks/group_vars/all')
@@ -312,12 +315,20 @@ class BlueprintUtils:
     def conf_j2template_variables(self):
         group_hosts = {}
         groups_var = {}
+        extral_vars = {}
         for group_name, hosts in self.host_groups.items():
             group_hosts[group_name] = hosts
+
+        extral_vars["repo_base_url"] = self.get_nexus_base_url()
+        extral_vars["ntpserver"] = self.get_ntp_server()
+        extral_vars["hadoop_base_dir"] = self.conf["data_dirs"][0]
+        extral_vars.update(self.conf)
+        conf_vars = self.get_confs_from_j2template(os.path.join(self.conf_path, 'conf.yml'), extral_vars, decoder="yaml")
 
         for group_name, group_services in self.host_group_services.items():
             if "NAMENODE" in group_services:
                 groups_var.setdefault("namenode_groups", []).append(group_name)
+                groups_var.setdefault("namenode_hosts", []).extend(group_hosts[group_name])
             if "ZKFC" in group_services:
                 groups_var.setdefault("zkfc_groups", []).append(group_name)
             if "RESOURCEMANAGER" in group_services:
@@ -343,13 +354,14 @@ class BlueprintUtils:
         for k, v in groups_var.items():
             groups_var[k] = list(set(v))
 
-        groups_var.update(self.conf)
+        groups_var.update(conf_vars)
         return groups_var
 
     def build(self):
         self.load_conf()
+
+        # 解析host_group 和 group_services
         self.parse_cluster_install_config()
-        print(self.host_groups, self.host_group_services)
 
         # 检查给定的 group_services 配置
         is_valid, messages = self.check_config_rules()
@@ -360,6 +372,7 @@ class BlueprintUtils:
 
         j2template_variables = self.conf_j2template_variables()
         self.generate_ansible_variables_file(j2template_variables)
+
         blueprint_configurations = self.assemble_service_configurations(j2template_variables)
         blueprint_service_host_groups = self.assemble_service_by_host_groups()
         print(blueprint_configurations)
@@ -463,6 +476,7 @@ def has_common_elements(array1, array2):
 def main():
     b = BlueprintUtils()
     b.build()
+
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 {
       "yarn-site" : {
+          {% if resourcemanager_groups|length > 1 -%}
           "hadoop.registry.zk.quorum": "{% for zk in zookeeper_groups %}%HOSTGROUP::{{ zk }}%:2181{% if not loop.last %},{% endif %}{% endfor %}",
           "yarn.resourcemanager.recovery.enabled": "true",
           "yarn.resourcemanager.store.class" : "org.apache.hadoop.yarn.server.resourcemanager.recovery.ZKRMStateStore",
@@ -21,9 +22,15 @@
           "yarn.resourcemanager.webapp.https.address.rm1": "%HOSTGROUP::{{ resourcemanager_groups[0] }}%:8090",
           "yarn.resourcemanager.webapp.https.address.rm2": "%HOSTGROUP::{{ resourcemanager_groups[1] }}%:8090",
           "yarn.resourcemanager.zk-address": "{% for zk in zookeeper_groups %}%HOSTGROUP::{{ zk }}%:2181{% if not loop.last %},{% endif %}{% endfor %}",
+          {% endif -%}
+          {% if rangeradmin_hosts|length > 0 and ranger_options.enable_plugins|default(no) %}
           "yarn.acl.enable" : "true",
           "yarn.authorization-provider": "org.apache.ranger.authorization.yarn.authorizer.RangerYarnAuthorizer",
-          "yarn.nodemanager.local-dirs" : "{% for dr in data_dir %}{{ dr }}/hadoop/yarn/local{% if not loop.last %},{% endif %}{% endfor %}",
-          "yarn.nodemanager.log-dirs" : "{% for dr in data_dir %}{{ dr }}/hadoop/yarn/log{% if not loop.last %},{% endif %}{% endfor %}"
+          {% endif %}
+          "yarn.client.nodemanager-connect.retry-interval-ms" : "10000",
+          "yarn.nodemanager.local-dirs" : "{{ yarn_nodemanager_local_dirs }}",
+          "yarn.nodemanager.log-dirs" : "{{ yarn_nodemanager_log_dirs }}",
+          "yarn.timeline-service.leveldb-state-store.path" : "{{ yarn_timeline_leveldb_dir }}",
+          "yarn.timeline-service.leveldb-timeline-store.path" : "{{ yarn_timeline_leveldb_dir }}"
       }
 }

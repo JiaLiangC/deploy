@@ -1,8 +1,8 @@
 {
         "hdfs-site" : {
             "dfs.namenode.checkpoint.dir" : "/hadoop/hdfs/namesecondary",
-            "dfs.namenode.name.dir" : "{% for dr in data_dir %}{{dr}}/hadoop/hdfs/namenode{% if not loop.last %},{% endif %}{% endfor %}",
-            "dfs.journalnode.edits.dir" : "{{ one_data_dir }}/hadoop/hdfs/journal",
+            "dfs.namenode.name.dir" : "{{ hdfs_dfs_namenode_name_dir }}}",
+            "dfs.journalnode.edits.dir" : "{{ hdfs_dfs_journalnode_edits_dir }}",
             "dfs.client.failover.proxy.provider.{{ cluster_name }}" : "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider",
             "dfs.ha.automatic-failover.enabled" : "true",
             "dfs.ha.fencing.methods" : "shell(/bin/true)",
@@ -14,14 +14,13 @@
             "dfs.namenode.rpc-address.{{ cluster_name }}.nn1" : "%HOSTGROUP::{{ namenode_groups[0] }}%:8020",
             "dfs.namenode.rpc-address.{{ cluster_name }}.nn2" : "%HOSTGROUP::{{ namenode_groups[1] }}%:8020",
             "dfs.namenode.shared.edits.dir" : "qjournal://{% for jn in journalnode_groups %}%HOSTGROUP::{{ jn }}%:8485{% if not loop.last %};{% endif %}{% endfor %}/{{ cluster_name }}",
-            "dfs.nameservices" : "{{ cluster_name }}",
-            "dfs.internal.nameservices" : "{{ cluster_name }}",
+            "dfs.nameservices" : "{{ hdfs_ha_name }}",
             "dfs.namenode.inode.attributes.provider.class" : "org.apache.ranger.authorization.hadoop.RangerHdfsAuthorizer",
-            "dfs.datanode.data.dir" : "{% for dr in data_dir %}{{ dr }}/hadoop/hdfs/data{% if not loop.last %},{% endif %}{% endfor %}"
+            "dfs.datanode.data.dir" : "{{hdfs_dfs_datanode_data_dir}}"
         },
         "core-site": {
             "hadoop.proxyuser.*": "*",
-            "fs.defaultFS" : "hdfs://{{ cluster_name }}",
+            "fs.defaultFS" : "hdfs://{{ hdfs_ha_name }}",
             "ha.zookeeper.quorum" : "{% for zk in zookeeper_groups %}%HOSTGROUP::{{ zk }}%:2181{% if not loop.last %},{% endif %}{% endfor %}",
             "hadoop.http.authentication.simple.anonymous.allowed" : "true",
             "hadoop.http.authentication.type" : "simple",
