@@ -18,13 +18,6 @@
     src: cluster_clear.py
     dest: /tmp/cluster_clear.py
 
-- name: clear all bigdata related files in cluster
-  become: yes
-  become_user: root
-  become_method: sudo
-  shell: 'python2 /tmp/cluster_clear.py bigtop | tee -a /tmp/cluster_clear.log'
-  failed_when: false
-
 # 给所有主机linux 进行必要配置，关闭防火墙，透明大页，SElinux ,设置swap,nproc,vm，创建用户等
 - include: node_setup.yml
 
@@ -37,6 +30,14 @@
     update_cache: yes
     state: present
   with_items: "{{ packages | join(',') }}"
+
+#cluster_clear 依赖 psmisc , 需要先安装
+- name: clear all bigdata related files in cluster
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: 'python2 /tmp/cluster_clear.py bigtop | tee -a /tmp/cluster_clear.log'
+  failed_when: false
 
 #设置ntp
 - include: ntp_setup.yml
@@ -97,14 +98,16 @@
         krb5_needs_upgrading: "{{ highest_version.stdout == target_krb5_version  and krb5_installed_version.stdout != target_krb5_version }}"
 
     - name: Upgrade krb5-libs
-      yum:
-        name: "krb5-libs={{ target_krb5_version }}"
-        state: present
+      become: yes
+      become_user: root
+      become_method: sudo
+      shell: "yum update krb5-libs -y"
       when: krb5_needs_upgrading
 
     - name: Downgrade krb5-libs
-      yum:
-        name: "krb5-libs={{ target_krb5_version }}"
-        state: present
+      become: yes
+      become_user: root
+      become_method: sudo
+      shell: "yum downgrade krb5-libs -y"
       when: krb5_needs_downgrading
   when: security == "mit-kdc"
