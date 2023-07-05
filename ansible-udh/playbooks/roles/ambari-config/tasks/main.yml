@@ -12,35 +12,6 @@
       paths:
         - ../ambari-config/vars
 
-- name: Check ambari-server run user
-  become_user: root
-  become_method: sudo
-  command: grep -q '^ambari-server.user=' /etc/ambari-server/conf/ambari.properties
-  changed_when: false
-  ignore_errors: true
-  register: grep_result
-
-- name: Add ambari-server.user configuration
-  become_user: root
-  become_method: sudo
-  blockinfile:
-    path: /etc/ambari-server/conf/ambari.properties
-    block: |
-      ambari-server.user={{ ambari_options.ambari_run_user }}
-  when: grep_result.rc != 0
-
-- name: Replace ambari-server.user configuration
-  become_user: root
-  become_method: sudo
-  lineinfile:
-    path: /etc/ambari-server/conf/ambari.properties
-    regex: '.*ambari-server\.user.*'
-    line: 'ambari-server.user={{ ambari_options.ambari_run_user }}'
-    backrefs: yes
-    insertafter: EOF
-    state: present
-  when: grep_result.rc == 0
-
 
 - name: Set the GPL Licensed setting in Ambari
   lineinfile:

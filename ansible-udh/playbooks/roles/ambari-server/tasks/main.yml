@@ -19,7 +19,37 @@
     state: latest
   notify: Reload systemd
 
-#todo download jdbc to
+
+# run user must be set before ambari server setup
+- name: Check ambari-server run user
+  become_user: root
+  become_method: sudo
+  command: grep -q '^ambari-server.user=' /etc/ambari-server/conf/ambari.properties
+  changed_when: false
+  ignore_errors: true
+  register: grep_result
+
+- name: Add ambari-server.user configuration
+  become_user: root
+  become_method: sudo
+  blockinfile:
+    path: /etc/ambari-server/conf/ambari.properties
+    block: |
+      ambari-server.user={{ ambari_options.ambari_run_user }}
+  when: grep_result.rc != 0
+
+- name: Replace ambari-server.user configuration
+  become_user: root
+  become_method: sudo
+  lineinfile:
+    path: /etc/ambari-server/conf/ambari.properties
+    regex: '.*ambari-server\.user.*'
+    line: 'ambari-server.user={{ ambari_options.ambari_run_user }}'
+    backrefs: yes
+    insertafter: EOF
+    state: present
+  when: grep_result.rc == 0
+
 
 # 创建ambari 临时文件目录
 - name: mkdir /usr/share/java/
@@ -132,7 +162,6 @@
 - name: Set the Ambari Server Java setup option (OpenJDK)
   set_fact:
     ambari_java_options: "-j {{ openjdk_path }}"
-
 
 - name: Run Ambari Server setup
   shell: /usr/sbin/ambari-server setup -s {{ ambari_java_options|default("") }} {{ ambari_database_options|default("") }}
