@@ -73,7 +73,7 @@ security_options:
   external_hostname: ''                                   # if this is empty, Ansible will install and prepare the MIT KDC on the Ambari node
   external_hostip: ''                                      # used to config /etc/hosts dns look up
   realm: 'EXAMPLE.COM'
-  admin_principal: 'admin'                                # the Kerberos principal that has the permissions to create new users (don't append the realm)
+  admin_principal: 'admin/admin'                                # the Kerberos principal that has the permissions to create new users (don't append the realm)
   admin_password: "{{ default_password }}"
   kdc_master_key: "{{ default_password }}"                # only used when security is set to 'mit-kdc'
   ldap_url: 'ldaps://ad.example.com:636'                  # only used when security is set to 'active-directory'

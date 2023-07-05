@@ -36,7 +36,7 @@
 - meta: flush_handlers
 
 - name: Add the admin principal for realm {{ security_options.realm | upper }}
-  shell: "{{ kadmin_command }} -q \"add_principal -pw {{ security_options.admin_password }} {{ security_options.admin_principal }}/admin@{{ security_options.realm | upper }}\""
+  shell: "{{ kadmin_command }} -q \"add_principal -pw {{ security_options.admin_password }} {{ security_options.admin_principal }}@{{ security_options.realm | upper }}\""
   register: addprinc_result
 
 - name: Fail if the admin principal could not be created
