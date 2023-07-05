@@ -12,34 +12,6 @@
       paths:
         - ../mit-kdc/vars
 
-- name: Gather installed version of krb5-libs
-  shell: "rpm -q --qf '%{VERSION}-%{RELEASE}' krb5-libs"
-  register: krb5_installed_version
-  changed_when: False
-
-- name: Compare versions
-  shell: echo -e "{{ krb5_installed_version.stdout }}\n{{ target_krb5_version }}" | sort -V | tail -n 1
-  register: highest_version
-  changed_when: false
-
-- name: Set facts
-  set_fact:
-    krb5_needs_downgrading: "{{ highest_version.stdout != target_krb5_version }}"
-    krb5_needs_upgrading: "{{ highest_version.stdout == target_krb5_version  and krb5_installed_version.stdout != target_krb5_version }}"
-
-- name: Upgrade krb5-libs
-  yum:
-    name: "krb5-libs={{ target_krb5_version }}"
-    state: present
-  when: krb5_needs_upgrading
-
-- name: Downgrade krb5-libs
-  yum:
-    name: "krb5-libs={{ target_krb5_version }}"
-    state: present
-  when: krb5_needs_downgrading
-
-
 - name: Install MIT KDC packages
   package:
     name: "{{ item }}"
