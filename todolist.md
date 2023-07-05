@@ -10,5 +10,4 @@
 * 重写项目中的检测逻辑, 包括set variable 中的
 * psmisc 检测并安装
 *  conf 两组group 数量和名字检测一致性
-* 卸载脚本及其他地方会连带卸载系统依赖，$ rpm -e --nodeps packageA 
-* krb5-libs 不能随便卸载，否则系统很多模块无法使用 
+* 支持用户自定义蓝图并且动态生成cluster_template

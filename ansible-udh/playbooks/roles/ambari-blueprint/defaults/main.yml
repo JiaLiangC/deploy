@@ -19,9 +19,7 @@ base_tmp_dir: "/tmp"
 hadoop_base_dir: "/hadoop"
 hdfs_data_base_dir: "/hadoop"
 kafka_log_base_dir: "/kafka-logs"
-nifi_repositories_base_dir: "/var/lib/nifi"
 ams_base_dir: "/var/lib"
-smartsense_base_dir: "/var/lib/smartsense"
 ranger_audit_hdfs_filespool_base_dir: "{{ base_log_dir }}"
 ranger_audit_solr_filespool_base_dir: "{{ base_log_dir }}"
 
@@ -35,7 +33,6 @@ hdfs_dfs_datanode_data_dir: "{{ hdfs_data_base_dir }}/hdfs/data"
 yarn_nodemanager_local_dirs: "{{ hadoop_base_dir }}/yarn/local"
 yarn_nodemanager_log_dirs: "{{ hadoop_base_dir }}/yarn/log"
 yarn_timeline_leveldb_dir: "{{ hadoop_base_dir }}/yarn/timeline"
-
 
 
 # Other dirs
