@@ -12,6 +12,6 @@
         "admin_server_host" : "{{ security_options.external_hostname|default(ansible_fqdn,true) }}"
     },
     "krb5-conf": {
-        "manage_krb5_conf" : "{{ security_options.manage_krb5_conf|default('yes') | ternary('true', 'false') }}"
+        "manage_krb5_conf": "{{ 'true' if security_options.manage_krb5_conf else 'false' }}"
     }
 }

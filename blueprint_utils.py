@@ -4,7 +4,7 @@ import re
 import os
 import yaml
 import sys
-from jinja2 import Template,Undefined
+from jinja2 import Template, Undefined
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -13,9 +13,11 @@ sys.setdefaultencoding('utf-8')
 class InvalidConfigurationException(Exception):
     pass
 
+
 class DelayedUndefined(Undefined):
     def __getattr__(self, name):
         return '{{{0}.{1}}}'.format(self._undefined_name, name)
+
 
 class BlueprintUtils:
     CONF_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -42,7 +44,7 @@ class BlueprintUtils:
                 "clients": ["HBASE_CLIENT"]
             },
             "hdfs": {
-                "server": ["NAMENODE", "DATANODE", "SECONDARY_NAMENODE","JOURNALNODE"],
+                "server": ["NAMENODE", "DATANODE", "SECONDARY_NAMENODE", "JOURNALNODE", "ZKFC"],
                 "clients": ["HDFS_CLIENT", "MAPREDUCE2_CLIENT"]
             },
             "yarn": {
@@ -90,7 +92,7 @@ class BlueprintUtils:
                 "clients": []
             },
             "kerberos": {
-                "server": ["AMBARI_SERVER"],
+                "server": ["KERBEROS_CLIENT"],
                 "clients": ["KERBEROS_CLIENT"]
             }
         }
@@ -123,6 +125,9 @@ class BlueprintUtils:
         configurations = []
         services_need_install = self.get_services_need_install()
         processed_services = []
+        if self.conf.get("security") == 'mit-kdc':
+            services_need_install.append("KERBEROS_CLIENT")
+
         for service_name in services_need_install:
             service_key = self.get_service_key_from_service(service_name)
             service_conf_j2template = self.get_conf_j2template_name(service_name)
@@ -130,7 +135,13 @@ class BlueprintUtils:
             if len(service_confs) == 0 or service_key in processed_services:
                 continue
 
-            configurations.append(service_confs)
+            if isinstance(service_confs, dict):
+                for k in service_confs.keys():
+                    if isinstance(service_confs[k], dict):
+                        configurations.append({k: service_confs[k]})
+                    else:
+                        print("error conf template--------")
+
             processed_services.append(service_key)
 
         return configurations
@@ -268,7 +279,7 @@ class BlueprintUtils:
             "default_password": conf["default_password"],
             "host_groups": host_groups,
         }
-        if security and security == "KERBEROS":
+        if security and security == "mit-kdc":
             res["credentials"] = [
                 {
                     "alias": "kdc.admin.credential",
@@ -316,14 +327,16 @@ class BlueprintUtils:
         group_hosts = {}
         groups_var = {}
         extral_vars = {}
+        conf_vars = self.conf
         for group_name, hosts in self.host_groups.items():
             group_hosts[group_name] = hosts
 
         extral_vars["repo_base_url"] = self.get_nexus_base_url()
         extral_vars["ntpserver"] = self.get_ntp_server()
         extral_vars["hadoop_base_dir"] = self.conf["data_dirs"][0]
-        extral_vars.update(self.conf)
-        conf_vars = self.get_confs_from_j2template(os.path.join(self.conf_path, 'conf.yml'), extral_vars, decoder="yaml")
+        conf_vars.update(extral_vars)
+        conf_vars = self.get_confs_from_j2template(os.path.join(self.conf_path, 'conf.yml'), conf_vars,
+                                                   decoder="yaml")
 
         for group_name, group_services in self.host_group_services.items():
             if "NAMENODE" in group_services:
@@ -354,9 +367,9 @@ class BlueprintUtils:
         for k, v in groups_var.items():
             groups_var[k] = list(set(v))
 
-        groups_var.update(conf_vars)
-        groups_var.update(extral_vars)
-        return groups_var
+        conf_vars.update(groups_var)
+        conf_vars.update(extral_vars)
+        return conf_vars
 
     def build(self):
         self.load_conf()
@@ -372,6 +385,7 @@ class BlueprintUtils:
             raise InvalidConfigurationException("Configuration is invalid")
 
         j2template_variables = self.conf_j2template_variables()
+        self.conf = j2template_variables
         self.generate_ansible_variables_file(j2template_variables)
 
         blueprint_configurations = self.assemble_service_configurations(j2template_variables)
@@ -476,7 +490,6 @@ def has_common_elements(array1, array2):
 def main():
     b = BlueprintUtils()
     b.build()
-
 
 
 if __name__ == '__main__':
