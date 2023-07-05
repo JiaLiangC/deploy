@@ -355,6 +355,7 @@ class BlueprintUtils:
             groups_var[k] = list(set(v))
 
         groups_var.update(conf_vars)
+        groups_var.update(extral_vars)
         return groups_var
 
     def build(self):
@@ -375,7 +376,6 @@ class BlueprintUtils:
 
         blueprint_configurations = self.assemble_service_configurations(j2template_variables)
         blueprint_service_host_groups = self.assemble_service_by_host_groups()
-        print(blueprint_configurations)
 
         self.generate_ambari_blueprint(blueprint_configurations, blueprint_service_host_groups)
         self.generate_ambari_cluster_template()

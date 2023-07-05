@@ -33,9 +33,6 @@ ntpserver: ''                                             # if this is empty, nt
 
 data_dirs: ["/data1", "/data/sdv1"]
 
-
-ambari_version: '2.7.4.0'                                 # must be the 4-part full version number
-
 ###########################
 ## general configuration ##
 ###########################
