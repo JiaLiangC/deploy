@@ -19,7 +19,14 @@
     state: latest
   notify: Reload systemd
 
-
+- name: set repo url for ambari
+  replace:
+    path: /var/lib/ambari-server/resources/stacks/BIGTOP/3.2.0/repos/repoinfo.xml
+    regexp: "<baseurl>.*</baseurl>"
+    replace: "<baseurl>{{repo_base_url}}/repository/yum/{{ambari_options.ambari_repo_name}}</baseurl>"
+    backup: no
+  when: ansible_facts['distribution'] == "CentOS"
+  
 # run user must be set before ambari server setup
 - name: Check ambari-server run user
   become_user: root
