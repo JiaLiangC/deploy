@@ -9,7 +9,7 @@
         "realm" : "{{ security_options.realm }}",
         "kdc_type" : "{{ security }}",
         "kdc_hosts" : "{{ kdc_hostname }}",
-        "admin_server_host" : "{{ security_options.external_hostname|default(ansible_fqdn,true) }}"
+        "admin_server_host" : "{{ kdc_hostname }}"
     },
     "krb5-conf": {
         "manage_krb5_conf": "{{ 'true' if security_options.manage_krb5_conf else 'false' }}"
