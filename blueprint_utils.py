@@ -301,18 +301,30 @@ class BlueprintUtils:
         if len(self.conf["ntpserver"].strip()) > 0:
             return self.conf["ntpserver"].strip()
         else:
-            group_services = self.conf["group_services"]
-            host_groups = self.conf["host_groups"]
-            ambari_server_group = None
-            for group_name, services in group_services.items():
-                if "AMBARI_SERVER" in services:
-                    ambari_server_group = group_name
-                    break
-            if ambari_server_group:
-                ntp_host = host_groups[ambari_server_group][0]
-                return ntp_host
-            else:
-                raise InvalidConfigurationException
+            ambari_server_host = self.get_ambari_server_host()
+            return ambari_server_host
+
+    def get_ambari_server_host(self):
+        group_services = self.conf["group_services"]
+        host_groups = self.conf["host_groups"]
+        ambari_server_group = None
+        for group_name, services in group_services.items():
+            if "AMBARI_SERVER" in services:
+                ambari_server_group = group_name
+                break
+        if ambari_server_group:
+            ambari_server_host = host_groups[ambari_server_group][0]
+            return ambari_server_host
+        else:
+            raise InvalidConfigurationException
+
+    def get_kdc_server_host(self):
+        if len(self.conf["security_options"]["external_hostname"].strip()) > 0:
+            return self.conf["security_options"]["external_hostname"]
+        else:
+            ambari_server_host = self.get_ambari_server_host()
+            return ambari_server_host
+
 
     def generate_ansible_variables_file(self, variables):
         for key in ["host_groups", "group_services"]:
@@ -334,6 +346,7 @@ class BlueprintUtils:
         extral_vars["repo_base_url"] = self.get_nexus_base_url()
         extral_vars["ntpserver"] = self.get_ntp_server()
         extral_vars["hadoop_base_dir"] = self.conf["data_dirs"][0]
+        extral_vars["kdc_hostname"] = self.get_kdc_server_host()
         conf_vars.update(extral_vars)
         conf_vars = self.get_confs_from_j2template(os.path.join(self.conf_path, 'conf.yml'), conf_vars,
                                                    decoder="yaml")

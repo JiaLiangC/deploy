@@ -8,7 +8,7 @@
         "install_packages": "true",
         "realm" : "{{ security_options.realm }}",
         "kdc_type" : "{{ security }}",
-        "kdc_hosts" : "{{ security_options.external_hostname|default(ansible_fqdn,true) }}",
+        "kdc_hosts" : "{{ kdc_hostname }}",
         "admin_server_host" : "{{ security_options.external_hostname|default(ansible_fqdn,true) }}"
     },
     "krb5-conf": {
