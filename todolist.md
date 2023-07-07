@@ -17,7 +17,8 @@
 * crontab 无法同步问题
 * check_dynamic_blueprint.yml 逻辑添加
 * hadoop http kerberos auth 参考dynamic模版配置 
-* 增加 IP 正则表达
+* 增加 IP 正则表达，防止填写错误
+* 防火墙杀不死,导致服务无法通信
 #数据目录（dfs.data.dir）：这是存储 HDFS 数据块的目录。通过将多个数据目录配置在不同的物理磁盘上，可以实现数据的分布和并行读写，从而提高性能和容量。
 #名称目录（dfs.name.dir）：这是存储 HDFS 的命名空间和元数据的目录。配置多个名称目录可以提供冗余和容错能力，以防止元数据损坏或丢失。
 #日志目录（dfs.namenode.edits.dir）：这是存储 HDFS 名称节点编辑日志的目录。配置多个日志目录可以增加编辑日志的冗余和容错性，并提高故障恢复的能力。

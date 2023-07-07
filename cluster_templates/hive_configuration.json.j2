@@ -1,5 +1,6 @@
 {
     "hive-site" : {
+        "hive.server2.webui.port": "10003",
         {% if database != "embedded" -%}
         {% if database == "mysql" or database == "mariadb" -%}
         "javax.jdo.option.ConnectionDriverName": "com.mysql.jdbc.Driver",
