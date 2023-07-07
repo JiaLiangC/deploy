@@ -12,7 +12,7 @@
   template:
     src: ntp.server.conf.j2
     dest: /etc/ntp.conf
-  when: ntpserver | default('') != '' and inventory_hostname in groups['hadoop-cluster']
+  when: ntpserver | default('') != '' and inventory_hostname in groups['ambari-server']
 
 - name: start ntp
   systemd:
