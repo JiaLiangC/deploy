@@ -53,7 +53,7 @@ class BlueprintUtils:
             },
             "hive": {
                 "server": ["HIVE_METASTORE", "WEBHCAT_SERVER", "HIVE_SERVER"],
-                "clients": ["HIVE_CLIENT", "HCAT"]
+                "clients": ["HIVE_CLIENT", "HCAT", "TEZ_CLIENT"]
             },
             "zookeeper": {
                 "server": ["ZOOKEEPER_SERVER"],
@@ -78,10 +78,6 @@ class BlueprintUtils:
             "infra_solr": {
                 "server": ["INFRA_SOLR"],
                 "clients": ["INFRA_SOLR_CLIENT"]
-            },
-            "tez": {
-                "server": [],
-                "clients": ["TEZ_CLIENT"]
             },
             "solr": {
                 "server": ["SOLR_SERVER"],
@@ -237,26 +233,23 @@ class BlueprintUtils:
         with open(file_name, 'w') as f:
             json.dump(blueprint, f, indent=4)
 
-    def get_nexus_base_url(self):
-        group_services = self.conf["group_services"]
-        host_groups = self.conf["host_groups"]
-        ambari_server_group = ""
+    def get_database_host(self):
+        ambari_host = self.get_ambari_server_host()
+        external_database_server_ip = self.conf["database_options"]["external_hostname"]
+        if len(external_database_server_ip.strip()) == 0:
+            database_host = ambari_host
+        else:
+            database_host = self.conf["database_options"]["external_hostname"]
+        return database_host
 
-        install_nexus = False
+    def get_nexus_base_url(self):
+        ambari_host = self.get_ambari_server_host()
         external_nexus_server_ip = self.conf["nexus_options"]["external_nexus_server_ip"]
         nexus_port = self.conf["nexus_options"]["port"]
         if len(external_nexus_server_ip.strip()) == 0:
-            install_nexus = True
-
-        if install_nexus:
-            for group_name, services in group_services.items():
-                if "AMBARI_SERVER" in services:
-                    ambari_server_group = group_name
-                    break
-            nexus_host = host_groups[ambari_server_group][0]
+            nexus_host = ambari_host
         else:
             nexus_host = self.conf["nexus_options"]["external_nexus_server_ip"]
-
         nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
         return nexus_url
 
@@ -347,6 +340,7 @@ class BlueprintUtils:
         extral_vars["ntpserver"] = self.get_ntp_server()
         extral_vars["hadoop_base_dir"] = self.conf["data_dirs"][0]
         extral_vars["kdc_hostname"] = self.get_kdc_server_host()
+        extral_vars["database_hostname"] = self.get_database_host()
         conf_vars.update(extral_vars)
         conf_vars = self.get_confs_from_j2template(os.path.join(self.conf_path, 'conf.yml'), conf_vars,
                                                    decoder="yaml")

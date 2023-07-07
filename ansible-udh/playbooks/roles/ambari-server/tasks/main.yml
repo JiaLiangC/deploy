@@ -26,7 +26,7 @@
     replace: "<baseurl>{{repo_base_url}}/repository/yum/{{ambari_options.ambari_repo_name}}</baseurl>"
     backup: no
   when: ansible_facts['distribution'] == "CentOS"
-  
+
 # run user must be set before ambari server setup
 - name: Check ambari-server run user
   become_user: root
@@ -124,7 +124,7 @@
           postgresql_db:
             name: "{{ database_options.ambari_db_name }}"
             maintenance_db: "{{ database_options.ambari_db_name }}"
-            login_host: "{{ database_options.external_hostname|default(ansible_fqdn,true) }}"
+            login_host: "{{ database_hostname }}"
             port: "{{ postgres_port }}"
             login_user: "{{ database_options.ambari_db_username }}"
             login_password: "{{ database_options.ambari_db_password }}"
@@ -137,7 +137,7 @@
         - name: Load the Ambari Server schema (mysql)
           mysql_db:
             name: "{{ database_options.ambari_db_name }}"
-            login_host: "{{ database_options.external_hostname|default(ansible_fqdn,true) }}"
+            login_host: "{{ database_hostname }}"
             login_port: "{{ mysql_port }}"
             login_user: "{{ database_options.ambari_db_username }}"
             login_password: "{{ database_options.ambari_db_password }}"
@@ -159,7 +159,7 @@
     - name: Set the Ambari Server database setup options
       set_fact:
         ambari_database_options: "--database={{ database | regex_replace('mariadb', 'mysql') }} \
-                                  --databasehost={{ database_options.external_hostname|default(ansible_fqdn,true) }} \
+                                  --databasehost={{ database_hostname }} \
                                   --databaseport={{ lookup('vars', database | regex_replace('mariadb', 'mysql') + '_port') }} \
                                   --databasename={{ database_options.ambari_db_name }} \
                                   --databaseusername={{ database_options.ambari_db_username }} \

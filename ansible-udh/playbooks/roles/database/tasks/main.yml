@@ -47,6 +47,15 @@
         regexp: '^#?max_connections\s+='
         state: present
       notify: Restart postgres
+
+    - name: Configure access for the database without ident auth)
+      lineinfile:
+        path: "{{ postgres_hba_file }}"
+        line: "host all all 127.0.0.1/32 md5"
+        regexp: "^host\s+all\s+all\s+127.0.0.1/32\s+ident\s+.*"
+        insertbefore: EOF
+        state: present
+      notify: Restart postgres
   when: database == "postgres"
 
 - block:

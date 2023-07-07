@@ -80,34 +80,7 @@
     - "export JAVA_HOME={{openjdk_path}}"
     - "export PATH=.:$JAVA_HOME/bin:$PATH"
 
-- block:
-    - name: Gather installed version of krb5-libs
-      shell: "rpm -q --qf '%{VERSION}-%{RELEASE}' krb5-libs"
-      register: krb5_installed_version
-      changed_when: False
 
-    - name: Compare versions
-      shell: echo -e "{{ krb5_installed_version.stdout }}\n{{ target_krb5_version }}" | sort -V | tail -n 1
-      register: highest_version
-      changed_when: false
-
-
-    - name: Set facts
-      set_fact:
-        krb5_needs_downgrading: "{{ highest_version.stdout != target_krb5_version }}"
-        krb5_needs_upgrading: "{{ highest_version.stdout == target_krb5_version  and krb5_installed_version.stdout != target_krb5_version }}"
-
-    - name: Upgrade krb5-libs
-      become: yes
-      become_user: root
-      become_method: sudo
-      shell: "yum update krb5-libs -y"
-      when: krb5_needs_upgrading
-
-    - name: Downgrade krb5-libs
-      become: yes
-      become_user: root
-      become_method: sudo
-      shell: "yum downgrade krb5-libs -y"
-      when: krb5_needs_downgrading
-  when: security == "mit-kdc"
+- name: Prepare the packages compatible
+  include_tasks: yum_version_control.yml
+  with_items: "{{ versioned_packages }}"

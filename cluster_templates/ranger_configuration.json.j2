@@ -2,7 +2,7 @@
     "admin-properties" : {
         "properties" : {
             "DB_FLAVOR" : "{{ database|replace('mariadb', 'mysql')|upper }}",
-             "db_host" : "{{ database_options.external_hostname|default(ansible_fqdn,true) }}",
+             "db_host" : "{{ database_hostname }}",
              "db_name" : "{{ database_options.rangeradmin_db_name }}",
              "db_user" : "{{ database_options.rangeradmin_db_username }}",
              "db_password" : "{{ database_options.rangeradmin_db_password }}",
@@ -14,11 +14,11 @@
             "ranger.logs.base.dir" : "{{ base_log_dir }}/ranger/admin",
             {% if database == "mysql" or database == "mariadb" -%}
             "ranger.jpa.jdbc.driver": "com.mysql.jdbc.Driver",
-            "ranger.jpa.jdbc.url": "jdbc:mysql://{{ database_options.external_hostname|default(ansible_fqdn,true) }}:{{ mysql_port }}/{{ database_options.rangeradmin_db_name }}",
+            "ranger.jpa.jdbc.url": "jdbc:mysql://{{ database_hostname }}:{{ mysql_port }}/{{ database_options.rangeradmin_db_name }}",
             {% endif -%}
             {% if database == "postgres" -%}
             "ranger.jpa.jdbc.driver": "org.postgresql.Driver",
-            "ranger.jpa.jdbc.url": "jdbc:postgresql://{{ database_options.external_hostname|default(ansible_fqdn,true) }}:{{ postgres_port }}/{{ database_options.rangeradmin_db_name }}",
+            "ranger.jpa.jdbc.url": "jdbc:postgresql://{{ database_hostname }}:{{ postgres_port }}/{{ database_options.rangeradmin_db_name }}",
             {% endif -%}
             "ranger.audit.source.type" : "solr",
             "ranger.audit.solr.zookeepers" : "{% for zk in zookeeper_hosts %}{{ zk }}:2181{% if not loop.last %},{% endif %}{% endfor %}/infra-solr"

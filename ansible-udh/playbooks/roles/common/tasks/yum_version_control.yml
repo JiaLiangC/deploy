@@ -1,0 +1,35 @@
+---
+- set_fact: package_name="{{ item.pkg_name }}"
+- set_fact: target_version="{{ item.version }}"
+- set_fact: first_pkg="{{ item.pkg_name.split(' ')[0] }}"
+
+
+- name: Gather installed version of {{first_pkg}}}
+  shell: "rpm -q --qf '%{VERSION}-%{RELEASE}' {{ first_pkg }}"
+  register: installed_version
+  changed_when: False
+
+- name: Compare versions
+  shell: echo -e "{{ installed_version.stdout }}\n{{ target_version }}" | sort -V | tail -n 1
+  register: highest_version
+  changed_when: false
+
+
+- name: Set facts
+  set_fact:
+    krb5_needs_downgrading: "{{ highest_version.stdout != target_version }}"
+    krb5_needs_upgrading: "{{ highest_version.stdout == target_version  and installed_version.stdout != target_version }}"
+
+- name: Upgrade krb5-libs
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: "yum update {{package_name}}} -y"
+  when: krb5_needs_upgrading
+
+- name: Downgrade krb5-libs
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: "yum downgrade {{package_name}} -y"
+  when: krb5_needs_downgrading

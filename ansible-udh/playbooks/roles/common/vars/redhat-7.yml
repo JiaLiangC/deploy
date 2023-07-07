@@ -24,3 +24,8 @@ openjdk_package: java-1.8.0-openjdk-devel
 ntp_service_name: chronyd
 
 firewall_service_name: firewalld
+
+versioned_packages:
+  - {pkg_name: "openssl-libs openssl openssl-devel", version: "1.0.2k-19.el7"}
+  - {pkg_name: "krb5-libs", version: "1.15.1-50.el7"}
+  - {pkg_name: "zlib zlib-devel", version: "1.2.7-18.el7"}
