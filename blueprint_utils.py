@@ -363,7 +363,7 @@ class BlueprintUtils:
             if "KAFKA_BROKER" in group_services:
                 groups_var.setdefault("kafka_groups", []).append(group_name)
                 groups_var.setdefault("kafka_hosts", []).extend(group_hosts[group_name])
-            if "RANGER_ADMIN" in group_services in group_services:
+            if "RANGER_ADMIN" in group_services:
                 groups_var.setdefault("rangeradmin_groups", []).append(group_name)
                 groups_var.setdefault("rangeradmin_hosts", []).extend(group_hosts[group_name])
             if "RANGER_KMS_SERVER" in group_services:
