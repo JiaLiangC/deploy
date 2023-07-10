@@ -10,6 +10,7 @@ class TestTopologyChecker(unittest.TestCase):
         conf_utils = ConfUtils()
         self.conf_utils = conf_utils
 
+    # 测试正确的情况
     def test_check_component_topology_positive(self):
         host_groups = {'group1': ['gs-server2'], 'group0': ['gs-server0'], 'group2': ['gs-server3']}
         host_group_services = {
@@ -21,10 +22,15 @@ class TestTopologyChecker(unittest.TestCase):
                        'JOURNALNODE'],
             'group2': ['HBASE_REGIONSERVER', 'ZOOKEEPER_SERVER', 'DATANODE', 'NODEMANAGER', 'HIVE_SERVER',
                        'JOURNALNODE', 'SOLR_SERVER', 'WEBHCAT_SERVER', 'KAFKA_BROKER']}
-        result, message = self.conf_utils.check_component_topology(host_groups, host_group_services)
-        self.assertTrue(result)
-        self.assertIsNone(message)
+        self.conf_utils.check_component_topology(host_groups, host_group_services)
+        self.assertEqual(len(self.conf_utils.get_err_messages()), 0)
 
+
+    # 测试只部署部分组件的错误
+    # 该测试case namenode 部署错误
+    # spark 缺少组件
+    # ranger 缺少组件
+    # yarn 缺少组件
     def test_check_component_topology_negative(self):
         host_groups = {'group1': ['gs-server2'], 'group0': ['gs-server0'], 'group2': ['gs-server3']}
         host_group_services = {'group1': ['SECONDARY_NAMENODE', 'NAMENODE', 'ZKFC','HBASE_MASTER','ZOOKEEPER_SERVER'],
@@ -34,10 +40,9 @@ class TestTopologyChecker(unittest.TestCase):
                                'group2': ['HBASE_REGIONSERVER', 'ZOOKEEPER_SERVER', 'DATANODE', 'NODEMANAGER',
                                           'HIVE_SERVER', 'JOURNALNODE', 'SOLR_SERVER', 'WEBHCAT_SERVER',
                                           'KAFKA_BROKER']}
-        result, message = self.conf_utils.check_component_topology(host_groups, host_group_services)
-        self.assertFalse(result)
-        self.assertIsNotNone(message)
-        print("\n".join(message))
+        self.conf_utils.check_component_topology(host_groups, host_group_services)
+        self.assertGreater(len(self.conf_utils.get_err_messages()), 0,"配置错误")
+        print("\n".join(self.conf_utils.get_err_messages()))
 
 
     def test_check_component_topology_negative1(self):

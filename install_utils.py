@@ -3,12 +3,12 @@
 import os
 import subprocess
 import time
-import re
 import urllib2
 import sys
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
 
 class InvalidConfigurationException(Exception):
     pass
@@ -32,6 +32,7 @@ def get_java_home():
     java_home = os.path.join(jdk_install_path, file_name)
     return java_home
 
+
 def run_shell_cmd(cmd_list):
     process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
@@ -42,6 +43,7 @@ def run_shell_cmd(cmd_list):
         print("Execution successful")
     else:
         print("Execution failed. Error:", error)
+
 
 def nexus_install(data_dir, nexus_base_url):
     command = "ps -ef | grep org.sonatype.nexus.karaf.NexusMain | grep -v grep | wc -l"
@@ -203,49 +205,6 @@ gpgcheck=0
     with open("/etc/yum.repos.d/ansible-nexus.repo", 'w') as file:
         file.write(repo)
 
-
-# 加载配置文件
-def load_conf():
-    print("解析配置")
-    import yaml
-    file_path = os.path.join(CONF_DIR, 'conf.yml')
-    with open(file_path, 'r') as f:
-        data = yaml.load(f)
-    return data
-
-
-
-# 根据用户配置，设置nexus
-# 1.当用户配置了external_nexus_server_ip 时，整个安装都讲使用整个nexus 作为仓库，然后设置为本地repo
-# 2.默认配置，即安装nexus 到ambari 所在的机器，所有的后续安装都将使用该仓库
-def setup_nexus(conf):
-    print("设置nexus")
-    group_services = conf["group_services"]
-    host_groups = conf["host_groups"]
-    ambari_server_group = ""
-
-    install_nexus = False
-    external_nexus_server_ip = conf["nexus_options"]["external_nexus_server_ip"]
-    nexus_port = conf["nexus_options"]["port"]
-    nexus_url = None
-    if len(external_nexus_server_ip.strip()) == 0:
-        install_nexus = True
-
-    if install_nexus:
-        for group_name, services in group_services.items():
-            if "AMBARI_SERVER" in services:
-                ambari_server_group = group_name
-                break
-        nexus_data_dir = conf["nexus_options"]["data_dir"]
-        nexus_host = host_groups[ambari_server_group][0]
-        nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
-        nexus_install(nexus_data_dir, nexus_url)
-    else:
-        nexus_host = conf["nexus_options"]["external_nexus_server_ip"]
-        nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
-    setup_local_repo(nexus_url)
-
-
 # 示例用法
 # host_groups = {
 #     'group0': ['host1', 'host2', 'host3'],
@@ -259,10 +218,11 @@ def setup_nexus(conf):
 # ansible_user=sys_admin
 # ansible_ssh_pass=sys_admin
 # ansible_ssh_port=22
-def generate_ansible_hosts(conf):
+def generate_ansible_hosts(conf, hosts_info, ambari_server_host):
     print("动态生成ansible hosts 文件")
-    parsed_hosts, user = parse_hosts_config()
-    host_groups = parse_cluster_install_config(conf)
+    parsed_hosts, user = hosts_info
+    host_groups = conf["host_groups"]
+
     hosts_dict = {}
     for host_info in parsed_hosts:
         ip = host_info[0]
@@ -270,18 +230,10 @@ def generate_ansible_hosts(conf):
         passwd = host_info[2]
         hosts_dict[hostname] = (ip, passwd)
 
-    group_services = conf["group_services"]
-    ambari_server_group = ""
     node_groups = {}
-    for group_name, services in group_services.items():
-        if "AMBARI_SERVER" in services:
-            ambari_server_group = group_name
-            break
-
+    node_groups.setdefault("ambari-server", []).extend([ambari_server_host])
     for group_name, hosts in host_groups.items():
         node_groups.setdefault("hadoop-cluster", []).extend(hosts)
-        if group_name == ambari_server_group:
-            node_groups.setdefault("ambari-server", []).extend(hosts)
 
     hosts_content = ""
     for group, hosts in node_groups.items():
@@ -297,102 +249,12 @@ def generate_ansible_hosts(conf):
         hosts_content += "\n"
 
     ansible_user = user
-    # ansible_ssh_pass = conf["ansible_options"]["ansible_ssh_pass"]
-    # ansible_ssh_port = conf["ansible_options"]["ansible_ssh_port"]
 
     hosts_content += "[all:vars]\n"
     hosts_content += "ansible_user={}\n".format(ansible_user)
-    # hosts_content += f"ansible_ssh_pass={ansible_ssh_pass}\n"
-    # hosts_content += f"ansible_ssh_port={ansible_ssh_port}\n"
-
     hosts_path = os.path.join(ANSIBLE_PRJ_DIR, "inventory", "hosts")
-    with open(hosts_path, "w") as file:
-        file.write(hosts_content)
-
-
-def parse_cluster_install_config(conf):
-    host_groups_conf = conf["host_groups"]
-
-    # 可以解析 node[1-3] node[1-3]xx [1-3]node  或者 node1 的主机组配置
-    # node[1 - 3].example.com，则函数会将其扩展为 `node1.example.com`、`node2.example.com` 和 `node3.example.com`# 三个主机名。
-    host_groups = {}
-    for group_name, group_hosts in host_groups_conf.items():
-        if group_name not in host_groups:
-            host_groups[group_name] = []
-
-        if isinstance(group_hosts, list):
-            for host_name in group_hosts:
-                host_groups[group_name].append(host_name)
-        else:
-            match = re.search(r'\[(\d+)-(\d+)]', group_hosts)
-            if match:
-                prefix = group_hosts[:match.start()]
-                start = int(match.group(1))
-                end = int(match.group(2))
-                suffix = group_hosts[match.end():]
-                for i in range(start, end + 1):
-                    host = '{}{}{}'.format(prefix, i, suffix)
-                    host_groups[group_name].append(host)
-            else:
-                host_groups[group_name].append(group_hosts)
-
-    host_groups = host_groups
-    return host_groups
-
-
-def parse_hosts_config():
-    import yaml
-    file_path = os.path.join(CONF_DIR, 'hosts_info.yml')
-    with open(file_path, 'r') as f:
-        data = yaml.load(f)
-    configurations = data["hosts"]
-    user = data["user"]
-    parsed_configs = []
-
-    for config in configurations:
-        if len(config.split()) != 3:
-            raise InvalidConfigurationException
-
-        if '[' in config:
-            hostname_part, ip_part, password = config.split()
-            hosts = []
-            ips = []
-            if '[' in hostname_part:
-                match = re.search(r'\[(\d+)-(\d+)]', hostname_part)
-                if match:
-                    hostname_prefix = hostname_part[:match.start()]
-                    hostname_range_start = int(match.group(1))
-                    hostname_range_end = int(match.group(2))
-                    hostname_suffix = hostname_part[match.end():]
-
-                    for i in range(hostname_range_start, hostname_range_end + 1):
-                        host = '{}{}{}'.format(hostname_prefix, i, hostname_suffix)
-                        hosts.append(host)
-                else:
-                    raise InvalidConfigurationException
-            if '[' in ip_part:
-                match = re.search(r'\[(\d+)-(\d+)]', ip_part)
-                if match:
-                    ip_prefix = ip_part[:match.start()]
-                    ip_range_start = int(match.group(1))
-                    ip_range_end = int(match.group(2))
-                    ip_suffix = ip_part[match.end():]
-
-                    for i in range(ip_range_start, ip_range_end + 1):
-                        ip = '{}{}{}'.format(ip_prefix, i, ip_suffix)
-                        ips.append(ip)
-            else:
-                raise InvalidConfigurationException
-
-            if len(hosts) != len(ips):
-                raise InvalidConfigurationException("Configuration is invalid")
-            for index, ip in enumerate(ips):
-                parsed_configs.append((hosts[index], ip, password))
-        else:
-
-            parsed_configs.append(tuple(config.split()))
-
-    return parsed_configs, user
+    with open(hosts_path, "w") as f:
+        f.write(hosts_content)
 
 
 def run_playbook():
@@ -405,10 +267,16 @@ def run_playbook():
 
 def main():
     ansible_install()  # include yaml package,so later code can use it
-    conf = load_conf()
-    generate_ansible_hosts(conf)
-    setup_nexus(conf)
+    from conf_utils import ConfUtils
     from blueprint_utils import BlueprintUtils
+    cu = ConfUtils()
+    ambari_server_host = cu.get_ambari_server_host()
+    nexus_base_url = cu.generate_nexus_base_url()
+    conf, hosts_info = cu.run()
+
+    generate_ansible_hosts(conf, hosts_info, ambari_server_host)
+    setup_local_repo(nexus_base_url)
+
     b = BlueprintUtils()
     b.build()
     # run_playbook()

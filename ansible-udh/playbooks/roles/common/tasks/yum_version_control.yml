@@ -4,7 +4,7 @@
 - set_fact: first_pkg="{{ item.pkg_name.split(' ')[0] }}"
 
 
-- name: Gather installed version of {{first_pkg}}}
+- name: Gather installed version of {{first_pkg}}
   shell: "rpm -q --qf '%{VERSION}-%{RELEASE}' {{ first_pkg }}"
   register: installed_version
   changed_when: False
@@ -24,7 +24,7 @@
   become: yes
   become_user: root
   become_method: sudo
-  shell: "yum update {{package_name}}} -y"
+  shell: "yum update {{package_name}} -y"
   when: krb5_needs_upgrading
 
 - name: Downgrade krb5-libs

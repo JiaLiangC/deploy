@@ -1,7 +1,7 @@
 {
         "hdfs-site" : {
             "dfs.namenode.checkpoint.dir" : "/hadoop/hdfs/namesecondary",
-            "dfs.namenode.name.dir" : "{{ hdfs_dfs_namenode_name_dir }}}",
+            "dfs.namenode.name.dir" : "{{ hdfs_dfs_namenode_name_dir }}",
             "dfs.journalnode.edits.dir" : "{{ hdfs_dfs_journalnode_edits_dir }}",
             "dfs.client.failover.proxy.provider.{{ cluster_name }}" : "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider",
             "dfs.ha.automatic-failover.enabled" : "true",
