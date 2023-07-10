@@ -1,56 +1,13 @@
 # -*- coding: UTF-8 -*-
 import unittest
 import re
+import sys
+
+from  conf_utils import ConfUtils
+
+sys.path.append('../')
 class InvalidConfigurationException(Exception):
     pass
-def parse_config(configurations):
-    parsed_configs = []
-
-
-    for config in configurations:
-        if len(config.split())!=3:
-            raise InvalidConfigurationException
-
-        if '[' in config:
-            hostname_part, ip_part, password = config.split()
-            hosts = []
-            ips = []
-            if '[' in hostname_part:
-                match = re.search(r'\[(\d+)-(\d+)]', hostname_part)
-                if match:
-                    hostname_prefix = hostname_part[:match.start()]
-                    hostname_range_start = int(match.group(1))
-                    hostname_range_end = int(match.group(2))
-                    hostname_suffix = hostname_part[match.end():]
-
-                    for i in range(hostname_range_start, hostname_range_end + 1):
-                        host = '{}{}{}'.format(hostname_prefix, i, hostname_suffix)
-                        hosts.append(host)
-                else:
-                    raise InvalidConfigurationException
-            if '[' in ip_part:
-                match = re.search(r'\[(\d+)-(\d+)]', ip_part)
-                if match:
-                    ip_prefix = ip_part[:match.start()]
-                    ip_range_start = int(match.group(1))
-                    ip_range_end = int(match.group(2))
-                    ip_suffix = ip_part[match.end():]
-
-                    for i in range(ip_range_start, ip_range_end + 1):
-                        ip = '{}{}{}'.format(ip_prefix, i, ip_suffix)
-                        ips.append(ip)
-            else:
-                raise InvalidConfigurationException
-
-            if len(hosts) != len(ips):
-                raise InvalidConfigurationException("Configuration is invalid")
-            for index,ip in enumerate(ips):
-                parsed_configs.append((hosts[index],ip,password))
-        else:
-
-            parsed_configs.append(tuple(config.split()))
-
-    return parsed_configs
 
 # Usage
 # configs = [
@@ -65,45 +22,82 @@ def parse_config(configurations):
 # for config in parsed:
 #     print(config)  # 将解析的配置打印出来
 #
+
 class TestConfigParser(unittest.TestCase):
 
     def test_parse_config(self):
+        cu = ConfUtils()
         # 测试常规case
-        configs = [
-            "10.1.1.12 hostname password",
-            "10.1.1.13 hostname2 password2",
-            "hostname10[1-2] 10.1.1.1[1-2] password",
-            "hostname[1-2]2 10.1.1.1[1-2] password",
-            "[1-2]hostname3 10.1[1-2].1.1 password"
-        ]
-        expected_output = [
-            ('10.1.1.12', 'hostname', 'password'),
-            ('10.1.1.13', 'hostname2', 'password2'),
-            ('hostname101', '10.1.1.11', 'password'),
-            ('hostname102', '10.1.1.12', 'password'),
-            ('hostname12', '10.1.1.11', 'password'),
-            ('hostname22', '10.1.1.12', 'password'),
-            ('1hostname3', '10.11.1.1', 'password'),
-            ('2hostname3', '10.12.1.1', 'password'),
-        ]
-        self.assertItemsEqual(parse_config(configs), expected_output)
+        configs_normal = {
+            "host_groups": {
+                'group1': ['gs-server2'],
+                'group0': ['gs-server0'],
+                'group2': ['gs-server3']
+            },
+            "group_services":{
+                'group1': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC'],
+                'group0': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC'],
+                'group2': ['HBASE_REGIONSERVER']
+            }
+        }
 
-        # 测试当主机名和IP都没有范围的情况
-        no_range_config = ["10.1.1.1 hostname password"]
-        self.assertItemsEqual(parse_config(no_range_config), [('10.1.1.1', 'hostname', 'password')])
+        expected_output = {
+           "host_groups": {'group1': ['gs-server2'], 'group0': ['gs-server0'], 'group2': ['gs-server3']},
+            "group_services": {'group1': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC'],
+                               'group0': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC'],
+                               'group2': ['HBASE_REGIONSERVER']}
+        }
 
-        # 测试当范围只在主机名的情况,报错
-        hostname_range_config = ["hostname[1-3] 10.1.1.1 password"]
-        with self.assertRaises(Exception):
-            parse_config(hostname_range_config)
+        self.assertItemsEqual(cu.parse_component_topology_conf(configs_normal)[0], expected_output["host_groups"])
+        self.assertItemsEqual(cu.parse_component_topology_conf(configs_normal)[1], expected_output["group_services"])
 
-        # 配置字符串格式不正确的异常情报
-        with self.assertRaises(Exception):
-            parse_config(["10.1.1.1 hostname"])
+
+        configs_regex = {
+            "host_groups":{
+                'group0': ['gs-server0'],
+                'group1': ['gs-server1'],
+                'group2': ['gs-server[2-4]']
+            },
+            "group_services":{
+                'group0': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC', 'HBASE_MASTER', 'ZOOKEEPER_SERVER', 'DATANODE', 'NODEMANAGER', 'RESOURCEMANAGER', 'SPARK_JOBHISTORYSERVER', 'INFRA_SOLR', 'JOURNALNODE', 'KAFKA_BROKER'],
+                'group1': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC', 'HIVE_METASTORE', 'SPARK_THRIFTSERVER', 'FLINK_HISTORYSERVER', 'HISTORYSERVER', 'RANGER_TAGSYNC', 'RANGER_USERSYNC', 'ZOOKEEPER_SERVER', 'JOURNALNODE'],
+                'group2': ['HBASE_REGIONSERVER', 'DATANODE', 'NODEMANAGER', 'HIVE_SERVER', 'SOLR_SERVER', 'KAFKA_BROKER']
+            }
+        }
+
+        expected_output_regex = {
+            "host_groups": {'group0': ['gs-server0'], 'group1': ['gs-server1'], 'group2': ['gs-server2','gs-server3','gs-server4']},
+            "group_services": {'group0': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC', 'HBASE_MASTER', 'ZOOKEEPER_SERVER', 'DATANODE', 'NODEMANAGER', 'RESOURCEMANAGER', 'SPARK_JOBHISTORYSERVER', 'INFRA_SOLR', 'JOURNALNODE', 'KAFKA_BROKER'],
+                               'group1': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC', 'HIVE_METASTORE', 'SPARK_THRIFTSERVER', 'FLINK_HISTORYSERVER', 'HISTORYSERVER', 'RANGER_TAGSYNC', 'RANGER_USERSYNC', 'ZOOKEEPER_SERVER', 'JOURNALNODE'],
+                               'group2': ['HBASE_REGIONSERVER', 'DATANODE', 'NODEMANAGER', 'HIVE_SERVER', 'SOLR_SERVER','KAFKA_BROKER']}
+        }
+
+        self.assertItemsEqual(cu.parse_component_topology_conf(configs_regex)[0], expected_output_regex["host_groups"])
+        self.assertItemsEqual(cu.parse_component_topology_conf(configs_regex)[1], expected_output_regex["group_services"])
+
+
+
 
         # 测试范围格式不正确的异常情况
-        with self.assertRaises(Exception):
-            parse_config(["hostname[1;2] 10.1.1.1 password"])
+        configs_1 = {
+            "host_groups": {
+                'group0': ['gs[2-4]-server']
+            },
+            "group_services": {
+                'group0': ['AMBARI_SERVER']
+            }
+        }
+        expected_output1 = {
+            "host_groups": {'group0': ['gs2-server','gs3-server','gs4-server']},
+            "group_services": {'group0': ['AMBARI_SERVER']}
+        }
+
+        self.assertItemsEqual(cu.parse_component_topology_conf(configs_1)[0], expected_output1["host_groups"])
+        self.assertItemsEqual(cu.parse_component_topology_conf(configs_1)[1], expected_output1["group_services"])
+
+        # with self.assertRaises(Exception):
+        #     parse_config(["hostname[1;2] 10.1.1.1 password"])
+        #         todo add more invalid confs
 
 
 if __name__ == '__main__':

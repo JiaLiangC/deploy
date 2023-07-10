@@ -5,6 +5,7 @@ import os
 import yaml
 import sys
 from jinja2 import Template, Undefined
+from conf_utils import ConfUtils
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -31,11 +32,6 @@ class BlueprintUtils:
         self.host_groups = {}
         self.host_group_services = {}
         self.conf = None
-
-    def get_conffile(self):
-        dir_path = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(dir_path, 'conf.yml')
-        return file_path
 
     def services_map(self):
         service_map = {
@@ -99,6 +95,13 @@ class BlueprintUtils:
             if service_name in service_info["server"]:
                 return service_key
 
+    def get_services_need_install(self):
+        services = []
+        for group_name, host_components in self.host_group_services.items():
+            services.extend(host_components)
+        unique_services = list(set(services))
+        return unique_services
+
     def get_service_clients_need_install(self, services):
         clients = []
         for service_name in services:
@@ -116,7 +119,7 @@ class BlueprintUtils:
                 file_path = os.path.join(self.cluster_templates_path, file_name)
                 return file_path
 
-    # 组装各个组件的配置
+    # 从template 中读取j2 模版，然后传入参数，组装各个组件的配置
     def assemble_service_configurations(self, jinja_context):
         configurations = []
         services_need_install = self.get_services_need_install()
@@ -142,6 +145,14 @@ class BlueprintUtils:
 
         return configurations
 
+    # 返回ambari blueprint 中的 host_groups 部分
+    # "host_groups": [
+    #         {
+    #             "cardinality": "1",
+    #             "name": "group1",
+    #             "components": [
+    #                 {
+    #                     "name": "RANGER_ADMIN"
     def assemble_service_by_host_groups(self):
         host_groups = []
         services_need_install = self.get_services_need_install()
@@ -161,14 +172,8 @@ class BlueprintUtils:
             host_groups.append(host_group)
         return host_groups
 
-    # 解析并返回service 的多个配置
-    def get_confs_from_j2template(self, file, context, decoder="json"):
-        # 读取模板文件
-        # todo 增加异常检测
-        # if not os.path.exists(file):
-        #     raise Exception("s")
-
-        with open(file, 'r') as f:
+    def get_confs_from_j2template(self, file_path, context, decoder="json"):
+        with open(file_path, 'r') as f:
             template_str = f.read()
         # 创建模板对象
         if len(template_str) == 0:
@@ -181,39 +186,6 @@ class BlueprintUtils:
         else:
             return yaml.load(result)
 
-    def parse_cluster_install_config(self):
-        host_groups_conf = self.conf["host_groups"]
-        group_services_conf = self.conf["group_services"]
-
-        # 可以解析 node[1-3] node[1-3]xx [1-3]node  或者 node1 的主机组配置
-        # node[1 - 3].example.com，则函数会将其扩展为 `node1.example.com`、`node2.example.com` 和 `node3.example.com`# 三个主机名。
-        host_groups = {}
-        host_group_services = {}
-
-        host_group_services = group_services_conf
-
-        for group_name, group_hosts in host_groups_conf.items():
-            if group_name not in host_groups:
-                host_groups[group_name] = []
-
-            if isinstance(group_hosts, list):
-                for host_name in group_hosts:
-                    host_groups[group_name].append(host_name)
-            else:
-                match = re.search(r'\[(\d+)-(\d+)]', group_hosts)
-                if match:
-                    prefix = group_hosts[:match.start()]
-                    start = int(match.group(1))
-                    end = int(match.group(2))
-                    suffix = group_hosts[match.end():]
-                    for i in range(start, end + 1):
-                        host = '{}{}{}'.format(prefix, i, suffix)
-                        host_groups[group_name].append(host)
-                else:
-                    host_groups[group_name].append(group_hosts)
-
-        self.host_groups = host_groups
-        self.host_group_services = host_group_services
 
     def generate_ambari_blueprint(self, configurations, host_groups):
 
@@ -233,25 +205,6 @@ class BlueprintUtils:
         with open(file_name, 'w') as f:
             json.dump(blueprint, f, indent=4)
 
-    def get_database_host(self):
-        ambari_host = self.get_ambari_server_host()
-        external_database_server_ip = self.conf["database_options"]["external_hostname"]
-        if len(external_database_server_ip.strip()) == 0:
-            database_host = ambari_host
-        else:
-            database_host = self.conf["database_options"]["external_hostname"]
-        return database_host
-
-    def get_nexus_base_url(self):
-        ambari_host = self.get_ambari_server_host()
-        external_nexus_server_ip = self.conf["nexus_options"]["external_nexus_server_ip"]
-        nexus_port = self.conf["nexus_options"]["port"]
-        if len(external_nexus_server_ip.strip()) == 0:
-            nexus_host = ambari_host
-        else:
-            nexus_host = self.conf["nexus_options"]["external_nexus_server_ip"]
-        nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
-        return nexus_url
 
     def generate_ambari_cluster_template(self):
         conf = self.conf
@@ -290,33 +243,7 @@ class BlueprintUtils:
         with open(file_name, 'w') as f:
             json.dump(res, f, indent=4)
 
-    def get_ntp_server(self):
-        if len(self.conf["ntpserver"].strip()) > 0:
-            return self.conf["ntpserver"].strip()
-        else:
-            ambari_server_host = self.get_ambari_server_host()
-            return ambari_server_host
 
-    def get_ambari_server_host(self):
-        group_services = self.conf["group_services"]
-        host_groups = self.conf["host_groups"]
-        ambari_server_group = None
-        for group_name, services in group_services.items():
-            if "AMBARI_SERVER" in services:
-                ambari_server_group = group_name
-                break
-        if ambari_server_group:
-            ambari_server_host = host_groups[ambari_server_group][0]
-            return ambari_server_host
-        else:
-            raise InvalidConfigurationException
-
-    def get_kdc_server_host(self):
-        if len(self.conf["security_options"]["external_hostname"].strip()) > 0:
-            return self.conf["security_options"]["external_hostname"]
-        else:
-            ambari_server_host = self.get_ambari_server_host()
-            return ambari_server_host
 
 
     def generate_ansible_variables_file(self, variables):
@@ -328,171 +255,14 @@ class BlueprintUtils:
         with open(variables_file_path, 'w') as f:
             yaml.dump(variables, f)
 
-    def conf_j2template_variables(self):
-        group_hosts = {}
-        groups_var = {}
-        extral_vars = {}
-        conf_vars = self.conf
-        for group_name, hosts in self.host_groups.items():
-            group_hosts[group_name] = hosts
-
-        extral_vars["repo_base_url"] = self.get_nexus_base_url()
-        extral_vars["ntpserver"] = self.get_ntp_server()
-        extral_vars["hadoop_base_dir"] = self.conf["data_dirs"][0]
-        extral_vars["kdc_hostname"] = self.get_kdc_server_host()
-        extral_vars["database_hostname"] = self.get_database_host()
-        conf_vars.update(extral_vars)
-        conf_vars = self.get_confs_from_j2template(os.path.join(self.conf_path, 'conf.yml'), conf_vars,
-                                                   decoder="yaml")
-
-        for group_name, group_services in self.host_group_services.items():
-            if "NAMENODE" in group_services:
-                groups_var.setdefault("namenode_groups", []).append(group_name)
-                groups_var.setdefault("namenode_hosts", []).extend(group_hosts[group_name])
-            if "ZKFC" in group_services:
-                groups_var.setdefault("zkfc_groups", []).append(group_name)
-            if "RESOURCEMANAGER" in group_services:
-                groups_var.setdefault("resourcemanager_groups", []).append(group_name)
-            if "JOURNALNODE" in group_services:
-                groups_var.setdefault("journalnode_groups", []).append(group_name)
-            if "ZOOKEEPER_SERVER" in group_services:
-                groups_var.setdefault("zookeeper_groups", []).append(group_name)
-                groups_var.setdefault("zookeeper_hosts", []).extend(group_hosts[group_name])
-            if "HIVE_SERVER" in group_services or "HIVE_METASTORE" in group_services:
-                groups_var.setdefault("hiveserver_hosts", []).extend(group_hosts[group_name])
-            if "KAFKA_BROKER" in group_services:
-                groups_var.setdefault("kafka_groups", []).append(group_name)
-                groups_var.setdefault("kafka_hosts", []).extend(group_hosts[group_name])
-            if "RANGER_ADMIN" in group_services:
-                groups_var.setdefault("rangeradmin_groups", []).append(group_name)
-                groups_var.setdefault("rangeradmin_hosts", []).extend(group_hosts[group_name])
-            if "RANGER_KMS_SERVER" in group_services:
-                groups_var.setdefault("rangerkms_hosts", []).extend(group_hosts[group_name])
-            if "SOLR_SERVER" in group_services:
-                groups_var.setdefault("solr_hosts", []).extend(group_hosts[group_name])
-
-        for k, v in groups_var.items():
-            groups_var[k] = list(set(v))
-
-        conf_vars.update(groups_var)
-        conf_vars.update(extral_vars)
-        return conf_vars
-
     def build(self):
-        self.load_conf()
-
-        # 解析host_group 和 group_services
-        self.parse_cluster_install_config()
-
-        # 检查给定的 group_services 配置
-        is_valid, messages = self.check_config_rules()
-        if not is_valid:
-            for message in messages:
-                print(message)
-            raise InvalidConfigurationException("Configuration is invalid")
-
-        j2template_variables = self.conf_j2template_variables()
-        self.conf = j2template_variables
-        self.generate_ansible_variables_file(j2template_variables)
-
-        blueprint_configurations = self.assemble_service_configurations(j2template_variables)
+        cu = ConfUtils()
+        self.conf = cu.run()
+        blueprint_configurations = self.assemble_service_configurations(self.conf)
         blueprint_service_host_groups = self.assemble_service_by_host_groups()
-
         self.generate_ambari_blueprint(blueprint_configurations, blueprint_service_host_groups)
         self.generate_ambari_cluster_template()
-
-    def load_conf(self):
-        file_path = os.path.join(self.conf_path, 'conf.yml')
-        with open(file_path, 'r') as f:
-            data = yaml.load(f)
-        self.conf = data
-
-    def get_services_need_install(self):
-        services = []
-        for group_name, host_components in self.host_group_services.items():
-            services.extend(host_components)
-        unique_services = list(set(services))
-        return unique_services
-
-    def get_service_distribution(self):
-        service_counter = {}
-        services = []
-        group_hosts = {}
-        for group_name, hosts in self.host_groups.items():
-            group_hosts[group_name] = hosts
-
-        for group_name, host_components in self.host_group_services.items():
-            services.extend(host_components)
-            for service_name in host_components:
-                hosts_count = len(group_hosts[group_name])
-                service_counter[service_name] = service_counter.setdefault(service_name, 0) + hosts_count
-        unique_services = list(set(services))
-        return unique_services, service_counter
-
-    # group 名不能重复，不可以出现在多个组中
-    def check_config_rules(self):
-        all_services, service_counter = self.get_service_distribution()
-        all_services = set(all_services)
-        messages = []
-
-        component_rules = {
-            "NAMENODE": {"min_instances": 1, "max_instances": 2},
-            "RESOURCEMANAGER": {"min_instances": 1, "max_instances": 2},
-            "HBASE_MASTER": {"min_instances": 1, "max_instances": 2},
-            "ZOOKEEPER_SERVER": {"min_instances": 1, "max_instances": None, "odd_only": True},
-            "SPARK_JOBHISTORYSERVER": {"min_instances": 1, "max_instances": 1},
-            "AMBARI_SERVER": {"min_instances": 1, "max_instances": 1},
-            "HIVE_METASTORE": {"min_instances": 1, "max_instances": 1}
-        }
-
-        component_relations = [
-            {"service": ["NAMENODE", "DATANODE"], "type": "consist"},
-            {"service": ["NODEMANAGER", "RESOURCEMANAGER"], "type": "consist"},
-            {"service": ["HBASE_MASTER", "HBASE_REGIONSERVER"], "type": "consist"},
-            {"service": ["RANGER_TAGSYNC", "RANGER_TAGSYNC", "RANGER_ADMIN"], "type": "consist"},
-            {"service": ["HIVE_METASTORE", "HIVE_SERVER"], "type": "consist"},
-            {"service": ["SPARK_JOBHISTORYSERVER", "SPARK_THRIFTSERVER"], "type": "consist"},
-            {"service": ["ZOOKEEPER_SERVER"], "type": "consist"},
-        ]
-
-        for component, count in service_counter.items():
-            rule = component_rules.get(component, None)
-            if not rule:
-                continue
-
-            if count < rule["min_instances"]:
-                messages.append("{} 的实例数 {} 小于最小实例数 {}".format(component, count, rule['min_instances']))
-
-            if rule["max_instances"] is not None and count > rule["max_instances"]:
-                messages.append("{} 的实例数 {} 大于最大实例数 {}".format(component, count, rule['max_instances']))
-
-            if rule.get("odd_only") and count % 2 == 0:
-                messages.append("{} 的实例数 {} 不是奇数".format(component, count))
-
-        for relation in component_relations:
-            services = set(relation["service"])
-            type = relation["type"]
-            if type == "consist":
-                installed = has_common_elements(services, all_services)
-                contained = services.issubset(all_services)
-                if installed:
-                    if not contained:
-                        res = services.intersection(all_services)
-                        installed_components = ",".join(res)
-                        correct_relations = ",".join(services)
-                        messages.append(
-                            "配置安装的组件 {} 不完整, 该服务的组件必须全部配置安装，完整列表如: {}".format(
-                                installed_components, correct_relations))
-
-        if len(messages) > 0:
-            return False, messages
-
-        return True, messages
-
-
-def has_common_elements(array1, array2):
-    return any(elem in array2 for elem in array1)
-
+        self.generate_ansible_variables_file(self.conf)
 
 def main():
     b = BlueprintUtils()

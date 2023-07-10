@@ -26,7 +26,7 @@ nexus_options:
 cluster_name: 'mytestcluster'
 
 #(可默认)ntp时钟同步主机，ntp_server为空则默认为主机第一台，不为空则为指定的ip
-ntpserver: ''                                             # if this is empty, ntp server will install and prepare on the ambari-server node
+external_ntp_server_hostname: ''                                             # if this is empty, ntp server will install and prepare on the ambari-server node
 
 data_dirs: ["/data1", "/data/sdv1"]
 
@@ -127,7 +127,7 @@ base_log_dir: '/var/log'
 base_tmp_dir: '/tmp'
 
 
-hdfs_ha_name: "{{ cluster_name | replace('_','-') }}"
+hdfs_ha_name: "sdp3"
 
 #blueprint
 blueprint_name: 'udhThree_blueprint'         # the name of the blueprint as it will be stored in Ambari

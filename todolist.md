@@ -1,20 +1,15 @@
 * todo 多次执行幂等
 * path 等通用变量优化
 * 完善增加各种异常检测，增强建壮性
-* 增加完善配置检测(检测每个组的机器不可以有重复）
 * mpack install for all services
 * 检查所有 ansible template 防止没有成功覆盖老文件
 * 测试远程 nexus, 数据库是否可用
 * 重写项目中的检测逻辑, 包括set variable 中的
-* psmisc 检测并安装
-*  conf 两组group 数量和名字检测一致性
-* 支持用户自定义蓝图并且动态生成cluster_template
-* hdfs ha 必须存在 journal node, SECONDARY_NAMENODE 不能共存， 只能满足两种模式，hdfs ha 两 nn, 奇数个JN，两个ZKFC，其他HA 模式组件都进行检查
+* 支持用户自定义蓝图并且动态生成 cluster_template
 *  暂时不支持hdfs数据目录以外的目录配置多个目录
 * check_dynamic_blueprint.yml 逻辑迁移
 * check_dynamic_blueprint.yml 逻辑添加
 * hadoop http kerberos auth 参考dynamic模版配置 
-* 增加 IP 正则表达，防止填写错误
 * 防火墙杀不死,导致服务无法通信
 * 测试本机nexus 安装
 #数据目录（dfs.data.dir）：这是存储 HDFS 数据块的目录。通过将多个数据目录配置在不同的物理磁盘上，可以实现数据的分布和并行读写，从而提高性能和容量。
