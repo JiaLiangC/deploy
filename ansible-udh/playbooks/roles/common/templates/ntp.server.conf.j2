@@ -1,4 +1,4 @@
-server {{ntpserver}} iburst prefer
+server {{ntp_server_hostname}} iburst prefer
 tinker panic 0
 driftfile /var/lib/ntp/drift
 restrict 10.0.0.0 mask 255.0.0.0 nomodify notrap
@@ -9,7 +9,7 @@ restrict -6 ::1
 server  127.127.1.0   
 fudge  127.127.1.0  stratum 10
 interface ignore  wildcard
-interface listen  {{ntpserver}}
+interface listen  {{ntp_server_hostname}}
 interface listen  127.0.0.1
 includefile /etc/ntp/crypto/pw
 keys /etc/ntp/keys

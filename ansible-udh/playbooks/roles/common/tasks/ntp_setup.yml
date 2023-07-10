@@ -12,7 +12,7 @@
   template:
     src: ntp.server.conf.j2
     dest: /etc/ntp.conf
-  when: ntpserver | default('') != '' and inventory_hostname in groups['ambari-server']
+  when: ntp_server_hostname | default('') != '' and inventory_hostname in groups['ambari-server']
 
 - name: start ntp
   systemd:
@@ -30,9 +30,9 @@
 
 #强制进行同步
 - name: crontab ntp
-  shell: '/usr/sbin/ntpdate -u {{ntpserver}} && /sbin/hwclock -w'
+  shell: '/usr/sbin/ntpdate -u {{ntp_server_hostname}} && /sbin/hwclock -w'
   ignore_errors: True
 
 #设置定时任务强制进行同步
 - name: crontab ntp
-  shell: 'echo "30 0 * * * /usr/sbin/ntpdate -u {{ntpserver}} && /sbin/hwclock -w" >> /var/spool/cron/root'
+  shell: 'echo "30 0 * * * /usr/sbin/ntpdate -u {{ntp_server_hostname}} && /sbin/hwclock -w" >> /var/spool/cron/root'
