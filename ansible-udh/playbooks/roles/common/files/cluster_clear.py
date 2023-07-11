@@ -8,6 +8,7 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+
 class ClusterClear:
     stack_name = "bigtop"
 
@@ -28,7 +29,8 @@ class ClusterClear:
             "components": [
                 "ambari", self.stack_name, "elasticsearch", "falcon", "flink", "grafana", "hadoop", "hbase", "hive",
                 "impala", "janusgraph", "kafka", "knox", "livy", "nightingale", "oozie", "phoenix", "pig", "ranger",
-                "redis", "spark", "storm", "tez", "victoriametrics", "webhcat", "zookeeper", "solr"
+                "redis", "spark", "storm", "tez", "victoriametrics", "webhcat", "zookeeper", "solr", "hdfs", "yarn",
+                "ambari-infra-solr"
             ],
             "bins": [
                 "impala", "accumulo", "atlas-start", "atlas-stop", "beeline", "falcon", "flume-ng", "hadoop", "hbase",
@@ -72,7 +74,8 @@ class ClusterClear:
                 "/etc/security/keytabs"
             ],
             "packages": [
-                "ambari-agent", self.stack_name + "-*", "ambari-infra", "ambari-server", "ambari-metrics", "nightingale",
+                "ambari-agent", self.stack_name + "-*", "ambari-infra", "ambari-server", "ambari-metrics",
+                "nightingale",
                 "grafana_agent", "victoriametrics", self.stack_name + "-select", "redis", "postgresql", "krb5-devel",
                 "krb5-workstation", "libkadm5", "krb5-server", "postgresql*-server"
             ]
@@ -155,6 +158,7 @@ class ClusterClear:
         self.batch_delete(bins, "/usr/bin")
 
         for data_dir in self.data_dirs:
+            print("删除数据目录 {}".format(data_dir))
             if os.path.exists(data_dir):
                 self.batch_delete(components, data_dir)
 
