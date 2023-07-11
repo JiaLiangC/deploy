@@ -195,4 +195,5 @@ heap_dump_location: /tmp
 
 stack_major_version: 3
 
+ansible_tmp_dir: /tmp/ansible
 

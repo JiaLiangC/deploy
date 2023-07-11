@@ -12,11 +12,21 @@
       paths:
         - ../common/vars
 
+- name: Remove existing ansible_tmp_dir  {{ ansible_tmp_dir }}
+  file:
+    path: "{{ ansible_tmp_dir }}"
+    state: absent
+
+- name: Create  {{ ansible_tmp_dir }} directory
+  file:
+    path: "{{ ansible_tmp_dir }}"
+    state: directory
+
 
 - name: distribute cluster_clear script
   copy:
     src: cluster_clear.py
-    dest: /tmp/cluster_clear.py
+    dest: "{{ ansible_tmp_dir }}"
 
 # 给所有主机linux 进行必要配置，关闭防火墙，透明大页，SElinux ,设置swap,nproc,vm，创建用户等
 - include: node_setup.yml
@@ -36,7 +46,7 @@
   become: yes
   become_user: root
   become_method: sudo
-  shell: 'python2 /tmp/cluster_clear.py bigtop | tee -a /tmp/cluster_clear.log'
+  shell: 'python2 /tmp/cluster_clear.py bigtop {{ data_dirs | join(",") }} | tee -a /tmp/cluster_clear.log'
   failed_when: false
 
 #设置ntp
