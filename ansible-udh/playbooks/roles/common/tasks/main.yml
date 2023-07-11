@@ -41,12 +41,13 @@
     state: present
   with_items: "{{ packages | join(',') }}"
 
+
 #cluster_clear 依赖 psmisc , 需要先安装
 - name: clear all bigdata related files in cluster
   become: yes
   become_user: root
   become_method: sudo
-  shell: 'python2 /tmp/cluster_clear.py bigtop {{ data_dirs | join(",") }} | tee -a /tmp/cluster_clear.log'
+  shell: 'python2 {{ansible_tmp_dir}}/cluster_clear.py bigtop {{ data_dirs | join(",") }} | tee -a /tmp/cluster_clear.log'
   failed_when: false
 
 #设置ntp

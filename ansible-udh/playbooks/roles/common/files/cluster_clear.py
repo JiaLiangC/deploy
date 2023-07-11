@@ -91,6 +91,7 @@ class ClusterClear:
                 # 检查是否包含基准名称
                 if target_file_keyword in item:
                     # 删除包含基准名称的文件和目录
+                    print("删除目录或文件 {}".format(item_path))
                     self.safe_delete(item_path)
 
     # 杀死所有大数据相关进程
@@ -107,9 +108,11 @@ class ClusterClear:
         for path in files_arr:
             dirname = os.path.dirname(path)
             basename = os.path.basename(path)
+            print("Removing special path {}".format(path))
             self.patterns_delete(dirname, basename)
 
     def batch_delete(self, files_arr, target_dir):
+        print("batch_delete: Removing  target_dir {}".format(target_dir))
         for file_path in files_arr:
             self.patterns_delete(target_dir, file_path)
 
@@ -143,9 +146,10 @@ class ClusterClear:
         self.uninstall_packages(components)
 
         # 调用函数删除不规则的路径
-        print("卸载一些自定义的特殊的安装包")
+        print("卸载一些自定义的特殊的安装包{}".format(special_paths))
         self.remove_special_path(special_paths)
 
+        print("batch_delete 批量删除组件目录{}".format(components))
         self.batch_delete(components, "/opt")
         self.batch_delete(components, "/var/lib")
         self.batch_delete(components, "/usr/lib")
@@ -154,9 +158,11 @@ class ClusterClear:
         self.batch_delete(components, "/var/run")
         self.batch_delete(components, "/hadoop/")
         self.batch_delete(components, "/etc/security/limits.d/")
-        print("循环删除bin下的相关组件的文件")
+
+        print("batch_delete 循环删除bin下的相关组件的文件")
         self.batch_delete(bins, "/usr/bin")
 
+        print("删除数据目录 {}".format(self.data_dirs[0]))
         for data_dir in self.data_dirs:
             print("删除数据目录 {}".format(data_dir))
             if os.path.exists(data_dir):
@@ -196,12 +202,15 @@ class ClusterClear:
 
     def safe_delete(self, path):
         if not self.is_path_important(path):
-            print("Deleting:", path)
+
             if os.path.isfile(path):
+                print("Deleting file:", path)
                 os.remove(path)
             elif os.path.isdir(path):
+                print("Deleting dir:", path)
                 shutil.rmtree(path)
             elif os.path.islink(path):
+                print("Deleting link :", path)
                 os.remove(path)
         else:
             print("Cannot delete: {} because this path is protected.".format(path))
