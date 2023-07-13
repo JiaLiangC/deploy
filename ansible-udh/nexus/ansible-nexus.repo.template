@@ -1,5 +1,0 @@
-[ansible-nexus]
-name=Nexus Repository for Ansible
-baseurl=YUM_SERVER/repository/yum/OS_RELEASE_NAME/$releasever
-enabled=1
-gpgcheck=0

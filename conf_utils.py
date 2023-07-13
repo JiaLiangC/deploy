@@ -62,6 +62,10 @@ def services_map():
             "server": ["AMBARI_SERVER"],
             "clients": []
         },
+        "ambari_metrics": {
+            "server": ["METRICS_COLLECTOR", "METRICS_GRAFANA"],
+            "clients": ["METRICS_MONITOR"]
+        },
         "kerberos": {
             "server": ["KERBEROS_CLIENT"],
             "clients": ["KERBEROS_CLIENT"]

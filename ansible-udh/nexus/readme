@@ -1,9 +1,0 @@
-本脚本用于部署nexus，以及修改nexus中的仓库文件。
-
-1.请将nexus放置于nexus服务器的任意目录，但要求此目录空间不小于30G。
-
-2.nexus安装需要最少30G的数据盘目录，如果
-
-3.数据盘目录默认为/data1，如果数据盘目录不为/data1，则需要修改start-nexus.sh脚本中的默认目录
-
-4.执行start-nexus.sh脚本。例：sh start-nexus.sh
