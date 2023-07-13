@@ -25,7 +25,7 @@
   yum_repository:
     name: "centos_base"
     description: "Centos7 Base repository"
-    baseurl: "{{repo_base_url}}/repository/centos/$releasever"
+    baseurl: "{{centos_repo_url}}"
     file: 'centos_base'
     state: present
     gpgcheck: no

@@ -196,4 +196,5 @@ heap_dump_location: /tmp
 stack_major_version: 3
 
 ansible_tmp_dir: /tmp/ansible
+centos_repo_url: "{{repo_base_url}}/repository/centos/7/os/x86_64"
 

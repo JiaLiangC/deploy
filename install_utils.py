@@ -193,14 +193,14 @@ WantedBy=multi-user.target
 
 
 # 设置本地仓库，作为ansible 安装其他依赖时的仓库
-def setup_local_repo(server_url):
+def setup_local_repo(centos_repo_url):
     repo = '''\
 [ansible-nexus]
 name=Nexus Repository for Ansible
-baseurl={}/repository/yum/{}/$releasever
+baseurl={}
 enabled=1
 gpgcheck=0
-    '''.format(server_url, OS_RELEASE_NAME)
+    '''.format(centos_repo_url, OS_RELEASE_NAME)
     # 复制文件
     with open("/etc/yum.repos.d/ansible-nexus.repo", 'w') as file:
         file.write(repo)
@@ -275,7 +275,7 @@ def main():
     conf, hosts_info = cu.run()
 
     generate_ansible_hosts(conf, hosts_info, ambari_server_host)
-    setup_local_repo(nexus_base_url)
+    setup_local_repo(conf["centos_repo_url"])
 
     b = BlueprintUtils()
     b.build()
