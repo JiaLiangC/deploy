@@ -22,11 +22,15 @@
             "hadoop.proxyuser.*": "*",
             "fs.defaultFS" : "hdfs://{{ hdfs_ha_name }}",
             "ha.zookeeper.quorum" : "{% for zk in zookeeper_groups %}%HOSTGROUP::{{ zk }}%:2181{% if not loop.last %},{% endif %}{% endfor %}",
+            {% if security|lower != "none"  %}
+             "hadoop.security.authentication" : "kerberos",
+            {% else %}
+             "hadoop.security.authentication" : "simple",
+            {% endif %}
             "hadoop.http.authentication.simple.anonymous.allowed" : "true",
             "hadoop.http.authentication.type" : "simple",
             "fs.trash.interval" : "360",
-            "hadoop.security.authorization": "true",
-            "hadoop.security.authentication" : "kerberos"
+            "hadoop.security.authorization": "true"
         }
 
 }

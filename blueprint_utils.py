@@ -113,6 +113,7 @@ class BlueprintUtils:
             return {}
         template = Template(template_str)
         # 渲染模板
+        print("rendering {} config templates  ".format(os.path.basename(file_path)))
         result = template.render(context)
         if decoder == "json":
             return json.loads(result)
@@ -120,14 +121,17 @@ class BlueprintUtils:
             return yaml.load(result)
 
     def generate_ambari_blueprint(self, ambari_blueprint_configurations, ambari_blueprint_host_groups):
+        security = self.conf["security"]
+        if security.strip().lower() != "none":
+            blueprint_security = "KERBEROS"
+        else:
+            blueprint_security = "NONE"
 
         blueprint = {
             "configurations": ambari_blueprint_configurations,
             "host_groups": ambari_blueprint_host_groups,
             "Blueprints": {
-                "security": {
-                    "type": "KERBEROS"
-                },
+                "security": {"type": blueprint_security},
                 "stack_name": "BIGTOP",
                 "stack_version": "3.2.0"
             }

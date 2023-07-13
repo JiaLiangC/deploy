@@ -17,19 +17,19 @@
 
 - name: Set facts
   set_fact:
-    krb5_needs_downgrading: "{{ highest_version.stdout != target_version }}"
-    krb5_needs_upgrading: "{{ highest_version.stdout == target_version  and installed_version.stdout != target_version }}"
+    needs_downgrading: "{{ highest_version.stdout != target_version }}"
+    needs_upgrading: "{{ highest_version.stdout == target_version  and installed_version.stdout != target_version }}"
 
-- name: Upgrade krb5-libs
+- name: Upgrade {{package_name}}
   become: yes
   become_user: root
   become_method: sudo
   shell: "yum update {{package_name}} -y"
-  when: krb5_needs_upgrading
+  when: needs_upgrading
 
-- name: Downgrade krb5-libs
+- name: Downgrade {{package_name}}
   become: yes
   become_user: root
   become_method: sudo
   shell: "yum downgrade {{package_name}} -y"
-  when: krb5_needs_downgrading
+  when: needs_downgrading

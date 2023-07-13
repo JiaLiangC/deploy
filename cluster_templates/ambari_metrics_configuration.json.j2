@@ -10,7 +10,7 @@
       },
       "ams-hbase-site" : {
           "hbase.cluster.distributed": "true",
-          "hbase.rootdir" : "hdfs://{% if namenode_groups|length > 1 %}{{ hdfs_ha_name }}{% else %}{{ namenode_hosts |sort|list|first }}:8020{% endif %}/{{ ams_base_dir }}/ambari-metrics-collector/hbase",
+          "hbase.rootdir" : "hdfs://{% if namenode_groups|length > 1 %}{{ hdfs_ha_name }}{% else %}{{ namenode_hosts |sort|list|first }}:8020{% endif %}/ambari-metrics-collector/hbase",
           "hbase.tmp.dir" : "{{ ams_base_dir }}/ambari-metrics-collector/hbase-tmp"
       },
       "ams-hbase-env" : {
