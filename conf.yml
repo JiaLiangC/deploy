@@ -18,10 +18,7 @@ cluster_name: 'mytestcluster'
 #如果机器上没有配置好 centos  ambari 等相关的 repo, 可以在这里配置对应 centos 仓库的地址，脚本会自动添加到所有机器上 不配置就默认使用机器自带的repo
 #ambari_repo 必须存在
 repos:
-  - {name: "centos_base_repo", url: ""}
-  - {name: "centos_update_repo", url: ""}
-  - {name: "ambari_repo", url: "repobase/repository/yum/sdp_3.1"}
-  - {name: "tools_repo", url: ""}
+  - {name: "ambari_repo", url: "http://server0:8081/repository/yum/sdp_3.1"}
 
 #额外的需要在所有机器安装的包
 packages_need_install: []
@@ -171,4 +168,12 @@ ansible_tmp_dir: /tmp/ansible
 ansible_options:
   ansible_ssh_port: 22
 
+
+#generate_conf
+#generate_blueprint
+#
 #plugin 集群安装之前执行一些自定义的操作
+
+plugins:
+  - nexus_install_plugin: {enabled: false} #开启的话默认在脚本机器安装nexus
+

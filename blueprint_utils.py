@@ -1,23 +1,23 @@
 # -*- coding: UTF-8 -*-
 import json
-import re
+import copy
 import os
 import yaml
 import sys
 from jinja2 import Template
 from conf_utils import services_map
 from conf_utils import InvalidConfigurationException
+from conf_utils import ConfUtils
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+CONF_DIR = os.path.dirname(os.path.abspath(__file__))
+ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-scripts')
+BLUEPRINT_FILES_DIR = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/roles/ambari-blueprint/files/')
+CLUSTER_TEMPLATES_DIR = os.path.join(CONF_DIR, "cluster_templates")
 
 class BlueprintUtils:
-    CONF_DIR = os.path.dirname(os.path.abspath(__file__))
-    ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-scripts')
-    BLUEPRINT_FILES_DIR = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/roles/ambari-blueprint/files/')
-    CLUSTER_TEMPLATES_DIR = os.path.join(CONF_DIR, "cluster_templates")
-
     def __init__(self, conf):
         self.host_group_services = {}
         self.conf = conf
@@ -48,7 +48,7 @@ class BlueprintUtils:
         for service_key, service_info in services_map().items():
             if service_name in service_info["server"]:
                 file_name = service_key + "_configuration.json.j2"
-                file_path = os.path.join(self.CLUSTER_TEMPLATES_DIR, file_name)
+                file_path = os.path.join(CLUSTER_TEMPLATES_DIR, file_name)
                 return file_path
 
     # 从template 中读取j2 模版，然后传入参数，组装各个组件的配置
@@ -152,10 +152,10 @@ class BlueprintUtils:
             "ambari_blueprint_host_groups": json.dumps(host_groups),
             "ambari_repo_url": ambari_repo_url,
         }
-        base_blueprint_template_path = os.path.join(self.CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2")
+        base_blueprint_template_path = os.path.join(CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2")
         blueprint_json = self.j2template_render(base_blueprint_template_path, j2_context)
 
-        file_name = os.path.join(self.BLUEPRINT_FILES_DIR, "blueprint.json")
+        file_name = os.path.join(BLUEPRINT_FILES_DIR, "blueprint.json")
         with open(file_name, 'w') as f:
             json.dump(blueprint_json, f, indent=4)
 
@@ -193,17 +193,57 @@ class BlueprintUtils:
                 "type": "KERBEROS"
             }
 
-        file_name = os.path.join(self.BLUEPRINT_FILES_DIR, "cluster_template.json")
+        file_name = os.path.join(BLUEPRINT_FILES_DIR, "cluster_template.json")
         with open(file_name, 'w') as f:
             json.dump(res, f, indent=4)
 
     def generate_ansible_variables_file(self, variables):
+        variables_cp = copy.deepcopy(variables)
         for key in ["host_groups", "group_services"]:
-            variables.pop(key, None)
+            variables_cp.pop(key, None)
 
-        variables_file_path = os.path.join(self.ANSIBLE_PRJ_DIR, 'playbooks/group_vars/all')
+        variables_file_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/group_vars/all')
         with open(variables_file_path, 'w') as f:
-            yaml.dump(variables, f)
+            yaml.dump(variables_cp, f)
+
+    def generate_ansible_hosts(self, conf, hosts_info, ambari_server_host):
+        print("动态生成ansible hosts 文件")
+
+        parsed_hosts, user = hosts_info
+        host_groups = conf["host_groups"]
+
+        hosts_dict = {}
+        for host_info in parsed_hosts:
+            ip = host_info[0]
+            hostname = host_info[1]
+            passwd = host_info[2]
+            hosts_dict[hostname] = (ip, passwd)
+
+        node_groups = {}
+        node_groups.setdefault("ambari-server", []).extend([ambari_server_host])
+        for group_name, hosts in host_groups.items():
+            node_groups.setdefault("hadoop-cluster", []).extend(hosts)
+
+        hosts_content = ""
+        for group, hosts in node_groups.items():
+            hosts_content += "[{}]\n".format(group)
+            for host_name in hosts:
+                info = hosts_dict.get(host_name)
+                if not info:
+                    raise InvalidConfigurationException
+                ip = info[0]
+                passwd = info[1]
+                # arm-1 ansible_host=10.202.62.78 ansible_ssh_pass=
+                hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name, ip, passwd)
+            hosts_content += "\n"
+
+        ansible_user = user
+
+        hosts_content += "[all:vars]\n"
+        hosts_content += "ansible_user={}\n".format(ansible_user)
+        hosts_path = os.path.join(ANSIBLE_PRJ_DIR, "inventory", "hosts")
+        with open(hosts_path, "w") as f:
+            f.write(hosts_content)
 
     def build(self):
         blueprint_configurations = self.generate_blueprint_configurations(self.conf)
@@ -212,11 +252,3 @@ class BlueprintUtils:
         self.generate_ambari_cluster_template()
         self.generate_ansible_variables_file(self.conf)
 
-
-def main():
-    b = BlueprintUtils()
-    b.build()
-
-
-if __name__ == '__main__':
-    main()

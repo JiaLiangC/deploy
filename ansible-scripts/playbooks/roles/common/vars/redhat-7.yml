@@ -18,8 +18,7 @@ packages:
   - expect
   - rpm-python
   - psmisc
-
-openjdk_package: java-1.8.0-openjdk-devel
+  - java-1.8.0-openjdk-devel
 
 ntp_service_name: chronyd
 

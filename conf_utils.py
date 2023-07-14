@@ -559,6 +559,14 @@ class ConfUtils:
                 self.conf = conf
 
     def instantiate_plugins(self):
+        plugins_info = {}
+        cf_plugins_list = self.raw_conf["plugins"]
+        if len(cf_plugins_list) > 0:
+            for plugin_item in cf_plugins_list:
+                plugin_name = plugin_item.keys()[0]
+                enabled = plugin_item[plugin_name]["enabled"]
+                plugins_info[plugin_name]=enabled
+
         plugins = []
         class_name_pattern = re.compile(".*?DeployPlugin", re.IGNORECASE)
 
@@ -568,8 +576,12 @@ class ConfUtils:
         for py_file in pfs:
             if py_file is not None and os.path.exists(py_file) is not None:
                 try:
+                    plugin_file_name = os.path.basename(py_file)
+                    if not plugins_info.get(plugin_file_name, None):
+                        continue
+
                     with open(py_file, 'rb') as fp:
-                        deploy_plugin = imp.load_module('service_advisor_impl', fp, py_file,
+                        deploy_plugin = imp.load_module('deploy_plugin_impl', fp, py_file,
                                                         ('.py', 'rb', imp.PY_SOURCE))
 
                         # Find the class name by reading from all of the available attributes of the python file.
@@ -622,7 +634,7 @@ def get_python_files(directory):
 
 def main():
     b = ConfUtils()
-    conf = b.run()
+    conf = b.get_conf()
     print(conf)
 
 
