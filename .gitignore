@@ -3,5 +3,5 @@ pkgs
 *.pyc
 ansible-scripts/playbooks/roles/ambari-blueprint/files/*
 ansible-scripts/playbooks/group_vars/all
-ansible-scripts/inventory/
+ansible-scripts/inventory/*
 test/*.pyc
