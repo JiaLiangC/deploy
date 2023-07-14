@@ -4,9 +4,9 @@ import re
 import os
 import yaml
 import sys
-from jinja2 import Template, Undefined
-from conf_utils import ConfUtils
+from jinja2 import Template
 from conf_utils import services_map
+from conf_utils import InvalidConfigurationException
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -14,13 +14,13 @@ sys.setdefaultencoding('utf-8')
 
 class BlueprintUtils:
     CONF_DIR = os.path.dirname(os.path.abspath(__file__))
-    ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-udh')
+    ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-scripts')
     BLUEPRINT_FILES_DIR = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/roles/ambari-blueprint/files/')
     CLUSTER_TEMPLATES_DIR = os.path.join(CONF_DIR, "cluster_templates")
 
-    def __init__(self):
+    def __init__(self, conf):
         self.host_group_services = {}
-        self.conf = None
+        self.conf = conf
 
     def get_service_key_from_service(self, service_name):
         for service_key, service_info in services_map().items():
@@ -120,13 +120,30 @@ class BlueprintUtils:
         else:
             return yaml.load(result)
 
+    def get_ambari_repo(self):
+        ambari_repo = None
+        repos = self.conf["repos"]
+        if len(repos) > 0:
+            for repo_item in repos:
+
+                if "ambari_repo" == repo_item["name"]:
+                    ambari_repo = repo_item["url"]
+                    break
+        else:
+            raise InvalidConfigurationException("ambari_repo not configured")
+        if not ambari_repo:
+            ambari_repo = repos[0]["url"]
+
+        return ambari_repo
+
     def generate_ambari_blueprint(self, ambari_blueprint_configurations, ambari_blueprint_host_groups):
         security = self.conf["security"]
         if security.strip().lower() != "none":
             blueprint_security = "KERBEROS"
         else:
             blueprint_security = "NONE"
-        ambari_repo_url = self.conf["ambari_options"]["ambari_repo_url"]
+        ambari_repo_url = self.get_ambari_repo()
+
         configurations = ambari_blueprint_configurations
         host_groups = ambari_blueprint_host_groups
         j2_context = {
@@ -136,7 +153,7 @@ class BlueprintUtils:
             "ambari_repo_url": ambari_repo_url,
         }
         base_blueprint_template_path = os.path.join(self.CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2")
-        blueprint_json = self.j2template_render(base_blueprint_template_path,j2_context)
+        blueprint_json = self.j2template_render(base_blueprint_template_path, j2_context)
 
         file_name = os.path.join(self.BLUEPRINT_FILES_DIR, "blueprint.json")
         with open(file_name, 'w') as f:
@@ -158,6 +175,7 @@ class BlueprintUtils:
 
         res = {
             "blueprint": conf["blueprint_name"],
+            "config_recommendation_strategy": conf["ambari_options"]["config_recommendation_strategy"],
             "default_password": conf["default_password"],
             "host_groups": ambari_cluster_template_host_groups,
         }
@@ -181,7 +199,6 @@ class BlueprintUtils:
 
     def generate_ansible_variables_file(self, variables):
         for key in ["host_groups", "group_services"]:
-            # 删除无用的属性
             variables.pop(key, None)
 
         variables_file_path = os.path.join(self.ANSIBLE_PRJ_DIR, 'playbooks/group_vars/all')
@@ -189,14 +206,12 @@ class BlueprintUtils:
             yaml.dump(variables, f)
 
     def build(self):
-        cu = ConfUtils()
-        conf, hosts_info = cu.run()
-        self.conf = conf
         blueprint_configurations = self.generate_blueprint_configurations(self.conf)
         blueprint_service_host_groups = self.generate_blueprint_host_groups()
         self.generate_ambari_blueprint(blueprint_configurations, blueprint_service_host_groups)
         self.generate_ambari_cluster_template()
         self.generate_ansible_variables_file(self.conf)
+
 
 def main():
     b = BlueprintUtils()

@@ -3,6 +3,7 @@ import json
 import re
 import os
 import sys
+import imp
 import yaml
 from jinja2 import Template, Undefined
 
@@ -76,10 +77,12 @@ def services_map():
 
 class ConfUtils:
     CONF_DIR = os.path.dirname(os.path.abspath(__file__))
+    PLUGINS_DIR = os.path.join(CONF_DIR, 'plugins')
 
     def __init__(self):
         self.conf_path = ConfUtils.CONF_DIR
         self.conf = None
+        self.hosts_info = None
         self.raw_conf = self.load_conf()
         self.err_messages = []
 
@@ -190,7 +193,7 @@ class ConfUtils:
                     for service_rules_item in service_rules:
                         if service_name in service_rules_item.keys():
                             messages = self.check_pattern(service_rules_item, service_counter)
-                            if len(messages) <= 0: #one pattern 忙
+                            if len(messages) <= 0:  # one pattern 忙
                                 pattern_res.append(True)
                             else:
                                 tmp_err.extend(messages)
@@ -251,7 +254,7 @@ class ConfUtils:
 
     def check_pattern(self, service_rules, service_counter):
         messages = []
-        tmp_desc=None
+        tmp_desc = None
         for rule_service_name, rule in service_rules.items():
 
             service_count = service_counter.get(rule_service_name, 0)
@@ -464,7 +467,6 @@ class ConfUtils:
 
         # 根据用户配置动态生成一些变量
         extra_vars = {
-            "repo_base_url": self.generate_nexus_base_url(),
             "ntp_server_hostname": self.generate_ntp_server_hostname(),
             "hadoop_base_dir": self.raw_conf["data_dirs"][0], "kdc_hostname": self.get_kdc_server_host(),
             "database_hostname": self.generate_database_host()
@@ -486,18 +488,6 @@ class ConfUtils:
         else:
             database_host = self.raw_conf["database_options"]["external_hostname"]
         return database_host
-
-    # 根据配置生成后续安装需要依赖的nexus 地址
-    def generate_nexus_base_url(self):
-        ambari_host = self.get_ambari_server_host()
-        external_nexus_server_ip = self.raw_conf["nexus_options"]["external_nexus_server_ip"]
-        nexus_port = self.raw_conf["nexus_options"]["port"]
-        if len(external_nexus_server_ip.strip()) == 0:
-            nexus_host = ambari_host
-        else:
-            nexus_host = self.raw_conf["nexus_options"]["external_nexus_server_ip"]
-        nexus_url = "http://{}:{}".format(nexus_host, nexus_port)
-        return nexus_url
 
     # 根据配置，生成集群时间同步需要用到的ntp server 的地址
     def generate_ntp_server_hostname(self):
@@ -531,7 +521,7 @@ class ConfUtils:
             return ambari_server_host
 
     # 执行配置验证，配置解析，动态的变量的渲染和生成，返回conf 给后续使用
-    def run(self):
+    def parse_conf(self):
         hosts_info = self.parse_hosts_config()
         host_groups, host_group_services = self.parse_component_topology_conf()
         self.check_component_topology(host_groups, host_group_services)
@@ -542,7 +532,67 @@ class ConfUtils:
             raise InvalidConfigurationException("Configuration is invalid")
 
         conf = self.generate_dynamic_j2template_variables(host_groups, host_group_services)
-        return conf, hosts_info
+        self.conf = conf
+        self.hosts_info = hosts_info
+
+    def get_conf(self):
+        if not self.conf:
+            self.parse_conf()
+
+        self.execute_plugins()
+
+        return self.conf
+
+    def get_hosts_info(self):
+        if not self.hosts_info:
+            self.parse_conf()
+        return self.hosts_info
+
+    def execute_plugins(self):
+        # update_conf()
+        plugins = self.instantiate_plugins()
+        if len(plugins) == 0:
+            return
+        for plugin in plugins:
+            if hasattr(plugin, "update_conf"):
+                conf = plugin.update_conf(self.conf)
+                self.conf = conf
+
+    def instantiate_plugins(self):
+        plugins = []
+        class_name_pattern = re.compile(".*?DeployPlugin", re.IGNORECASE)
+
+        pfs = get_python_files(self.PLUGINS_DIR)
+        if len(pfs) == 0:
+            return []
+        for py_file in pfs:
+            if py_file is not None and os.path.exists(py_file) is not None:
+                try:
+                    with open(py_file, 'rb') as fp:
+                        deploy_plugin = imp.load_module('service_advisor_impl', fp, py_file,
+                                                        ('.py', 'rb', imp.PY_SOURCE))
+
+                        # Find the class name by reading from all of the available attributes of the python file.
+                        attributes = dir(deploy_plugin)
+                        best_class_name = None
+                        for potential_class_name in attributes:
+                            if not potential_class_name.startswith("__"):
+                                m = class_name_pattern.match(potential_class_name)
+                                if m:
+                                    best_class_name = potential_class_name
+                                    break
+
+                        if hasattr(deploy_plugin, best_class_name):
+                            print("ServiceAdvisor implementation for service {0} was loaded".format(service_name))
+                            plugins.append(getattr(deploy_plugin, best_class_name)())
+                        else:
+                            print("Failed to load or create ServiceAdvisor implementation for service {0}: " \
+                                  "Expecting class name {1} but it was not found.".format(service_name,
+                                                                                          best_class_name))
+                except Exception as e:
+                    print("Failed to load or create ServiceAdvisor implementation for service {0}".format(service_name))
+
+        return plugins
 
 
 # todo conf 的host 必须存在于 hosts info 内
@@ -559,6 +609,15 @@ def is_valid_ip(ip):
         return True
     else:
         return False
+
+
+def get_python_files(directory):
+    python_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith(".py"):
+                python_files.append(os.path.join(root, file))
+    return python_files
 
 
 def main():

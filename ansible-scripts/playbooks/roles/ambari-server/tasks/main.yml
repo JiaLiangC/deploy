@@ -19,13 +19,6 @@
     state: latest
   notify: Reload systemd
 
-- name: set repo url for ambari
-  replace:
-    path: /var/lib/ambari-server/resources/stacks/BIGTOP/3.2.0/repos/repoinfo.xml
-    regexp: "<baseurl>.*</baseurl>"
-    replace: "<baseurl>{{repo_base_url}}/repository/yum/{{ambari_options.ambari_repo_name}}</baseurl>"
-    backup: no
-  when: ansible_facts['distribution'] == "CentOS"
 
 # run user must be set before ambari server setup
 - name: Check ambari-server run user
@@ -64,17 +57,13 @@
     path: /usr/share/java/
     state: directory
 
-- name: get jdbc jar
-  become_user: root
-  become_method: sudo
-  get_url:
-    url: '{{ item }}'
-    dest: /usr/share/java/
-    owner: "{{ambari_options.ambari_run_user}}"
-    group: "{{ambari_options.ambari_run_user}}"
+- name:  get jdbc jar
+  copy:
+    src: cluster_clear.py
+    dest: "{{ postgres_jdbc_location | dirname }}"
   with_items:
-    - '{{ ambari_options.ambari_mysql_conn_jar }}'
-    - '{{ ambari_options.ambari_postgres_conn_jar }}'
+    - "{{ postgres_jdbc_location | basename }} }}"
+    - "{{ mysql_jdbc_location | basename }} }}"
 
 - meta: flush_handlers
 

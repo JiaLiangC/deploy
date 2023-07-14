@@ -13,29 +13,30 @@ group_services:
 ###########################
 ## cluster configuration ##
 ###########################
-ansible_options:
-  ansible_ssh_port: 22
-
-nexus_options:
-  external_nexus_server_ip: 10.202.60.164                 # if this is empty, nexus server will install and prepare on the ambari-server node
-  port: 8081
-  user: test
-  password: nexus_Test123
-  data_dir:                                               # if need install nexus ,set this data dirtory to store nexus data
-
 cluster_name: 'mytestcluster'
+
+#如果机器上没有配置好 centos  ambari 等相关的 repo, 可以在这里配置对应 centos 仓库的地址，脚本会自动添加到所有机器上 不配置就默认使用机器自带的repo
+#ambari_repo 必须存在
+repos:
+  - {name: "centos_base_repo", url: ""}
+  - {name: "centos_update_repo", url: ""}
+  - {name: "ambari_repo", url: "repobase/repository/yum/sdp_3.1"}
+  - {name: "tools_repo", url: ""}
+
+#额外的需要在所有机器安装的包
+packages_need_install: []
 
 #(可默认)ntp时钟同步主机，ntp_server为空则默认为主机第一台，不为空则为指定的ip
 external_ntp_server_hostname: ''                                             # if this is empty, ntp server will install and prepare on the ambari-server node
 
-data_dirs: ["/data1", "/data/sdv1"]
+data_dirs: ["/data/sdv1"]
 
 ###########################
 ## general configuration ##
 ###########################
 
 external_dns: yes                                         # set to yes to use the existing DNS (when no, it will update the /etc/hosts file - must be set to 'no' when using Azure)
-disable_firewall: no                                      # set to yes to disable the existing local firewall service (iptables, firewalld, ufw)
+disable_firewall: yes                                      # set to yes to disable the existing local firewall service (iptables, firewalld, ufw)
 timezone: UTC
 
 ############################
@@ -69,8 +70,8 @@ security: 'none'                                          # can be set to 'none'
 security_options:
   external_hostname: ''                                   # if this is empty, Ansible will install and prepare the MIT KDC on the Ambari node
   external_hostip: ''                                      # used to config /etc/hosts dns look up
-  realm: 'EXAMPLE.COM'
-  admin_principal: 'admin/admin'                                # the Kerberos principal that has the permissions to create new users (don't append the realm)
+  realm: 'MY-REALM.COM'
+  admin_principal: 'admin/admin'                          # the Kerberos principal that has the permissions to create new users (don't append the realm)
   admin_password: "{{ default_password }}"
   kdc_master_key: "{{ default_password }}"                # only used when security is set to 'mit-kdc'
   ldap_url: 'ldaps://ad.example.com:636'                  # only used when security is set to 'active-directory'
@@ -94,8 +95,6 @@ ranger_security_options:                                  # only used if RANGER_
 ##################################
 ## other security configuration ##                        # only useful if blueprint is dynamic
 ##################################
-
-                       # the password for the Ambari admin user
 default_password: 'AsdQwe123456'                          # a default password for all required passwords which are not specified in the blueprint,
                                                           # dependency: NiFi password needs to be at least 12 characters
 
@@ -106,13 +105,10 @@ default_password: 'AsdQwe123456'                          # a default password f
 ambari_options:
   ambari_run_user: 'ambari'
   ambari_shell_password: 'ambari'
-  ambari_repo_url: '{{repo_base_url}}/repository/yum/sdp_3.1'                              #repo that provides all ambari bigdata related packages
   ambari_admin_user: 'admin'
   ambari_admin_password: 'admin'
   ambari_admin_default_password: 'admin'                  # no need to change this (unless the Ambari default changes)
-  config_recommendation_strategy: 'NEVER_APPLY'           # choose between 'NEVER_APPLY', 'ONLY_STACK_DEFAULTS_APPLY', 'ALWAYS_APPLY', 'ALWAYS_APPLY_DONT_OVERRIDE_CUSTOM_VALUES'
-  ambari_mysql_conn_jar: '{{repo_base_url}}/repository/tools/bigdata/mysql-connector-java.jar'
-  ambari_postgres_conn_jar: '{{repo_base_url}}/repository/tools/bigdata/postgresql-42.2.2.jar'
+  config_recommendation_strategy: 'ALWAYS_APPLY'           # choose between 'NEVER_APPLY', 'ONLY_STACK_DEFAULTS_APPLY', 'ALWAYS_APPLY', 'ALWAYS_APPLY_DONT_OVERRIDE_CUSTOM_VALUES'
 
 wait: true                                                # wait for the cluster to finish installing
 wait_timeout: 3600                                        # 60 minutes
@@ -126,28 +122,8 @@ accept_gpl: yes                                           # set to yes to allow 
 base_log_dir: '/var/log'
 base_tmp_dir: '/tmp'
 
-
-hdfs_ha_name: "sdp3"
-
 #blueprint
-blueprint_name: 'udhThree_blueprint'         # the name of the blueprint as it will be stored in Ambari
-#blueprint_file: ''                                              # default is empty, if filled, user specified blueprint_file will used to install cluster
-#cluster_template_file: 'cluster_template.json'                    # the cluster creation template file
-
-##!!!
-#### repo_base_url: this variable is dynamically generated by blueprint_utils.py accroding nexus_options.external_nexus_server_ip , no need to set
-
-jdk_uri: '{{repo_base_url}}/repository/tools/bigdata/jdk.zip'
-
-
-arthas_url: '{{repo_base_url}}/repository/tools/bigdata/arthas.tar.gz'
-perf_tools_url: '{{repo_base_url}}/repository/tools/linux/perf-tools.tar.gz'
-
-#todo nexus 安装后自动设置密码，设置blob 数据存储目录
-#http://mirrors.aliyun.com/centos/7/os/x86_64/Packages
-openjdk_path: '/usr/local/jdk'    #不可更改
-target_krb5_version: 1.15.1-50.el7
-
+blueprint_name: 'my_blueprint'         # the name of the blueprint as it will be stored in Ambari
 
 #bigdata component configuration
 
@@ -155,7 +131,6 @@ target_krb5_version: 1.15.1-50.el7
 ## dynamic blueprint variables ##
 #################################
 registry_dns_bind_port: "53"
-
 
 ########################
 ## path configuration ##
@@ -165,9 +140,6 @@ base_log_dir: "/var/log"
 base_tmp_dir: "/tmp"
 
 # Services base dirs
-
-#hadoop_base_dir: "{{ data_dirs | first  }}/hadoop" !!!  this variable is dynamically generated by blueprint_utils.py
-
 kafka_log_base_dir: "/kafka-logs"
 ams_base_dir: "/var/lib"
 ranger_audit_hdfs_filespool_base_dir: "{{ base_log_dir }}"
@@ -196,5 +168,7 @@ heap_dump_location: /tmp
 stack_major_version: 3
 
 ansible_tmp_dir: /tmp/ansible
-centos_repo_url: "{{repo_base_url}}/repository/centos/7/os/x86_64"
+ansible_options:
+  ansible_ssh_port: 22
 
+#plugin 集群安装之前执行一些自定义的操作

@@ -5,7 +5,7 @@ postgres_packages:
   - postgresql
   - python-psycopg2
   - postgresql-jdbc
-postgres_jdbc_location: /usr/share/java/postgresql-jdbc.jar
+postgres_jdbc_location: /usr/share/java/postgresql-42.2.2.jar
 
 mysql_packages:
   - MySQL-python

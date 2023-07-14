@@ -1,35 +1,26 @@
-- name: create /etc/yum.repos.d/bak directory to backup original repos
-  file:
-    path: '{{ item }}'
-    state: directory
-  with_items:
-    - /etc/yum.repos.d/bak
 
-- name: backup original repos
-  shell: '{{ item }}'
-  with_items:
-    - "mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak"
-  ignore_errors: True
+#- name: create /etc/yum.repos.d/bak directory to backup original repos
+#  file:
+#    path: '{{ item }}'
+#    state: directory
+#  with_items:
+#    - /etc/yum.repos.d/bak
+
+#- name: backup original repos
+#  shell: '{{ item }}'
+#  with_items:
+#    - "mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak"
+#  ignore_errors: True
 
 - name: Add the Ambari repository (yum)
   yum_repository:
-    name: "ambari"
+    name: "{{item.name}}"
     description: "ambari repository"
-    baseurl: "{{ambari_options.ambari_repo_url}}"
-    file: 'ambari'
+    baseurl: "{{item.url}}"
+    file: "{{item.name}}"
     state: present
     gpgcheck: no
-  when: ansible_os_family|lower == "redhat"
-
-- name: Add the centos  repository (yum)
-  yum_repository:
-    name: "centos_base"
-    description: "Centos7 Base repository"
-    baseurl: "{{centos_repo_url}}"
-    file: 'centos_base'
-    state: present
-    gpgcheck: no
-  when: ansible_os_family|lower == "redhat"
+  with_items: "{{repos}}"
 
 - name: yum clean repo
   shell: 'yum clean all'

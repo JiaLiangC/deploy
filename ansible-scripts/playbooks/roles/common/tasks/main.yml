@@ -42,6 +42,16 @@
   with_items: "{{ packages | join(',') }}"
 
 
+- name: Install required packages
+  package:
+    name: "{{ item }}"
+    update_cache: yes
+    state: present
+  with_items: "{{ packages_need_install }}"
+  when: packages_need_install | length > 0
+
+
+
 #cluster_clear 依赖 psmisc , 需要先安装
 - name: clear all bigdata related files in cluster
   become: yes
