@@ -2,12 +2,15 @@
 import unittest
 import re
 import sys
-
-from  conf_utils import ConfUtils
+from conf_utils import ConfUtils
+from cluster_clear import ClusterClear
 
 sys.path.append('../')
+
+
 class InvalidConfigurationException(Exception):
     pass
+
 
 # Usage
 # configs = [
@@ -30,11 +33,11 @@ class TestConfigParser(unittest.TestCase):
         # 测试常规case
         configs_normal = {
             "host_groups": {
-                'group1': ['gs-server2'],
-                'group0': ['gs-server0'],
-                'group2': ['gs-server3']
+                'group1': ['server2'],
+                'group0': ['server0'],
+                'group2': ['server3']
             },
-            "group_services":{
+            "group_services": {
                 'group1': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC'],
                 'group0': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC'],
                 'group2': ['HBASE_REGIONSERVER']
@@ -42,7 +45,7 @@ class TestConfigParser(unittest.TestCase):
         }
 
         expected_output = {
-           "host_groups": {'group1': ['gs-server2'], 'group0': ['gs-server0'], 'group2': ['gs-server3']},
+            "host_groups": {'group1': ['server2'], 'group0': ['server0'], 'group2': ['server3']},
             "group_services": {'group1': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC'],
                                'group0': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC'],
                                'group2': ['HBASE_REGIONSERVER']}
@@ -51,32 +54,41 @@ class TestConfigParser(unittest.TestCase):
         self.assertItemsEqual(cu.parse_component_topology_conf(configs_normal)[0], expected_output["host_groups"])
         self.assertItemsEqual(cu.parse_component_topology_conf(configs_normal)[1], expected_output["group_services"])
 
-
         configs_regex = {
-            "host_groups":{
-                'group0': ['gs-server0'],
-                'group1': ['gs-server1'],
-                'group2': ['gs-server[2-4]']
+            "host_groups": {
+                'group0': ['server0'],
+                'group1': ['server1'],
+                'group2': ['server[2-4]']
             },
-            "group_services":{
-                'group0': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC', 'HBASE_MASTER', 'ZOOKEEPER_SERVER', 'DATANODE', 'NODEMANAGER', 'RESOURCEMANAGER', 'SPARK_JOBHISTORYSERVER', 'INFRA_SOLR', 'JOURNALNODE', 'KAFKA_BROKER'],
-                'group1': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC', 'HIVE_METASTORE', 'SPARK_THRIFTSERVER', 'FLINK_HISTORYSERVER', 'HISTORYSERVER', 'RANGER_TAGSYNC', 'RANGER_USERSYNC', 'ZOOKEEPER_SERVER', 'JOURNALNODE'],
-                'group2': ['HBASE_REGIONSERVER', 'DATANODE', 'NODEMANAGER', 'HIVE_SERVER', 'SOLR_SERVER', 'KAFKA_BROKER']
+            "group_services": {
+                'group0': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC', 'HBASE_MASTER', 'ZOOKEEPER_SERVER', 'DATANODE',
+                           'NODEMANAGER', 'RESOURCEMANAGER', 'SPARK_JOBHISTORYSERVER', 'INFRA_SOLR', 'JOURNALNODE',
+                           'KAFKA_BROKER'],
+                'group1': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC', 'HIVE_METASTORE', 'SPARK_THRIFTSERVER',
+                           'FLINK_HISTORYSERVER', 'HISTORYSERVER', 'RANGER_TAGSYNC', 'RANGER_USERSYNC',
+                           'ZOOKEEPER_SERVER', 'JOURNALNODE'],
+                'group2': ['HBASE_REGIONSERVER', 'DATANODE', 'NODEMANAGER', 'HIVE_SERVER', 'SOLR_SERVER',
+                           'KAFKA_BROKER']
             }
         }
 
         expected_output_regex = {
-            "host_groups": {'group0': ['gs-server0'], 'group1': ['gs-server1'], 'group2': ['gs-server2','gs-server3','gs-server4']},
-            "group_services": {'group0': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC', 'HBASE_MASTER', 'ZOOKEEPER_SERVER', 'DATANODE', 'NODEMANAGER', 'RESOURCEMANAGER', 'SPARK_JOBHISTORYSERVER', 'INFRA_SOLR', 'JOURNALNODE', 'KAFKA_BROKER'],
-                               'group1': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC', 'HIVE_METASTORE', 'SPARK_THRIFTSERVER', 'FLINK_HISTORYSERVER', 'HISTORYSERVER', 'RANGER_TAGSYNC', 'RANGER_USERSYNC', 'ZOOKEEPER_SERVER', 'JOURNALNODE'],
-                               'group2': ['HBASE_REGIONSERVER', 'DATANODE', 'NODEMANAGER', 'HIVE_SERVER', 'SOLR_SERVER','KAFKA_BROKER']}
+            "host_groups": {'group0': ['server0'], 'group1': ['server1'],
+                            'group2': ['server2', 'server3', 'server4']},
+            "group_services": {
+                'group0': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC', 'HBASE_MASTER', 'ZOOKEEPER_SERVER', 'DATANODE',
+                           'NODEMANAGER', 'RESOURCEMANAGER', 'SPARK_JOBHISTORYSERVER', 'INFRA_SOLR', 'JOURNALNODE',
+                           'KAFKA_BROKER'],
+                'group1': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC', 'HIVE_METASTORE', 'SPARK_THRIFTSERVER',
+                           'FLINK_HISTORYSERVER', 'HISTORYSERVER', 'RANGER_TAGSYNC', 'RANGER_USERSYNC',
+                           'ZOOKEEPER_SERVER', 'JOURNALNODE'],
+                'group2': ['HBASE_REGIONSERVER', 'DATANODE', 'NODEMANAGER', 'HIVE_SERVER', 'SOLR_SERVER',
+                           'KAFKA_BROKER']}
         }
 
         self.assertItemsEqual(cu.parse_component_topology_conf(configs_regex)[0], expected_output_regex["host_groups"])
-        self.assertItemsEqual(cu.parse_component_topology_conf(configs_regex)[1], expected_output_regex["group_services"])
-
-
-
+        self.assertItemsEqual(cu.parse_component_topology_conf(configs_regex)[1],
+                              expected_output_regex["group_services"])
 
         # 测试范围格式不正确的异常情况
         configs_1 = {
@@ -88,7 +100,7 @@ class TestConfigParser(unittest.TestCase):
             }
         }
         expected_output1 = {
-            "host_groups": {'group0': ['gs2-server','gs3-server','gs4-server']},
+            "host_groups": {'group0': ['gs2-server', 'gs3-server', 'gs4-server']},
             "group_services": {'group0': ['AMBARI_SERVER']}
         }
 
@@ -98,6 +110,12 @@ class TestConfigParser(unittest.TestCase):
         # with self.assertRaises(Exception):
         #     parse_config(["hostname[1;2] 10.1.1.1 password"])
         #         todo add more invalid confs
+
+    def test_safe_delete(self):
+        # 测试不合法路径
+        c = ClusterClear("bigtop","/data1,/data/sdv1")
+        self.assertFalse(c.is_path_important("/usr/bin/test"))
+
 
 
 if __name__ == '__main__':

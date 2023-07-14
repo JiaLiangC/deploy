@@ -1,0 +1,28 @@
+---
+postgres_version: 10.23
+postgres_major_version: 10
+postgres_packages:
+  - postgresql{{ postgres_major_version }}-server
+  - postgresql{{ postgres_major_version }}-libs
+  - postgresql{{ postgres_major_version }}-contrib
+  - postgresql{{ postgres_major_version }}
+postgres_service_name: "postgresql-{{ postgres_major_version }}"
+postgres_initdb_command: "/usr/pgsql-{{ postgres_major_version }}/bin/postgresql-{{ postgres_major_version }}-setup initdb"
+postgres_data_directory: "/var/lib/pgsql/{{ postgres_major_version }}/data"
+postgres_config_file: "{{ postgres_data_directory }}/postgresql.conf"
+postgres_hba_file: "{{ postgres_data_directory }}/pg_hba.conf"
+
+mysql_version: 5.6
+mysql_packages:
+  - mysql-community-server
+  - MySQL-python
+mysql_service_name: mysql
+mysql_config_file: /etc/my.cnf
+
+mariadb_version: 10.2
+mariadb_packages:
+  - MariaDB-server
+  - MySQL-python
+mariadb_service_name: mariadb
+mariadb_config_file: /etc/my.cnf.d/server.cnf
+

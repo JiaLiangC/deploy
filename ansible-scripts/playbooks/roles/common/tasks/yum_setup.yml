@@ -1,0 +1,66 @@
+- name: create /etc/yum.repos.d/bak directory to backup original repos
+  file:
+    path: '{{ item }}'
+    state: directory
+  with_items:
+    - /etc/yum.repos.d/bak
+
+- name: backup original repos
+  shell: '{{ item }}'
+  with_items:
+    - "mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak"
+  ignore_errors: True
+
+- name: Add the Ambari repository (yum)
+  yum_repository:
+    name: "ambari"
+    description: "ambari repository"
+    baseurl: "{{ambari_options.ambari_repo_url}}"
+    file: 'ambari'
+    state: present
+    gpgcheck: no
+  when: ansible_os_family|lower == "redhat"
+
+- name: Add the centos  repository (yum)
+  yum_repository:
+    name: "centos_base"
+    description: "Centos7 Base repository"
+    baseurl: "{{centos_repo_url}}"
+    file: 'centos_base'
+    state: present
+    gpgcheck: no
+  when: ansible_os_family|lower == "redhat"
+
+- name: yum clean repo
+  shell: 'yum clean all'
+
+
+#todo 安装arthas 和 perf tools
+
+- name: Remove a directory if it exist
+  file:
+    path: '{{ item }}'
+    state: absent
+  with_items:
+    - /usr/local/linux_diagnose
+
+- name: Create a directory if it does not exist
+  file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  with_items:
+    - /usr/local/linux_diagnose
+
+- name: unarchive linux_diagnose:arthas
+  unarchive:
+    src: "{{arthas_url}}"
+    dest: "/usr/local/linux_diagnose"
+    remote_src: yes
+
+- name: unarchive linux_diagnose:perf-tools
+  unarchive:
+    src: "{{perf_tools_url}}"
+    dest: "/usr/local/linux_diagnose"
+    remote_src: yes
+

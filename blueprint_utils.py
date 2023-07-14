@@ -126,20 +126,21 @@ class BlueprintUtils:
             blueprint_security = "KERBEROS"
         else:
             blueprint_security = "NONE"
-
-        blueprint = {
-            "configurations": ambari_blueprint_configurations,
-            "host_groups": ambari_blueprint_host_groups,
-            "Blueprints": {
-                "security": {"type": blueprint_security},
-                "stack_name": "BIGTOP",
-                "stack_version": "3.2.0"
-            }
+        ambari_repo_url = self.conf["ambari_options"]["ambari_repo_url"]
+        configurations = ambari_blueprint_configurations
+        host_groups = ambari_blueprint_host_groups
+        j2_context = {
+            "blueprint_security": blueprint_security,
+            "ambari_blueprint_configurations": json.dumps(configurations),
+            "ambari_blueprint_host_groups": json.dumps(host_groups),
+            "ambari_repo_url": ambari_repo_url,
         }
+        base_blueprint_template_path = os.path.join(self.CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2")
+        blueprint_json = self.j2template_render(base_blueprint_template_path,j2_context)
 
         file_name = os.path.join(self.BLUEPRINT_FILES_DIR, "blueprint.json")
         with open(file_name, 'w') as f:
-            json.dump(blueprint, f, indent=4)
+            json.dump(blueprint_json, f, indent=4)
 
     def generate_ambari_cluster_template(self):
         conf = self.conf
@@ -196,7 +197,6 @@ class BlueprintUtils:
         self.generate_ambari_blueprint(blueprint_configurations, blueprint_service_host_groups)
         self.generate_ambari_cluster_template()
         self.generate_ansible_variables_file(self.conf)
-
 
 def main():
     b = BlueprintUtils()

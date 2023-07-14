@@ -1,0 +1,97 @@
+---
+- name: Load variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}-{{ ansible_distribution_version }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+      paths:
+        - ../common/vars
+
+- name: Remove existing ansible_tmp_dir  {{ ansible_tmp_dir }}
+  file:
+    path: "{{ ansible_tmp_dir }}"
+    state: absent
+
+- name: Create  {{ ansible_tmp_dir }} directory
+  file:
+    path: "{{ ansible_tmp_dir }}"
+    state: directory
+
+
+- name: distribute cluster_clear script
+  copy:
+    src: cluster_clear.py
+    dest: "{{ ansible_tmp_dir }}"
+
+# 给所有主机linux 进行必要配置，关闭防火墙，透明大页，SElinux ,设置swap,nproc,vm，创建用户等
+- include: node_setup.yml
+
+# 给所有主机配置yum源，准备基础软件环境,安装基础的依赖
+- include: yum_setup.yml
+
+- name: Install required packages
+  package:
+    name: "{{ item }}"
+    update_cache: yes
+    state: present
+  with_items: "{{ packages | join(',') }}"
+
+
+#cluster_clear 依赖 psmisc , 需要先安装
+- name: clear all bigdata related files in cluster
+  become: yes
+  become_user: root
+  become_method: sudo
+  shell: 'python2 {{ansible_tmp_dir}}/cluster_clear.py bigtop {{ data_dirs | join(",") }} | tee -a /tmp/cluster_clear.log'
+  failed_when: false
+
+#设置ntp
+- include: ntp_setup.yml
+
+#设置系统中 python2 全局的默认编码为utf-8
+- name: modify encoding
+  copy:
+    src: site_customize.py
+    dest: /usr/lib/python2.7/site-packages/
+    owner: root
+    group: root
+    mode: 0755
+
+# 准备需要的java环境
+# 确保系统中未安装jdk
+- name: rpm -e jdk
+  shell: rpm -qa|grep -i jdk|xargs rpm -e --nodeps
+  ignore_errors: True
+
+# 确保系统中未java
+- name: rpm -e java
+  shell: rpm -qa|grep -i java|xargs rpm -e --nodeps
+  ignore_errors: True
+
+# 从yum源获取jdk二进制包，直接解压到目标目录
+- name: unarchive jdk to /usr/local
+  unarchive:
+    src: '{{ jdk_uri }}'
+    dest: '/usr/local'
+    remote_src: yes
+
+# 设置JAVA_HOME和PATH
+- name: set env /etc/profile
+  lineinfile:
+    path: /etc/profile
+    line: '{{ item }}'
+    regexp: '^export {{ item.split("=")[0] }}='
+    state: present
+  with_items:
+    - "export JAVA_HOME={{openjdk_path}}"
+    - "export PATH=.:$JAVA_HOME/bin:$PATH"
+
+
+- name: Prepare the packages compatible
+  include_tasks: yum_version_control.yml
+  with_items: "{{ versioned_packages }}"

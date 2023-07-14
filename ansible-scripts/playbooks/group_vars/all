@@ -1,0 +1,137 @@
+accept_gpl: true
+ambari_options:
+  ambari_admin_default_password: admin
+  ambari_admin_password: admin
+  ambari_admin_user: admin
+  ambari_mysql_conn_jar: http://10.202.60.164:8081/repository/tools/bigdata/mysql-connector-java.jar
+  ambari_postgres_conn_jar: http://10.202.60.164:8081/repository/tools/bigdata/postgresql-42.2.2.jar
+  ambari_repo_url: http://10.202.60.164:8081/repository/yum/sdp_3.1
+  ambari_run_user: ambari
+  ambari_shell_password: ambari
+  config_recommendation_strategy: NEVER_APPLY
+ams_base_dir: /var/lib
+ansible_options:
+  ansible_ssh_port: 22
+ansible_tmp_dir: /tmp/ansible
+arthas_url: http://10.202.60.164:8081/repository/tools/bigdata/arthas.tar.gz
+base_log_dir: /var/log
+base_tmp_dir: /tmp
+blueprint_name: udhThree_blueprint
+centos_repo_url: http://10.202.60.164:8081/repository/centos/7/os/x86_64
+cluster_name: mytestcluster
+data_dirs:
+- /data1
+- /data/sdv1
+database: postgres
+database_hostname: gs-server0
+database_options:
+  ambari_db_name: ambari
+  ambari_db_password: bigdata
+  ambari_db_username: ambari
+  external_hostname: ''
+  hive_db_name: hive
+  hive_db_password: hive
+  hive_db_username: hive
+  rangeradmin_db_name: ranger
+  rangeradmin_db_password: ranger
+  rangeradmin_db_username: ranger
+  rangerkms_db_name: rangerkms
+  rangerkms_db_password: rangerkms
+  rangerkms_db_username: rangerkms
+  repo_url: ''
+default_password: AsdQwe123456
+disable_firewall: false
+external_dns: true
+external_ntp_server_hostname: ''
+hadoop_base_dir: /data1
+hdfs_dfs_datanode_data_dir: /data1/hadoop/hdfs/data,/data/sdv1/hadoop/hdfs/data
+hdfs_dfs_journalnode_edits_dir: /data1/hdfs/journalnode
+hdfs_dfs_namenode_checkpoint_dir: /data1/hdfs/namesecondary
+hdfs_dfs_namenode_name_dir: /data1/hdfs/namenode
+hdfs_ha_name: sdp3
+heap_dump_location: /tmp
+hive_downloaded_resources_dir: /tmp/hive/${hive.session.id}_resources
+hiveserver_hosts:
+- gs-server0
+- gs-server3
+infra_solr_datadir: /data1/ambari-infra-solr/data
+jdk_uri: http://10.202.60.164:8081/repository/tools/bigdata/jdk.zip
+journalnode_groups:
+- group1
+- group0
+- group2
+kafka_groups:
+- group1
+- group2
+kafka_hosts:
+- gs-server2
+- gs-server3
+kafka_log_base_dir: /kafka-logs
+kdc_hostname: gs-server0
+mysql_port: 3306
+namenode_groups:
+- group1
+- group0
+namenode_hosts:
+- gs-server0
+- gs-server2
+nexus_options:
+  data_dir: null
+  external_nexus_server_ip: 10.202.60.164
+  password: nexus_Test123
+  port: 8081
+  user: test
+ntp_server_hostname: gs-server0
+openjdk_path: /usr/local/jdk
+perf_tools_url: http://10.202.60.164:8081/repository/tools/linux/perf-tools.tar.gz
+postgres_port: 5432
+ranger_audit_hdfs_filespool_base_dir: /var/log
+ranger_audit_solr_filespool_base_dir: /var/log
+ranger_options:
+  enable_plugins: true
+ranger_security_options:
+  kms_master_key_password: AsdQwe123456
+  ranger_admin_password: AsdQwe123456
+  ranger_keyadmin_password: AsdQwe123456
+rangeradmin_groups:
+- group1
+rangeradmin_hosts:
+- gs-server2
+registry_dns_bind_port: '53'
+repo_base_url: http://10.202.60.164:8081
+resourcemanager_groups:
+- group1
+security: none
+security_options:
+  admin_password: AsdQwe123456
+  admin_principal: admin/admin
+  container_dn: OU=hadoop,DC=example,DC=com
+  external_hostip: ''
+  external_hostname: ''
+  http_authentication: true
+  kdc_master_key: AsdQwe123456
+  ldap_url: ldaps://ad.example.com:636
+  manage_krb5_conf: true
+  realm: EXAMPLE.COM
+solr_hosts:
+- gs-server3
+stack_major_version: 3
+target_krb5_version: 1.15.1-50.el7
+timezone: UTC
+wait: true
+wait_timeout: 3600
+yarn_nodemanager_local_dirs: /data1/yarn/local
+yarn_nodemanager_log_dirs: /data1/yarn/log
+yarn_timeline_leveldb_dir: /data1/yarn/timeline
+zkfc_groups:
+- group1
+- group0
+zookeeper_data_dir: /data1/zookeeper
+zookeeper_groups:
+- group1
+- group0
+- group2
+zookeeper_hosts:
+- gs-server0
+- gs-server2
+- gs-server3

@@ -12,7 +12,7 @@ class TestTopologyChecker(unittest.TestCase):
 
     # 测试正确的情况
     def test_check_component_topology_positive(self):
-        host_groups = {'group1': ['gs-server2'], 'group0': ['gs-server0'], 'group2': ['gs-server3']}
+        host_groups = {'group1': ['server2'], 'group0': ['server0'], 'group2': ['server3']}
         host_group_services = {
             'group1': ['RANGER_ADMIN', 'NAMENODE', 'ZKFC', 'HBASE_MASTER', 'ZOOKEEPER_SERVER', 'DATANODE',
                        'NODEMANAGER', 'RESOURCEMANAGER', 'SPARK_JOBHISTORYSERVER', 'INFRA_SOLR', 'JOURNALNODE',
@@ -32,7 +32,7 @@ class TestTopologyChecker(unittest.TestCase):
     # ranger 缺少组件
     # yarn 缺少组件
     def test_check_component_topology_negative(self):
-        host_groups = {'group1': ['gs-server2'], 'group0': ['gs-server0'], 'group2': ['gs-server3']}
+        host_groups = {'group1': ['server2'], 'group0': ['server0'], 'group2': ['server3']}
         host_group_services = {'group1': ['SECONDARY_NAMENODE', 'NAMENODE', 'ZKFC','HBASE_MASTER','ZOOKEEPER_SERVER'],
                                'group0': ['AMBARI_SERVER', 'NAMENODE', 'ZKFC', 'HIVE_METASTORE', 'SPARK_THRIFTSERVER',
                                           'FLINK_HISTORYSERVER', 'HISTORYSERVER', 'RANGER_TAGSYNC', 'RANGER_USERSYNC',
@@ -46,7 +46,7 @@ class TestTopologyChecker(unittest.TestCase):
 
 
     def test_check_component_topology_negative1(self):
-        host_groups = {'group1': ['gs-server2']}
+        host_groups = {'group1': ['server2']}
         host_group_services = {'group1': ['AMBARI_SERVER']}
         result, message = self.conf_utils.check_component_topology(host_groups, host_group_services)
         self.assertTrue(result)

@@ -1,0 +1,4 @@
+---
+repo_os_family: "centos{{ ansible_distribution_major_version }}"
+baseurl_os_family: "redhat{{ ansible_distribution_major_version }}"
+

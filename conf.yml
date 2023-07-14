@@ -1,9 +1,9 @@
 ---
 
 host_groups:
-  group0: [gs-server0]
-  group1: [gs-server2]
-  group2: [gs-server3]
+  group0: [server0]
+  group1: [server1]
+  group2: [server2]
 
 group_services:
   group0: [AMBARI_SERVER, NAMENODE,METRICS_COLLECTOR, ZKFC, HIVE_METASTORE, SPARK_THRIFTSERVER,FLINK_HISTORYSERVER,HISTORYSERVER,RANGER_TAGSYNC, RANGER_USERSYNC,ZOOKEEPER_SERVER,JOURNALNODE]
@@ -65,7 +65,7 @@ database_options:
 ## kerberos security configuration ##                     # useful if blueprint is dynamic, but can also be used to deploy the MIT KDC
 #####################################
 
-security: 'mit-kdc'                                          # can be set to 'none', 'mit-kdc', 'ipa' or 'active-directory'
+security: 'none'                                          # can be set to 'none', 'mit-kdc', 'ipa' or 'active-directory'
 security_options:
   external_hostname: ''                                   # if this is empty, Ansible will install and prepare the MIT KDC on the Ambari node
   external_hostip: ''                                      # used to config /etc/hosts dns look up
@@ -106,11 +106,11 @@ default_password: 'AsdQwe123456'                          # a default password f
 ambari_options:
   ambari_run_user: 'ambari'
   ambari_shell_password: 'ambari'
-  ambari_repo_name: 'sdp_3.1'
+  ambari_repo_url: '{{repo_base_url}}/repository/yum/sdp_3.1'                              #repo that provides all ambari bigdata related packages
   ambari_admin_user: 'admin'
   ambari_admin_password: 'admin'
-  ambari_admin_default_password: 'admin'                    # no need to change this (unless the Ambari default changes)
-  config_recommendation_strategy: 'NEVER_APPLY'             # choose between 'NEVER_APPLY', 'ONLY_STACK_DEFAULTS_APPLY', 'ALWAYS_APPLY', 'ALWAYS_APPLY_DONT_OVERRIDE_CUSTOM_VALUES'
+  ambari_admin_default_password: 'admin'                  # no need to change this (unless the Ambari default changes)
+  config_recommendation_strategy: 'NEVER_APPLY'           # choose between 'NEVER_APPLY', 'ONLY_STACK_DEFAULTS_APPLY', 'ALWAYS_APPLY', 'ALWAYS_APPLY_DONT_OVERRIDE_CUSTOM_VALUES'
   ambari_mysql_conn_jar: '{{repo_base_url}}/repository/tools/bigdata/mysql-connector-java.jar'
   ambari_postgres_conn_jar: '{{repo_base_url}}/repository/tools/bigdata/postgresql-42.2.2.jar'
 
