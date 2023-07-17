@@ -46,7 +46,7 @@ class ClusterClear:
             ],
 
             "user_array": [
-                "ambari", "ambari-qa", "ams", "elasticsearch", "flink", "flume", "gsadmin", "hadoop", "hbase",
+                "yarn-ats" "ambari", "ambari-qa", "ams", "elasticsearch", "flink", "flume", "gsadmin", "hadoop", "hbase",
                 "hcat", "hdfs", "hive", "impala", "infra-solr", "janusgraph", "kafka", "livy", "mapred", "postgres",
                 "ranger", "redis", "slider", "spark", "solr", "tez", "user", "yarn", "zookeeper"
             ],

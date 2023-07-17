@@ -1,5 +1,5 @@
 .idea
-pkgs
+.vscode
 *.pyc
 ansible-scripts/playbooks/group_vars/all
 test/*.pyc

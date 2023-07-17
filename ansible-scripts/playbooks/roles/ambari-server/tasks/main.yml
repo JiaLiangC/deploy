@@ -59,11 +59,11 @@
 
 - name:  get jdbc jar
   copy:
-    src: cluster_clear.py
+    src: "{{ item }}"
     dest: "{{ postgres_jdbc_location | dirname }}"
   with_items:
-    - "{{ postgres_jdbc_location | basename }} }}"
-    - "{{ mysql_jdbc_location | basename }} }}"
+    - "{{ postgres_jdbc_location | basename }}"
+    - "{{ mysql_jdbc_location | basename }}"
 
 - meta: flush_handlers
 

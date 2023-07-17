@@ -6,9 +6,9 @@ host_groups:
   group2: [server2]
 
 group_services:
-  group0: [AMBARI_SERVER, NAMENODE,METRICS_COLLECTOR, ZKFC, HIVE_METASTORE, SPARK_THRIFTSERVER,FLINK_HISTORYSERVER,HISTORYSERVER,RANGER_TAGSYNC, RANGER_USERSYNC,ZOOKEEPER_SERVER,JOURNALNODE]
-  group1: [RANGER_ADMIN,NAMENODE, METRICS_GRAFANA,ZKFC, HBASE_MASTER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER, RESOURCEMANAGER, SPARK_JOBHISTORYSERVER, INFRA_SOLR, JOURNALNODE,KAFKA_BROKER]
-  group2: [HBASE_REGIONSERVER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER,HIVE_SERVER, JOURNALNODE,SOLR_SERVER,WEBHCAT_SERVER,KAFKA_BROKER]
+  group0: [AMBARI_SERVER, NAMENODE, ZKFC, HIVE_METASTORE, SPARK_THRIFTSERVER,FLINK_HISTORYSERVER,HISTORYSERVER,RANGER_TAGSYNC, RANGER_USERSYNC,ZOOKEEPER_SERVER,JOURNALNODE]
+  group1: [APP_TIMELINE_SERVER,TIMELINE_READER,YARN_REGISTRY_DNS, RANGER_ADMIN,NAMENODE, METRICS_GRAFANA,ZKFC, HBASE_MASTER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER, RESOURCEMANAGER, SPARK_JOBHISTORYSERVER, INFRA_SOLR, JOURNALNODE,KAFKA_BROKER]
+  group2: [METRICS_COLLECTOR, RESOURCEMANAGER, HBASE_REGIONSERVER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER,HIVE_SERVER, JOURNALNODE,SOLR_SERVER,WEBHCAT_SERVER,KAFKA_BROKER]
 
 ###########################
 ## cluster configuration ##
@@ -16,10 +16,10 @@ group_services:
 cluster_name: 'mytestcluster'
 
 #如果机器上没有配置好 centos  ambari 等相关的 repo, 可以在这里配置对应 centos 仓库的地址，脚本会自动添加到所有机器上 不配置就默认使用机器自带的repo
-#ambari_repo 必须存在
+# ambari_repo 必须存在
 repos:
-  - {name: "ambari_repo", url: "http://server0:8081/repository/yum/sdp_3.1"}
-
+  # - {name: "ambari_repo", url: "http://server0:8081/repository/yum/sdp_3.1"}
+backup_old_repo: no   #是否备份老的yum repo 到 /etc/yum.repos.d/bak，然后删除老的repo 只保留这里配置的repo
 #额外的需要在所有机器安装的包
 packages_need_install: []
 
@@ -137,7 +137,7 @@ base_log_dir: "/var/log"
 base_tmp_dir: "/tmp"
 
 # Services base dirs
-kafka_log_base_dir: "/kafka-logs"
+kafka_log_base_dir: "{% for dr in data_dirs %}{{ dr }}/kafka-logs{% if not loop.last %},{% endif %}{% endfor %}"
 ams_base_dir: "/var/lib"
 ranger_audit_hdfs_filespool_base_dir: "{{ base_log_dir }}"
 ranger_audit_solr_filespool_base_dir: "{{ base_log_dir }}"
@@ -175,5 +175,5 @@ ansible_options:
 #plugin 集群安装之前执行一些自定义的操作
 
 plugins:
-  - nexus_install_plugin: {enabled: false} #开启的话默认在脚本机器安装nexus
+  - nexus_install_plugin: {enabled: true} #开启的话默认在脚本机器安装nexus
 

@@ -11,7 +11,7 @@ PKG_BASE_DIR = os.path.join(SCRIPT_DIR, "files")
 
 jdk_install_path = "/usr/local"
 jdk_package_name = "jdk.zip"
-nexus_package_name = "nexus-3.49.0.tar.gz"
+nexus_package_name = "nexus.tar.gz"
 pigz_package_name = "pigz-2.3.4-1.el7.x86_64.rpm"
 
 
@@ -34,8 +34,8 @@ class InstallNexusDeployPlugin:
 
     def setup_nexus_service(self, data_dir):
         jdk_home = self.get_java_home()
-        nexus_basename = os.path.splitext(nexus_package_name)[0]
-        nexus_bin_dir = os.path.join(data_dir, "nexus", nexus_basename, "bin")
+
+        nexus_bin_dir = os.path.join(data_dir, "nexus", "nexus3", "bin")
 
         file_content = '''\
     [Unit]
@@ -62,7 +62,9 @@ class InstallNexusDeployPlugin:
         self.run_shell_cmd(["systemctl", "enable", "nexus3"])
 
     def nexus_install(self, data_dir, nexus_base_url):
+        print("start nexus install data dir {}".format(data_dir))
         command = "ps -ef | grep org.sonatype.nexus.karaf.NexusMain | grep -v grep | wc -l"
+        print(command)
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, _ = process.communicate()
         is_nexus_installed = int(output.decode().strip())
@@ -78,15 +80,17 @@ class InstallNexusDeployPlugin:
         if not os.path.isdir(data_dir):
             os.mkdir(data_dir)
 
+        print("install pigz")
         pigz_rpm = os.path.join(PKG_BASE_DIR, pigz_package_name)
+        print(pigz_rpm)
         # 2. 安装 pigz 工具以加快解压速度
         process = subprocess.Popen(["yum", "install", "-y", pigz_rpm], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = process.communicate()
 
         if process.returncode == 0:
-            print("Installation successful")
+            print("pigz Installation successful")
         else:
-            print("Installation failed. Error:", error)
+            print("pigz Installation failed. Error:", error)
 
         # 3. 显示信息消息
         print("即将开始安装nexus，该过程预计等待时间小于5分钟")
@@ -97,12 +101,13 @@ class InstallNexusDeployPlugin:
             print("{} 目录已经存在，请先删除".format(nexus_dir))
             exit(1)
 
-        nexus_pkg = os.path.join(PKG_BASE_DIR, "nexus", nexus_package_name)
+        nexus_pkg = os.path.join(PKG_BASE_DIR, nexus_package_name)
+        print(nexus_pkg)
         if os.path.exists(nexus_pkg):
             print("解压 {} 软件包到 {} 目录".format(nexus_pkg, data_dir))
-            self.run_shell_cmd(["tar", "-I", "pigz", "-xf", nexus_package_name, "-C", data_dir])
+            self.run_shell_cmd(["tar", "-I", "pigz", "-xf", nexus_pkg, "-C", data_dir])
         else:
-            print("请将 {} 放置到 nexus 目录下", "error".format(nexus_package_name))
+            print("请将 {} 放置到 {} 目录下".format(nexus_package_name,PKG_BASE_DIR))
             exit(1)
 
         self.jdk_install()
@@ -112,22 +117,36 @@ class InstallNexusDeployPlugin:
         self.run_shell_cmd(["systemctl", "start", "nexus3"])
 
         # 7. 设置环境变量
+        # 300s
         max_wait_time = 300
         max_end_time = time.time() + max_wait_time
         nexus_service_ok = False
 
         # 通过 /service/rest/v1/status/writable 接口判断 nexus 服务是否可用
         while time.time() <= max_end_time:
-            response = urllib2.urlopen("{}/service/rest/v1/status/writable".format(nexus_base_url))
-
-            nexus_service_response_code = str(response.getcode())
-            if nexus_service_response_code == "200":
-                print("nexus 服务已经可用")
-                nexus_service_ok = True
-                break
-            else:
-                print("nexus 正在启动中，服务还不可用，等待3秒后重试...")
-                time.sleep(3)
+            try:
+                response = urllib2.urlopen("{}/service/rest/v1/status/writable".format(nexus_base_url))
+                nexus_service_response_code = str(response.getcode())
+                if nexus_service_response_code == "200":
+                    print("nexus 服务已经可用")
+                    nexus_service_ok = True
+                    break
+                else:
+                    print("nexus 正在启动中，服务还不可用，等待3秒后重试...")
+            except urllib2.HTTPError, e:
+                print('HTTPError = ' + str(e.code))
+                continue
+            except urllib2.URLError, e:
+                # print('URLError = ' + str(e.reason))
+                continue
+            except httplib.HTTPException, e:
+                print('HTTPException')
+                continue
+            except Exception:
+                import traceback
+                print('generic exception: ' + traceback.format_exc())
+                continue
+            time.sleep(5)
 
         if nexus_service_ok == 0:
             print("nexus 安装启动完成")
@@ -164,8 +183,9 @@ class InstallNexusDeployPlugin:
 
     def update_conf(self, conf):
         nexus_host = self.get_ip_address()
-        self.run()
         nexus_url = "http://{}:{}".format(nexus_host, "8081")
+        self.run(conf,nexus_url)
+        
         ambari_repo_rl = "{}/repository/yum/sdp_3.1".format(nexus_url)
         centos_base_repo_url = "{}/repository/centos/7/os/x86_64".format(nexus_url)
         repos = [
@@ -173,8 +193,35 @@ class InstallNexusDeployPlugin:
             {"name": "ambari_repo", "url": ambari_repo_rl}
         ]
 
-        conf["repos"].extend(repos)
+        if len(conf["repos"])>0:
+            self.combine_repos(conf["repos"], ambari_repo_rl,centos_base_repo_url)
+        else:
+            conf["repos"].extend(repos)    
+        print("nexus_install_plugin update_conf {}".format(repos))
         return conf
 
-    def run(self):
-        self.nexus_install()
+    def run(self,conf,nexus_url):
+        data_dir= conf["data_dirs"][0]
+        print("data dir is {}".format(data_dir))
+        self.nexus_install(data_dir,nexus_url)
+        
+    def combine_repos(self, old_repos, ambari_repo,centos_base_repo):
+        # add or update
+        ambari_repo_updated = False
+        centos_base_repo_updated = False
+        for i in old_repos:
+            if i["name"] == "ambari_repo":
+                i["url"] == ambari_repo
+                ambari_repo_updated = True
+            if i["name"] == "centos_base_repo":
+                i["url"] == centos_base_repo
+                centos_base_repo_updated = True
+        if not ambari_repo_updated:
+            old_repos.append({"name": "ambari_repo", "url": ambari_repo_rl})
+        if not  centos_base_repo_updated:
+            old_repos.append({"name": "centos_base_repo", "url": centos_base_repo_url})
+        return old_repos
+        
+
+        
+

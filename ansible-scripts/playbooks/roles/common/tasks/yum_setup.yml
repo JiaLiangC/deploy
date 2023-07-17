@@ -1,16 +1,17 @@
 
-#- name: create /etc/yum.repos.d/bak directory to backup original repos
-#  file:
-#    path: '{{ item }}'
-#    state: directory
-#  with_items:
-#    - /etc/yum.repos.d/bak
-
-#- name: backup original repos
-#  shell: '{{ item }}'
-#  with_items:
-#    - "mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak"
-#  ignore_errors: True
+- name: create /etc/yum.repos.d/bak directory to backup original repos
+  file:
+    path: '{{ item }}'
+    state: directory
+  with_items:
+    - /etc/yum.repos.d/bak
+  when: backup_old_repo
+- name: backup original repos
+  shell: '{{ item }}'
+  with_items:
+    - "mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak"
+  ignore_errors: True
+  when: backup_old_repo
 
 - name: Add the  repository (yum)
   yum_repository:
@@ -19,6 +20,7 @@
     baseurl: "{{item.url}}"
     file: "{{item.name}}"
     state: present
+    priority: 2
     gpgcheck: no
   with_items: "{{repos}}"
 

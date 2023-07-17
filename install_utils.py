@@ -2,9 +2,8 @@
 # !/usr/bin/python2
 import os
 import subprocess
-import time
-import urllib2
 import sys
+import signal
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -19,6 +18,8 @@ CONF_DIR = SCRIPT_DIR
 ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-scripts')
 
 PKG_BASE_DIR = os.path.join(SCRIPT_DIR, "pkgs")
+
+
 # 安装jdk 作为nexus 的依赖
 
 def run_shell_cmd(cmd_list):
@@ -31,6 +32,7 @@ def run_shell_cmd(cmd_list):
         print("Execution successful")
     else:
         print("Execution failed. Error:", error)
+
 
 def ansible_install():
     rpm_dir = os.path.join(PKG_BASE_DIR, "ansible")
@@ -58,15 +60,34 @@ def ansible_install():
 
 
 def run_playbook():
-    command = "ansible-playbook 'ansible-scripts/playbooks/install_cluster.yml' --inventory='inventory/hosts'"
-    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output, _ = process.communicate()
-    # 获取命令输出的结果
-    succeed = int(output.decode().strip())
+    def signal_handler(signum, frame):
+        os.kill(process.pid, signal.SIGTERM)
+        raise KeyboardInterrupt("Program was interrupted")
+
+    playbook_path = os.path.join(SCRIPT_DIR, 'ansible-scripts/playbooks/install_cluster.yml')
+    inventory_path = os.path.join(SCRIPT_DIR, 'ansible-scripts/inventory/hosts')
+    command = "ansible-playbook '{}' --inventory='{}'".format(playbook_path, inventory_path)
+
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=SCRIPT_DIR,
+                               bufsize=1)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    while process.poll() is None:
+        output_line = process.stdout.readline()
+        if output_line:
+            print(output_line.decode().strip())
+
+    # Process any remaining output after the process completes
+    for output_line in process.stdout.readlines():
+        print(output_line.decode().strip())
+
+    # Wait for the process to finish and get the return code
+    return_code = process.returncode
+    succeed = return_code == 0
 
 
 def main():
-    #todo fot test ansible_install()  # include yaml package,so later code can use it
+    ansible_install()
 
     from conf_utils import ConfUtils
     from blueprint_utils import BlueprintUtils
@@ -81,9 +102,8 @@ def main():
     b.build()
     b.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
 
-    # run_playbook()
+    run_playbook()
 
 
 if __name__ == '__main__':
     main()
-

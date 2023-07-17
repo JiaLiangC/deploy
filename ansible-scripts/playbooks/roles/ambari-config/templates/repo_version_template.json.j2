@@ -1,0 +1,19 @@
+{  
+  "operating_systems": [
+    {  
+      "OperatingSystems":{  
+        "ambari_managed_repositories":true,
+        "os_type":"{{ baseurl_os_family }}"
+      }, 
+      "repositories": [
+        {  
+          "Repositories": {
+            "base_url": "{{ambari_repo}}",
+            "repo_id": "BIGTOP-3.2.0",
+            "repo_name": "BIGTOP"
+          } 
+        }
+      ]
+    }
+  ] 
+}

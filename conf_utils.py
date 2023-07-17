@@ -24,7 +24,8 @@ def services_map():
             "clients": ["HDFS_CLIENT", "MAPREDUCE2_CLIENT"]
         },
         "yarn": {
-            "server": ["NODEMANAGER", "RESOURCEMANAGER", "HISTORYSERVER"],
+            "server": ["NODEMANAGER", "RESOURCEMANAGER", "HISTORYSERVER", "APP_TIMELINE_SERVER", "YARN_REGISTRY_DNS",
+                       "TIMELINE_READER"],
             "clients": ["YARN_CLIENT"]
         },
         "hive": {
@@ -127,6 +128,9 @@ class ConfUtils:
             "yarn": {
                 "RESOURCEMANAGER": {"min_instances": 1, "max_instances": 2,
                                     "desc": "选择部署yarn 时，RESOURCEMANAGER数量最少为1，最大为2。当选择为2时，RESOURCEMANAGER 会开启高可用模式。NODEMANAGER数量大于等于1，HISTORYSERVER 只能部署1台。"},
+                "APP_TIMELINE_SERVER":  {"min_instances": 1, "max_instances": 1},
+                "YARN_REGISTRY_DNS":  {"min_instances": 1, "max_instances": 1},
+                "TIMELINE_READER":  {"min_instances": 1, "max_instances": 1},
                 "NODEMANAGER": {"min_instances": 1, "max_instances": None},
                 "HISTORYSERVER": {"min_instances": 1, "max_instances": 1},
             },
@@ -240,8 +244,9 @@ class ConfUtils:
 
         for group_name, services in host_group_services.items():
             host_group_services_group_names.append(group_name)
-            if len(list(set(services))) != len(services):
-                self.err_messages.append("每个被部署组件名只能在同一个组内列出一次")
+            duplicated_services = [sname for sname in services if services.count(sname)>=2]
+            if len(duplicated_services)>0:
+                self.err_messages.append("每个被部署组件名只能在同一个组内列出一次,请检查如下组的配置 组: {} , 组件名: {}".format(group_name, " ".join(list(set(duplicated_services)))))
 
             for service_name in services:
                 is_supported = self.is_service_supported(service_name)
@@ -407,8 +412,6 @@ class ConfUtils:
     def get_data_from_j2template(self, conf_str, context, decoder="json"):
         if len(conf_str) == 0:
             return {}
-        print(conf_str)
-        print(context)
         template = Template(conf_str)
         # 渲染模板
         result = template.render(context)
@@ -551,6 +554,7 @@ class ConfUtils:
     def execute_plugins(self):
         # update_conf()
         plugins = self.instantiate_plugins()
+        print(plugins)
         if len(plugins) == 0:
             return
         for plugin in plugins:
@@ -565,24 +569,28 @@ class ConfUtils:
             for plugin_item in cf_plugins_list:
                 plugin_name = plugin_item.keys()[0]
                 enabled = plugin_item[plugin_name]["enabled"]
-                plugins_info[plugin_name]=enabled
+                plugins_info[plugin_name] = enabled
+        
+        print(cf_plugins_list)
 
         plugins = []
         class_name_pattern = re.compile(".*?DeployPlugin", re.IGNORECASE)
 
         pfs = get_python_files(self.PLUGINS_DIR)
+        print(pfs)
         if len(pfs) == 0:
             return []
         for py_file in pfs:
             if py_file is not None and os.path.exists(py_file) is not None:
                 try:
                     plugin_file_name = os.path.basename(py_file)
-                    if not plugins_info.get(plugin_file_name, None):
+                    print(plugin_file_name)
+                    if not plugins_info.get(plugin_file_name.split(".")[0], None):
                         continue
 
                     with open(py_file, 'rb') as fp:
-                        deploy_plugin = imp.load_module('deploy_plugin_impl', fp, py_file,
-                                                        ('.py', 'rb', imp.PY_SOURCE))
+                        deploy_plugin = imp.load_source('deploy_plugin_impl', py_file, fp)
+
 
                         # Find the class name by reading from all of the available attributes of the python file.
                         attributes = dir(deploy_plugin)
@@ -595,19 +603,16 @@ class ConfUtils:
                                     break
 
                         if hasattr(deploy_plugin, best_class_name):
-                            print("ServiceAdvisor implementation for service {0} was loaded".format(service_name))
+                            print("plugin implementation  {0} was loaded".format(best_class_name))
                             plugins.append(getattr(deploy_plugin, best_class_name)())
                         else:
-                            print("Failed to load or create ServiceAdvisor implementation for service {0}: " \
-                                  "Expecting class name {1} but it was not found.".format(service_name,
-                                                                                          best_class_name))
+                            print("Failed to load or create plugin implementation  {0}: ".format(best_class_name))
                 except Exception as e:
-                    print("Failed to load or create ServiceAdvisor implementation for service {0}".format(service_name))
+                    print("Failed to load plugin implementation ")
 
         return plugins
 
 
-# todo conf 的host 必须存在于 hosts info 内
 def is_valid_ip(ip):
     # 使用正则表达式匹配 IP 地址的格式
     pattern = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
@@ -635,7 +640,6 @@ def get_python_files(directory):
 def main():
     b = ConfUtils()
     conf = b.get_conf()
-    print(conf)
 
 
 if __name__ == '__main__':

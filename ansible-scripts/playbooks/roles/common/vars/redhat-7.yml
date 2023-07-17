@@ -19,6 +19,7 @@ packages:
   - rpm-python
   - psmisc
   - java-1.8.0-openjdk-devel
+  - yum-plugin-priorities
 
 ntp_service_name: chronyd
 
@@ -26,6 +27,5 @@ firewall_service_name: firewalld
 
 versioned_packages:
   - {pkg_name: "openssl-libs openssl openssl-devel", version: "1.0.2k-19.el7"}
-  - {pkg_name: "krb5-libs", version: "1.15.1-50.el7"}
   - {pkg_name: "zlib zlib-devel", version: "1.2.7-18.el7"}
-  - {pkg_name: "python python-libs", version: "2.7.5-89.el7"}
+  - {pkg_name: "python python-libs python-devel", version: "2.7.5-89.el7"}

@@ -7,7 +7,6 @@ import sys
 from jinja2 import Template
 from conf_utils import services_map
 from conf_utils import InvalidConfigurationException
-from conf_utils import ConfUtils
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -125,7 +124,6 @@ class BlueprintUtils:
         repos = self.conf["repos"]
         if len(repos) > 0:
             for repo_item in repos:
-
                 if "ambari_repo" == repo_item["name"]:
                     ambari_repo = repo_item["url"]
                     break
@@ -233,7 +231,6 @@ class BlueprintUtils:
                     raise InvalidConfigurationException
                 ip = info[0]
                 passwd = info[1]
-                # arm-1 ansible_host=10.202.62.78 ansible_ssh_pass=
                 hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name, ip, passwd)
             hosts_content += "\n"
 
