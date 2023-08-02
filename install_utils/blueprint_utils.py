@@ -7,14 +7,11 @@ import sys
 from jinja2 import Template
 from conf_utils import services_map
 from conf_utils import InvalidConfigurationException
+from constants import * 
+from basic_logger import logger
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
-CONF_DIR = os.path.dirname(os.path.abspath(__file__))
-ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-scripts')
-BLUEPRINT_FILES_DIR = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/roles/ambari-blueprint/files/')
-CLUSTER_TEMPLATES_DIR = os.path.join(CONF_DIR, "cluster_templates")
 
 class BlueprintUtils:
     def __init__(self, conf):
@@ -70,7 +67,7 @@ class BlueprintUtils:
                     if isinstance(service_confs[k], dict):
                         configurations.append({k: service_confs[k]})
                     else:
-                        print("error conf template--------")
+                        logger.error("error conf template--------")
 
             processed_services.append(service_key)
 
@@ -112,7 +109,7 @@ class BlueprintUtils:
             return {}
         template = Template(template_str)
         # 渲染模板
-        print("rendering {} config templates  ".format(os.path.basename(file_path)))
+        logger.info("rendering {} config templates  ".format(os.path.basename(file_path)))
         result = template.render(context)
         if decoder == "json":
             return json.loads(result)
@@ -205,7 +202,7 @@ class BlueprintUtils:
             yaml.dump(variables_cp, f)
 
     def generate_ansible_hosts(self, conf, hosts_info, ambari_server_host):
-        print("动态生成ansible hosts 文件")
+        logger.info("动态生成ansible hosts 文件")
 
         parsed_hosts, user = hosts_info
         host_groups = conf["host_groups"]

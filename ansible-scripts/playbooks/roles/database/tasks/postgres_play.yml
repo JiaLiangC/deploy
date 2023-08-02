@@ -29,4 +29,3 @@
 
 - name: Configure access for the {{ db_username }} user ({{ database }})
   include_tasks: postgres_play_db_access.yml
-  with_items: "{{ db_client_hosts }}"

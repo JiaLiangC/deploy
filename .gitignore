@@ -3,3 +3,4 @@
 *.pyc
 ansible-scripts/playbooks/group_vars/all
 test/*.pyc
+plugins/files

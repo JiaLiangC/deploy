@@ -1,4 +1,24 @@
 ---
+- name: 使用wait_for模块测试SSH连通性
+  wait_for:
+    host: "{{ inventory_hostname }}"
+    port: 22
+    state: started
+    timeout: 10  # 可以根据需要调整超时时间
+  ignore_errors: yes  # 忽略连接失败的错误，方便在后续统计连接失败的主机
+  register: ssh_connectivity_result
+
+- name: 检查SSH连通性测试结果并抛出错误
+  block:
+    - name: 显示SSH连通性测试结果
+      debug:
+        msg: "主机 {{ inventory_hostname }} SSH 连通性测试结果: {{ '成功' if ssh_connectivity_result.elapsed|default(-1) >= 0 else '失败' }}"
+    - name: 抛出错误，如果有连接失败的机器
+      fail:
+        msg: "连接失败：主机 {{ inventory_hostname }} 无法建立SSH连接！"
+      when: ssh_connectivity_result.elapsed is undefined or ssh_connectivity_result.elapsed < 0
+
+
 - name: Load variables
   include_vars: "{{ item }}"
   with_first_found:

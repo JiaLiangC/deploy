@@ -5,8 +5,9 @@ import os
 import sys
 import imp
 import yaml
-from jinja2 import Template, Undefined
-
+from jinja2 import Template
+from basic_logger import logger
+from constants import *
 
 class InvalidConfigurationException(Exception):
     pass
@@ -77,11 +78,9 @@ def services_map():
 
 
 class ConfUtils:
-    CONF_DIR = os.path.dirname(os.path.abspath(__file__))
-    PLUGINS_DIR = os.path.join(CONF_DIR, 'plugins')
 
     def __init__(self):
-        self.conf_path = ConfUtils.CONF_DIR
+        self.conf_path = CONF_DIR
         self.conf = None
         self.hosts_info = None
         self.raw_conf = self.load_conf()
@@ -173,9 +172,19 @@ class ConfUtils:
             "solr": {
                 "SOLR_SERVER": {"min_instances": 1, "max_instances": None,
                                 "desc": "选择部署solr时,SOLR_SERVER 最少部署一台"},
+            },
+            "ambari_metrics": {
+                "METRICS_COLLECTOR": {"min_instances": 1, "max_instances": 1,
+                                          "desc": "选择部署ambari_metrics时,METRICS_COLLECTOR 必须且只能各部署一台"},
+                "METRICS_GRAFANA": {"min_instances": 1, "max_instances": 1,
+                                       "desc": "选择部署ambari_metrics时,METRICS_GRAFANA 必须且只能各部署一台"}
             }
         }
 
+
+        messages = self.check_pattern(pattern_rules["ambari"], service_counter)
+        self.err_messages.extend(messages)
+ 
         for service_name in services_need_install:
             for pattern_key, service_rules in pattern_rules.items():
                 if pattern_key in checked_services:
@@ -356,7 +365,7 @@ class ConfUtils:
 
     def parse_hosts_config(self):
         import yaml
-        file_path = os.path.join(self.CONF_DIR, 'hosts_info.yml')
+        file_path = os.path.join(CONF_DIR, 'hosts_info.yml')
         with open(file_path, 'r') as f:
             data = yaml.load(f)
         configurations = data["hosts"]
@@ -531,7 +540,7 @@ class ConfUtils:
         self.check_group_consistency(host_groups, host_group_services, hosts_info)
         self.check_hosts_info_conf(hosts_info)
         if len(self.err_messages) > 0:
-            print("\n".join(self.err_messages))
+            logger.error("\n".join(self.err_messages))
             raise InvalidConfigurationException("Configuration is invalid")
 
         conf = self.generate_dynamic_j2template_variables(host_groups, host_group_services)
@@ -554,7 +563,6 @@ class ConfUtils:
     def execute_plugins(self):
         # update_conf()
         plugins = self.instantiate_plugins()
-        print(plugins)
         if len(plugins) == 0:
             return
         for plugin in plugins:
@@ -570,21 +578,19 @@ class ConfUtils:
                 plugin_name = plugin_item.keys()[0]
                 enabled = plugin_item[plugin_name]["enabled"]
                 plugins_info[plugin_name] = enabled
-        
-        print(cf_plugins_list)
 
         plugins = []
         class_name_pattern = re.compile(".*?DeployPlugin", re.IGNORECASE)
 
-        pfs = get_python_files(self.PLUGINS_DIR)
-        print(pfs)
+        pfs = get_python_files(PLUGINS_DIR)
+        
         if len(pfs) == 0:
             return []
         for py_file in pfs:
             if py_file is not None and os.path.exists(py_file) is not None:
                 try:
                     plugin_file_name = os.path.basename(py_file)
-                    print(plugin_file_name)
+                    logger.debug("finding plugin file %s", plugin_file_name)
                     if not plugins_info.get(plugin_file_name.split(".")[0], None):
                         continue
 
@@ -603,12 +609,12 @@ class ConfUtils:
                                     break
 
                         if hasattr(deploy_plugin, best_class_name):
-                            print("plugin implementation  {0} was loaded".format(best_class_name))
+                            logger.info("plugin implementation  {0} was loaded".format(best_class_name))
                             plugins.append(getattr(deploy_plugin, best_class_name)())
                         else:
-                            print("Failed to load or create plugin implementation  {0}: ".format(best_class_name))
+                            logger.warn("Failed to load or create plugin implementation  {0}: ".format(best_class_name))
                 except Exception as e:
-                    print("Failed to load plugin implementation ")
+                    logger.error("Failed to load plugin implementation %s",e)
 
         return plugins
 

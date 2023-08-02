@@ -5,33 +5,22 @@ import subprocess
 import sys
 import signal
 
+from install_utils.basic_logger import logger
+from install_utils.constants import *
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
-
-class InvalidConfigurationException(Exception):
-    pass
-
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONF_DIR = SCRIPT_DIR
-ANSIBLE_PRJ_DIR = os.path.join(CONF_DIR, 'ansible-scripts')
-
-PKG_BASE_DIR = os.path.join(SCRIPT_DIR, "pkgs")
-
-
-# 安装jdk 作为nexus 的依赖
 
 def run_shell_cmd(cmd_list):
     process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
 
-    print("run_shell_cmd: {}".format(cmd_list))
+    logger.info("run_shell_cmd: {}".format(cmd_list))
 
     if process.returncode == 0:
-        print("Execution successful")
+        logger.info("Execution successful")
     else:
-        print("Execution failed. Error:", error)
+        logger.info("Execution failed. Error:", error)
 
 
 def ansible_install():
@@ -55,42 +44,42 @@ def ansible_install():
 
     # 执行安装命令
     if os.path.exists(rpm_dir):
-        print("安装 ansible {}".format(install_command))
+        logger.info("安装 ansible {}".format(install_command))
         run_shell_cmd(install_command)
 
 
 def run_playbook():
+    playbook_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/install_cluster.yml')
+    inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
+    command = "ansible-playbook '{}' --inventory='{}'".format(playbook_path, inventory_path)
+
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,shell=True,cwd=CONF_DIR)
+    
     def signal_handler(signum, frame):
         os.kill(process.pid, signal.SIGTERM)
         raise KeyboardInterrupt("Program was interrupted")
-
-    playbook_path = os.path.join(SCRIPT_DIR, 'ansible-scripts/playbooks/install_cluster.yml')
-    inventory_path = os.path.join(SCRIPT_DIR, 'ansible-scripts/inventory/hosts')
-    command = "ansible-playbook '{}' --inventory='{}'".format(playbook_path, inventory_path)
-
-    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=SCRIPT_DIR,
-                               bufsize=1)
+    
     signal.signal(signal.SIGINT, signal_handler)
 
     while process.poll() is None:
         output_line = process.stdout.readline()
         if output_line:
-            print(output_line.decode().strip())
+            logger.info(output_line.decode().strip())
 
     # Process any remaining output after the process completes
     for output_line in process.stdout.readlines():
-        print(output_line.decode().strip())
+        logger.info(output_line.decode().strip())
 
     # Wait for the process to finish and get the return code
     return_code = process.returncode
-    succeed = return_code == 0
-
+    logger.info("playbook return_code is %s",return_code)
+    
 
 def main():
     ansible_install()
 
-    from conf_utils import ConfUtils
-    from blueprint_utils import BlueprintUtils
+    from install_utils.conf_utils import ConfUtils
+    from install_utils.blueprint_utils import BlueprintUtils
 
     cf_util = ConfUtils()
     conf = cf_util.get_conf()

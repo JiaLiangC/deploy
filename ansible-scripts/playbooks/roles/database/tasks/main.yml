@@ -101,7 +101,7 @@
     db_name: "{{ database_options.ambari_db_name }}"
     db_username: "{{ database_options.ambari_db_username }}"
     db_password: "{{ database_options.ambari_db_password }}"
-    db_client_hosts: "{{ inventory_hostname }}"
+
 
 - name: Prepare the hive database
   include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
@@ -109,8 +109,6 @@
     db_name: "{{ database_options.hive_db_name }}"
     db_username: "{{ database_options.hive_db_username }}"
     db_password: "{{ database_options.hive_db_password }}"
-    db_client_hosts: "{{ hiveserver_hosts }}"
-  # when: hiveserver_hosts is defined and hiveserver_hosts|length > 0
 
 - name: Prepare the ranger database
   include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
@@ -118,8 +116,7 @@
     db_name: "{{ database_options.rangeradmin_db_name }}"
     db_username: "{{ database_options.rangeradmin_db_username }}"
     db_password: "{{ database_options.rangeradmin_db_password }}"
-    db_client_hosts: "{{ rangeradmin_hosts }}"
-  # when: rangeradmin_hosts is defined and rangeradmin_hosts|length > 0
+
 
 - name: Prepare the rangerkms database
   include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
@@ -127,7 +124,5 @@
     db_name: "{{ database_options.rangerkms_db_name }}"
     db_username: "{{ database_options.rangerkms_db_username }}"
     db_password: "{{ database_options.rangerkms_db_password }}"
-    db_client_hosts: "{{ rangerkms_hosts }}"
-  # when: rangerkms_hosts is defined and rangerkms_hosts|length > 0
 
 

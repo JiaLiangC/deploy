@@ -4,10 +4,10 @@ import os
 import subprocess
 import time
 import urllib2
+import httplib
 import socket
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PKG_BASE_DIR = os.path.join(SCRIPT_DIR, "files")
+from install_utils.basic_logger import logger
+from install_utils.constants import *
 
 jdk_install_path = "/usr/local"
 jdk_package_name = "jdk.zip"
@@ -16,16 +16,17 @@ pigz_package_name = "pigz-2.3.4-1.el7.x86_64.rpm"
 
 
 class InstallNexusDeployPlugin:
-    def run_shell_cmd(self, cmd_list):
-        process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    def run_shell_cmd(self, cmd_list,env=None,shell=False):
+        process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE,env=env,shell=shell)
         output, error = process.communicate()
 
-        print("run_shell_cmd: {}".format(cmd_list))
+        logger.info("run shell cmd: {}".format(cmd_list))
 
         if process.returncode == 0:
-            print("Execution successful")
+            logger.debug("Execution successful")
         else:
-            print("Execution failed. Error:", error)
+            logger.debug("Execution failed. Error:", error)
+        return output,error
 
     def get_java_home(self):
         file_name = os.path.splitext(jdk_package_name)[0]
@@ -33,6 +34,7 @@ class InstallNexusDeployPlugin:
         return java_home
 
     def setup_nexus_service(self, data_dir):
+        logger.info("setup linux service for nexus")
         jdk_home = self.get_java_home()
 
         nexus_bin_dir = os.path.join(data_dir, "nexus", "nexus3", "bin")
@@ -59,62 +61,58 @@ class InstallNexusDeployPlugin:
         with open(file_path, 'w') as file:
             file.write(file_content)
 
-        self.run_shell_cmd(["systemctl", "enable", "nexus3"])
+        self.run_shell_cmd(["systemctl", "enable", "nexus3"],shell=True)
 
     def nexus_install(self, data_dir, nexus_base_url):
-        print("start nexus install data dir {}".format(data_dir))
+        logger.info("start nexus install, data dir {}".format(data_dir))
         command = "ps -ef | grep org.sonatype.nexus.karaf.NexusMain | grep -v grep | wc -l"
-        print(command)
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, _ = process.communicate()
+        output, _ = self.run_shell_cmd(command,shell=True)
         is_nexus_installed = int(output.decode().strip())
 
         # 检查 Nexus 进程是否已安装
         if is_nexus_installed > 0:
-            print("Nexus 进程已安装")
+            logger.info("Nexus 进程已安装")
             return
         else:
-            print("Nexus 进程未安装")
+            logger.info("Nexus 进程未安装")
 
         # 1. 创建 data_dir 目录
         if not os.path.isdir(data_dir):
             os.mkdir(data_dir)
 
-        print("install pigz")
-        pigz_rpm = os.path.join(PKG_BASE_DIR, pigz_package_name)
-        print(pigz_rpm)
-        # 2. 安装 pigz 工具以加快解压速度
-        process = subprocess.Popen(["yum", "install", "-y", pigz_rpm], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = process.communicate()
+        logger.info("install pigz")
+        pigz_rpm = os.path.join(PLUGINS_FILES_DIR, pigz_package_name)
 
-        if process.returncode == 0:
-            print("pigz Installation successful")
-        else:
-            print("pigz Installation failed. Error:", error)
+        # 2. 安装 pigz 工具以加快解压速度
+
+        output, error = self.run_shell_cmd(["rpm", "-ivh", pigz_rpm])
+        logger.info(output)
+        logger.info(error)
+
 
         # 3. 显示信息消息
-        print("即将开始安装nexus，该过程预计等待时间小于5分钟")
+        logger.info("即将开始安装nexus，该过程预计等待时间小于5分钟")
 
         # 4. 解压 Nexus
         nexus_dir = os.path.join(data_dir, "nexus")
         if os.path.isdir(nexus_dir):
-            print("{} 目录已经存在，请先删除".format(nexus_dir))
+            logger.error("{} 目录已经存在，请先删除".format(nexus_dir))
             exit(1)
 
-        nexus_pkg = os.path.join(PKG_BASE_DIR, nexus_package_name)
-        print(nexus_pkg)
+        nexus_pkg = os.path.join(PLUGINS_FILES_DIR, nexus_package_name)
+
         if os.path.exists(nexus_pkg):
-            print("解压 {} 软件包到 {} 目录".format(nexus_pkg, data_dir))
+            logger.info("解压 {} 软件包到 {} 目录".format(nexus_pkg, data_dir))
             self.run_shell_cmd(["tar", "-I", "pigz", "-xf", nexus_pkg, "-C", data_dir])
         else:
-            print("请将 {} 放置到 {} 目录下".format(nexus_package_name,PKG_BASE_DIR))
+            logger.error("请将 {} 放置到 {} 目录下".format(nexus_package_name,PLUGINS_FILES_DIR))
             exit(1)
 
         self.jdk_install()
         self.setup_nexus_service(data_dir)
-
-        print("nexus 启动中...")
-        self.run_shell_cmd(["systemctl", "start", "nexus3"])
+        
+        logger.info("nexus 启动中...")
+        self.run_shell_cmd(["systemctl", "start", "nexus3"], env={'INSTALL4J_JAVA_HOME': '/usr/local/jdk'})
 
         # 7. 设置环境变量
         # 300s
@@ -123,42 +121,49 @@ class InstallNexusDeployPlugin:
         nexus_service_ok = False
 
         # 通过 /service/rest/v1/status/writable 接口判断 nexus 服务是否可用
+        nexus_test_url = "{}/service/rest/v1/status/writable".format(nexus_base_url)
+        logger.info(nexus_test_url)
         while time.time() <= max_end_time:
             try:
-                response = urllib2.urlopen("{}/service/rest/v1/status/writable".format(nexus_base_url))
+                response = urllib2.urlopen(nexus_test_url)
                 nexus_service_response_code = str(response.getcode())
+                logger.info(nexus_service_response_code)
                 if nexus_service_response_code == "200":
-                    print("nexus 服务已经可用")
+                    logger.info("nexus 服务已经可用")
                     nexus_service_ok = True
                     break
                 else:
-                    print("nexus 正在启动中，服务还不可用，等待3秒后重试...")
+                    logger.info("nexus 正在启动中，服务还不可用，等待3秒后重试...")
             except urllib2.HTTPError, e:
-                print('HTTPError = ' + str(e.code))
+                logger.error('HTTPError = ' + str(e.code))
                 continue
             except urllib2.URLError, e:
                 # print('URLError = ' + str(e.reason))
                 continue
             except httplib.HTTPException, e:
-                print('HTTPException')
+                logger.error('HTTPException')
                 continue
             except Exception:
                 import traceback
-                print('generic exception: ' + traceback.format_exc())
+                logger.error('generic exception: ' + traceback.format_exc())
                 continue
             time.sleep(5)
 
-        if nexus_service_ok == 0:
-            print("nexus 安装启动完成")
+        if nexus_service_ok:
+            logger.info("nexus 安装启动完成")
         else:
-            print("nexus 安装启动未完成，请先排除问题再重新安装")
+            logger.error("nexus 安装启动未完成，请先排除问题再重新安装")
 
     def jdk_install(self):
+        logger.info("install jdk for nexus")
         java_home = self.get_java_home()
-        jdk_pkg = os.path.join(PKG_BASE_DIR, "jdk", jdk_package_name)
+        jdk_pkg = os.path.join(PLUGINS_FILES_DIR, jdk_package_name)
         if os.path.exists(jdk_pkg):
-            print("解压 {}".format(jdk_package_name))
-            self.run_shell_cmd(["tar", "-I", "pigz", "-xf", jdk_package_name, "-C", "/usr/local/"])
+            logger.info("解压 {}".format(jdk_package_name))
+            self.run_shell_cmd(["unzip", jdk_pkg, "-d", "/usr/local/"])
+        else:
+            logger.error("请将 {} 放置到 {} 目录下".format(nexus_package_name, PLUGINS_FILES_DIR))
+            exit(1)
 
         # 设置 JAVA_HOME 和 PATH
         env_lines = [
@@ -197,12 +202,12 @@ class InstallNexusDeployPlugin:
             self.combine_repos(conf["repos"], ambari_repo_rl,centos_base_repo_url)
         else:
             conf["repos"].extend(repos)    
-        print("nexus_install_plugin update_conf {}".format(repos))
+        logger.debug("nexus_install_plugin update_conf {}".format(repos))
         return conf
 
     def run(self,conf,nexus_url):
         data_dir= conf["data_dirs"][0]
-        print("data dir is {}".format(data_dir))
+        logger.debug("data dir is {}".format(data_dir))
         self.nexus_install(data_dir,nexus_url)
         
     def combine_repos(self, old_repos, ambari_repo,centos_base_repo):
@@ -217,11 +222,8 @@ class InstallNexusDeployPlugin:
                 i["url"] == centos_base_repo
                 centos_base_repo_updated = True
         if not ambari_repo_updated:
-            old_repos.append({"name": "ambari_repo", "url": ambari_repo_rl})
+            old_repos.append({"name": "ambari_repo", "url": ambari_repo})
         if not  centos_base_repo_updated:
-            old_repos.append({"name": "centos_base_repo", "url": centos_base_repo_url})
+            old_repos.append({"name": "centos_base_repo", "url": centos_base_repo})
         return old_repos
         
-
-        
-
