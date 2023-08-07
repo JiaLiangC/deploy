@@ -22,9 +22,10 @@
     state: present
     priority: 2
     gpgcheck: no
-  with_items: "{{repos}}"
-
-- name: yum clean repo
-  shell: 'yum clean all'
+  loop: "{{repos}}"
+  when: item.name != "ambari_repo"
+  notify:
+    - yum-clean-metadata
+    - yum-makecache
 
 
