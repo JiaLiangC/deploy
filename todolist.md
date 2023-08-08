@@ -1,13 +1,11 @@
+* 集群清理脚本通过部署配置来联动
+* 遍历蓝图，清理conf中设置的自定义的数据目录比较靠谱(配置模版完善所有的数据目录配置)
+* conf key 检测(防止用户误删除或修改了配置的key)（repo 必须存在检测）
 * 模仿ambari host check 检测机器所有残存的包和进程等，比如防火墙杀不死, 导致服务无法通信的case
-* kafka 无法启动问题，集群清理脚本没有清理干净kafka 的 logs 目录
-* 常用的一些工具打成RPM 配置到 tools目录即可 [jdk.zip" -arthas.tar.gz  perf-tools.tar.gz]
-* 测试本机 nexus 安装
+* **常用的一些工具打成RPM** 配置到 tools目录即可 [jdk.zip" -arthas.tar.gz  perf-tools.tar.gz]
 * 测试远程数据库是否可用, 存在同名数据库时报错
 * 完善增加各种异常检测，增强建壮性
 * mpack install for all services
-
-* conf key 检测(防止用户误删除或修改了配置的key)
-* 遍历蓝图，清理conf中设置的自定义的数据目录比较靠谱(配置模版完善所有的数据目录配置)
 * 按照 hortonworks 原项目增加repo 多操作系统支持
 * 配置里开启 ranger 后必须在组件里选择ranger 组件
 * docker 一键部署

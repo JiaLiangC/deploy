@@ -1,0 +1,6 @@
+#所有机器列表，自动化安装时需要提供一个用户和密码，以进行免密登录,如果是非root 用户，需要有sudo 权限
+user: admin
+hosts:
+ - 10.1.1.10 server0 password0
+ - 10.1.1.12 server1 password2
+ - 10.1.1.13 server2 password3

@@ -1,0 +1,3 @@
+---
+repo_os_family: "centos8"
+baseurl_os_family: "redhat8"

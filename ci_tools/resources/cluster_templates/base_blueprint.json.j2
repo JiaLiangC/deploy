@@ -1,0 +1,25 @@
+{
+      "Blueprints": {
+          "security": {"type": "{{blueprint_security}}"},
+          "stack_name": "BIGTOP",
+          "stack_version": "3.2.0"
+      },
+      "configurations": {{ambari_blueprint_configurations}},
+      "host_groups": {{ambari_blueprint_host_groups}},
+      "settings" : [
+          {
+            "deployment_settings": [
+              {
+                "skip_failure": "true"
+              }
+            ]
+          },
+          {
+            "recovery_settings" : [
+              {
+                "recovery_enabled" : "true"
+              }
+            ]
+          }
+      ]
+}

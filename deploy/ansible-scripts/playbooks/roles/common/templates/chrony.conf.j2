@@ -1,0 +1,10 @@
+server {{ ntp_server_hostname }} iburst
+makestep 10 3
+maxupdateskew 100.0
+driftfile /var/lib/chrony/chrony.drift
+keyfile {{ chrony_path }}/chrony.keys
+logchange 0.5
+rtconutc
+acquisitionport 123
+log measurements statistics tracking
+logdir /var/log/chrony/

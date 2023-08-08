@@ -1,0 +1,29 @@
+nexus:
+  use_existed: true
+  url: 172.27.8.25:8081
+  user_name: admin
+  user_pwd: admin222
+  local_tar: /home/jialiang/sdp/prjs/container_dep/nexus3.tar.gz
+  jdk_local_tar: /home/jialiang/sdp/prjs/container_dep/jdk.zip
+  install_dir: /opt/nexus/
+  jdk_install_dir: /opt/jvm/
+  repo_data_dir: /data/sdv1/
+
+bigtop:
+  prj_dir: /home/jialiang/sdp/prjs/bigtop
+  dl_dir: /home/jialiang/sdp/prjs/container_dep/dl
+  net_proxy: 172.27.8.22:7890
+  local_maven_repo_dir: /data/sdv1/repository
+  use_docker: true
+  ci_scripts_module_path: ci_tools/python
+docker:
+  build_container_name: bigtop
+  volumes:
+    bigtop: /ws
+    prj: /ws1
+
+
+build_parallel: 1
+
+ansible_install_dir: /opt/
+udh_release_output_dir: /data/sdv1/UDH/

@@ -1,0 +1,9 @@
+---
+- name: "Create the {{ db_username }} database user and IP based access from  ({{ database }})"
+  mysql_user:
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    name: "{{ db_username }}"
+    host: "%"
+    priv: "{{ db_name }}.*:ALL"
+    password: "{{ db_password }}"
+    state: present

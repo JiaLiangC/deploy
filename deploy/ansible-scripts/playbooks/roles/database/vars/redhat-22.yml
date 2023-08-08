@@ -1,0 +1,35 @@
+---
+postgres_version: 13.12.1
+postgres_major_version: 13
+postgres_packages:
+  - postgresql-server
+  - postgresql-contrib
+
+postgres_service_name: "postgresql"
+postgres_initdb_command: "/usr/bin/postgresql-setup initdb"
+postgres_data_directory: "/var/lib/pgsql/data"
+postgres_config_file: "{{ postgres_data_directory }}/postgresql.conf"
+postgres_hba_file: "{{ postgres_data_directory }}/pg_hba.conf"
+
+
+#todo mysql 测试适配
+mysql_version: 5.7.38
+mysql_daemon: mysqld
+mysql_root_home: /root
+mysql_root_username: root
+mysql_root_password: root
+
+mysql_packages:
+  - mysql-community-server
+  - mysql-community-client
+  - MySQL-python
+
+
+
+mariadb_version: 10.5.16
+mariadb_packages:
+  - mariadb-server
+  - MySQL-python
+mariadb_service_name: mariadb
+mariadb_config_file: /etc/my.cnf.d/server.cnf
+

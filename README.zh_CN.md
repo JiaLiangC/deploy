@@ -95,7 +95,7 @@ This is an essential piece of Ambari Blueprints that maps the topology component
 - [x] Wait for the cluster to be built
 
 ### Dynamic blueprint supported features
-> The components that will be installed are only those defined in the `blueprint_dynamic` [variable](ansible-scripts/playbooks/group_vars/all#L161).
+> The components that will be installed are only those defined in the `blueprint_dynamic` [variable](deploy/ansible-scripts/playbooks/group_vars/all#L161).
 > - Supported in this case means all prerequites (databases, passwords, required configs) are taken care of and the component is deployed successfully on the chosen `host_group`.
 - [x] BIGTOP Services: `HDFS`, `YARN + MapReduce2`, `Hive`, `HBase`, `Accumulo`, `Oozie`, `ZooKeeper`, `Storm`, `Atlas`, `Kafka`, `Knox`, `Log Search`, `Ranger`, `Ranger KMS`, `SmartSense`, `Spark2`, `Zeppelin`, `Druid`, `Superset`
 - [x] HA 配置: NameNode, ResourceManager, Hive, HBase, Ranger KMS, Druid

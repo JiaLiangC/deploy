@@ -1,0 +1,12 @@
+[libdefaults]
+    default_realm = {{ security_options.realm | upper }}
+    default_ccache_name = /tmp/krb5cc_%{uid}
+[realms]
+    {{ security_options.realm | upper }} = {
+        kdc = {{ database_hostname }}
+        admin_server = {{ database_hostname }}
+    }
+[logging]
+    default = FILE:/var/log/krb5kdc.log
+    admin_server = FILE:/var/log/kadmind.log
+    kdc = FILE:/var/log/krb5kdc.log

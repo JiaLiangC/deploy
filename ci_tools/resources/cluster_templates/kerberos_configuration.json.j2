@@ -1,0 +1,17 @@
+{
+    "kerberos-env": {
+        {% if security|lower == "active-directory" %}
+        "ldap_url": "{{ security_options.ldap_url }}",
+        "container_dn": "{{ security_options.container_dn }}",
+        {% endif %}
+        "manage_identities": "true",
+        "install_packages": "true",
+        "realm" : "{{ security_options.realm }}",
+        "kdc_type" : "{{ security }}",
+        "kdc_hosts" : "{{ kdc_hostname }}",
+        "admin_server_host" : "{{ kdc_hostname }}"
+    },
+    "krb5-conf": {
+        "manage_krb5_conf": "{{ 'true' if security_options.manage_krb5_conf else 'false' }}"
+    }
+}

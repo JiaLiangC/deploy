@@ -1,0 +1,20 @@
+---
+- name: "Create the {{ db_name }} database ({{ database }})"
+  mysql_db:
+    name: "{{ db_name }}"
+    encoding: "{{ db_encoding | default(omit) }}"
+    login_user: '{{ mysql_root_username }}'
+    login_password: '{{ mysql_root_password }}'
+    state: present
+
+
+- name: "Create the {{ db_username }} database user and host based access ({{ database }})"
+  mysql_user:
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    name: "{{ db_username }}"
+    host: "%"
+    priv: "{{ db_name }}.*:ALL"
+    password: "{{ db_password }}"
+    login_user: '{{ mysql_root_username }}'
+    login_password: '{{ mysql_root_password }}'
+    state: present

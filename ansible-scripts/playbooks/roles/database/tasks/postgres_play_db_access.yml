@@ -1,9 +1,0 @@
----
-- name: Configure access for the {{ db_username }} user  ({{ database }})
-  lineinfile:
-    path: "{{ postgres_hba_file }}"
-    regexp: "^host {{ db_name }} {{ db_username }} 0.0.0.0/0 .*"
-    line: "host {{ db_name }} {{ db_username }} 0.0.0.0/0 md5"
-    insertbefore: EOF
-    state: present
-  notify: Restart postgres
