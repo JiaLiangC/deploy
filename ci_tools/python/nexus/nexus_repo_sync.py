@@ -9,6 +9,7 @@ from time import sleep
 import requests
 import argparse
 import logging
+from python.common.constants import *
 
 # 创建一个日志记录器
 logger = logging.getLogger('bigdata_nexus_sync_logger')
@@ -174,7 +175,7 @@ class NexusSynchronizer:
     def sync_repository(self):
         packages_need_download = self.scan_packages()
         if len(packages_need_download) <= 0:
-            logger.info(f"all {os_type} repo files synchronized successfully")
+            logger.info(f"all {self.os_type} repo files synchronized successfully")
             return
 
         logger.info("synchronizing repository")
@@ -203,7 +204,7 @@ class NexusSynchronizer:
         import xmltodict
         repo_metadata_file = OS_INFO.get(self.os_type).get("meta_file")
         logger.info(f"parseing {self.os_type} repo  {repo_metadata_file} file")
-        with open(os.path.join(SCRIPT_DIR, repo_metadata_file)) as fd:
+        with open(os.path.join(REPO_FILES_DIR, repo_metadata_file)) as fd:
             doc = xmltodict.parse(fd.read())
         rpms = {}
         for pinfo in doc["metadata"]["package"]:
