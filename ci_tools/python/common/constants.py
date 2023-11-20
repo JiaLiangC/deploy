@@ -16,3 +16,4 @@ PORTABLE_ANSIBLE_PATH = os.path.join(PRJDIR, "ci_tools/resources/pkgs/portable-a
 CI_TOOLS_MODULE_PATH = os.path.join(PRJDIR, "ci_tools/python")
 CI_CONF_FILE = os.path.join(CONF_DIR, "ci_conf.yml")
 CI_CONF_FILE_TEMPLATE = os.path.join(CONF_DIR, "ci_conf.yml.template")
+REPO_FILES_DIR = os.path.join(PRJDIR, "ci_tools/resources/repo_info")

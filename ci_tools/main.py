@@ -432,7 +432,7 @@ def main():
             nexus_task.install_nexus_and_jdk()
             nexus_task.upload2nexus_task(components_arr)
 
-    if repo_sync and len(os_type)>0:
+    if os_type and len(os_type)>0:
         nexus_task = NexusTask()
         nexus_task.repo_sync(os_type)
 
@@ -466,6 +466,8 @@ if __name__ == '__main__':
 # download all static files first
 # todo nexus install, password set, repo create
 # todo rpm available test
+# todo 整理所有依赖 1.xml2dict
+#
 # python3 -m pip install virtualenv
 # python3 -m virtualenv ansible  # Create a virtualenv if one does not already exist
 # source ansible/bin/activate   # Activate the virtual environment

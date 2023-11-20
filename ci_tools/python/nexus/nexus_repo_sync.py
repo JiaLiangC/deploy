@@ -76,7 +76,7 @@ class NexusSynchronizer:
     def get_meta_json_file_path(self):
         repo_metadata_file = OS_INFO.get(self.os_type).get("meta_file")
 
-        return os.path.join(SCRIPT_DIR, f'{repo_metadata_file}.json')
+        return os.path.join(REPO_FILES_DIR, f'{repo_metadata_file}.json')
 
     def get_packages(self):
         logger.info(f"get packages meta data from {self.get_meta_json_file_path()}")
