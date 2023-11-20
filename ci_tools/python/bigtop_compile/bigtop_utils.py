@@ -266,8 +266,6 @@ class BigtopBuilder(object):
         cmd = f". /etc/profile.d/bigtop.sh;./gradlew {component}-clean {component}-pkg"
         if self.conf["stack"] == "ambari":
             cmd += " -PpkgSuffix -PparentDir=/usr/bigtop"
-        if "repo" in self.conf and self.conf["repo"]:
-            cmd += " repo"
         return cmd
 
     def compile_component(self, component, working_dir):

@@ -205,9 +205,9 @@ class NexusTask(BaseTask):
             logger.info(f"uploading {pkg_dir} {comp}")
             nexus_client.batch_upload(pkg_dir, comp)
 
-    def repo_sync(self):
+    def repo_sync(self,os_type):
         ## ['centos7', 'centos8', 'openeuler22', 'kylinv10']
-        os_type = 'centos7'
+        #os_type = 'centos7'
         synchronizer = NexusSynchronizer(os_type, self.conf["nexus"]["repo_data_dir"])
         synchronizer.generate_pkg_meta()
         synchronizer.sync_repository()
@@ -294,9 +294,9 @@ class InitializeTask(BaseTask):
     def run(self):
         if not os.path.exists(OUTPUT_DIR):
             os.mkdir(OUTPUT_DIR)
-        ansible_installer = AnsibleInstaller(PORTABLE_ANSIBLE_PATH, self.conf["ansible_install_dir"])
-        ansible_installer.install()
-        self.create_link_for_ansible()
+        #ansible_installer = AnsibleInstaller(PORTABLE_ANSIBLE_PATH, self.conf["ansible_install_dir"])
+        #ansible_installer.install()
+        #self.create_link_for_ansible()
 
 
 class TaskRunner:
@@ -354,9 +354,12 @@ def setup_options():
                         action='store_true',
                         help='Rebuild all packages')
 
-    parser.add_argument('-repo',
-                        action='store_true',
-                        help='generate bigtop repo')
+
+    parser.add_argument('-repo-sync',
+                        metavar='repo_sync',
+                        type=str,
+                        default="",
+                        help='The parallel build parallel threads used in build')
 
     parser.add_argument('-stack',
                         metavar='stack',
@@ -402,8 +405,8 @@ def main():
     clean_components = args.clean_components
     components_str = args.components
     stack = args.stack
-    repo = args.repo
     upload_nexus = args.upload_nexus
+    os_type = args.repo_sync
 
     all_components = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "tez", "ambari",
                       "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils"]
@@ -418,7 +421,7 @@ def main():
         container_task = ContainerTask()
         container = container_task.run()
         build_args = {"clean_all": clean_all, "clean_components": clean_components, "components": components_str,
-                      "stack": stack, "max_workers": parallel, "repo": repo}
+                      "stack": stack, "max_workers": parallel}
         build_components_task = BuildComponentsTask(container, build_args)
         build_components_task.run()
 
@@ -429,6 +432,10 @@ def main():
             nexus_task.install_nexus_and_jdk()
             nexus_task.upload2nexus_task(components_arr)
 
+    if repo_sync and len(os_type)>0:
+        nexus_task = NexusTask()
+        nexus_task.repo_sync(os_type)
+
     if deploy:
         deploy_cluster_task = DeployClusterTask()
         deploy_cluster_task.run()
@@ -438,7 +445,6 @@ def main():
 
     # todo 增加多操作系统支持
     # todo 测试 nexus sync
-    # todo add 仅仅重新编译某个组件 clean=all 或者 clean=a,b,c
     # portable ansible add requests
     # todo 使用设计模式重构
 
@@ -448,8 +454,6 @@ if __name__ == '__main__':
 
 # todo 容器默认安装python3-devel
 # todo 1.增加发布一个操作系统的大包的功能 (检查nexus repo,编译组件打rpm,rpm 上传到nexus,打包nexus 和部署脚本)
-# todo 2.编译并且上传组件到现有nexus,然后部署一个集群,自动部署新的 nexus 并且上传包，部署
-# todo 3.增加只编译上传个别组件后重新部署
 # todo 梳理容器依赖和宿主机依赖
 # todo 程序退出时杀死ansible 进程
 # todo component name and params check

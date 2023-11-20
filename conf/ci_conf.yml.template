@@ -7,7 +7,7 @@ nexus:
   jdk_local_tar: /home/jialiang/sdp/prjs/container_dep/jdk.zip
   install_dir: /opt/nexus/
   jdk_install_dir: /opt/jvm/
-  repo_data_dir: /data/sdv1/
+  repo_data_dir: /data/sdv1/nexus_sync
 
 bigtop:
   prj_dir: /home/jialiang/sdp/prjs/bigtop
