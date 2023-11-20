@@ -10,6 +10,8 @@ import requests
 import argparse
 import logging
 from python.common.constants import *
+from concurrent.futures import ProcessPoolExecutor
+import concurrent.futures
 
 # 创建一个日志记录器
 logger = logging.getLogger('bigdata_nexus_sync_logger')
@@ -151,6 +153,37 @@ class NexusSynchronizer:
             return False, str(e)
         return False, None
 
+
+    def scan_package(self, pkg_name, pkg_md5):
+        local_filename = os.path.join(self.get_local_pkgs_dir(), pkg_name)
+        if os.path.exists(local_filename):
+            if self.validate_md5(local_filename, pkg_md5):
+                logger.info(f"The {pkg_name} rpm is already downloaded and hash is consistent")
+                return None
+            else:
+                logger.info(
+                    f"The {pkg_name} rpm is already downloaded and hash is not consistent, will be re-downloading")
+                return pkg_name
+        else:
+            logger.info(f"The {pkg_name} rpm is not exist,will be downloading")
+            return pkg_name
+
+
+    def concurrent_scan_packages(self):
+        packages_need_download = {}
+        repo_packages = self.get_packages()
+
+        with ProcessPoolExecutor(max_workers=15) as executor:  # 设置并发进程数为10
+            future_to_pkg = {executor.submit(self.scan_package, pkg_name, pkg_md5): pkg_name for pkg_name, pkg_md5 in repo_packages.items()}
+            for future in concurrent.futures.as_completed(future_to_pkg):
+                pkg_name = future_to_pkg[future]
+                result = future.result()
+                if result is not None:
+                    packages_need_download[result] = repo_packages[result]
+
+        logger.info(f"scan finished, packages need download {packages_need_download.keys()}")
+        return packages_need_download
+
     def scan_packages(self):
         packages_need_download = {}
         repo_packages = self.get_packages()
@@ -173,7 +206,8 @@ class NexusSynchronizer:
         return packages_need_download
 
     def sync_repository(self):
-        packages_need_download = self.scan_packages()
+        #packages_need_download = self.scan_packages()
+        packages_need_download = self.concurrent_scan_packages()
         if len(packages_need_download) <= 0:
             logger.info(f"all {self.os_type} repo files synchronized successfully")
             return
