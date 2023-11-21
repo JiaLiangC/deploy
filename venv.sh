@@ -1,6 +1,6 @@
 #!/bin/bash
 
-install_dir="${PYTHON_VENV_INSTALL_DIR}"
+install_dir=/opt/bigdata_tools_venv
 mkdir -p ${install_dir}
 cd ${install_dir}
 
@@ -16,7 +16,7 @@ if [ ! -d "${install_dir}/venv" ]; then
     source ${install_dir}/venv/bin/activate
 
     # Install Python packages
-    pip3 install requests xml2dict ansible
+    pip3 install requests xmltodict ansible docker
 
     # Deactivate the virtual environment
     deactivate
