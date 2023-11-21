@@ -81,10 +81,7 @@ class InstallNexusDeployPlugin:
             os.mkdir(data_dir)
 
         logger.info("install pigz")
-        pigz_rpm = os.path.join(PLUGINS_FILES_DIR, pigz_package_name)
-
         # 2. 安装 pigz 工具以加快解压速度
-
         output, error = self.run_shell_cmd(["rpm", "-ivh", pigz_rpm])
         logger.info(output)
         logger.info(error)

@@ -4,10 +4,11 @@ import re
 import imp
 import yaml
 from jinja2 import Template
-from python.common.basic_logger import logger
+from python.common.basic_logger import get_logger
 from python.common.constants import *
 import os
 
+logger=get_logger()
 class InvalidConfigurationException(Exception):
     pass
 

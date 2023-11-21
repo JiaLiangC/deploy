@@ -24,6 +24,6 @@ docker:
 
 
 build_parallel: 1
-
-ansible_install_dir: /opt/
+pigz_install_dir: /opt/pigz
+python_venv_install_dir: /opt/bigdata_tools_venv
 udh_release_output_dir: /data/sdv1/UDH/

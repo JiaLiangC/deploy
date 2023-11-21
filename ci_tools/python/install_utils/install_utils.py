@@ -5,7 +5,8 @@ import zipfile
 import shutil
 from urllib.parse import urlparse
 from urllib.request import url2pathname
-
+from python.common.basic_logger import get_logger
+logger = get_logger()
 
 class Installer:
     def __init__(self, package_name, file_url, install_dir):
@@ -16,13 +17,13 @@ class Installer:
     def download_package(self):
         if not os.path.exists(self.file_url):
             # todo  增加下载远程包的支持
-            print(f"Downloading {self.package_name} package from URL...")
+            logger.info(f"Downloading {self.package_name} package from URL...")
             response = requests.get(self.file_url, stream=True)
             response.raise_for_status()
         else:
             local_path = self.file_url
             if os.path.exists(local_path):
-                print(f" local {local_path} file exist")
+                logger.info(f" local {local_path} file exist")
             else:
                 raise FileNotFoundError(f"Local file {local_path} does not exist.")
 
@@ -33,7 +34,7 @@ class Installer:
         return local_path
 
     def extract_package(self):
-        print(f" install_dir {self.install_dir}")
+        logger.info(f" install_dir {self.install_dir}")
         if os.path.exists(self.install_dir):
             shutil.rmtree(self.install_dir,ignore_errors=True)
 
@@ -55,7 +56,7 @@ class Installer:
     def fetch_and_unpack(self):
         self.download_package()
         self.extract_package()
-        print(f"{self.package_name} 安装完成！")
+        logger.info(f"{self.package_name} 安装完成！")
 
 
 class NexusInstaller(Installer):
@@ -96,7 +97,8 @@ WantedBy=multi-user.target
         self.create_user()
         self.configure_service()
         self.start_service()
-        print("Nexus 安装完成！")
+        logger.info("Nexus 安装完成！")
+
 
 
 class JDKInstaller(Installer):
@@ -113,7 +115,7 @@ export PATH=$JAVA_HOME/bin:$PATH
     def install(self):
         self.fetch_and_unpack()
         self.set_environment_variables()
-        print("JDK 安装完成！")
+        logger.info("JDK 安装完成！")
 
 
 class AnsibleInstaller(Installer):
@@ -122,4 +124,27 @@ class AnsibleInstaller(Installer):
 
     def install(self):
         self.fetch_and_unpack()
-        print("ansible 安装完成！")
+        logger.info("ansible 安装完成！")
+
+
+class PigzInstaller(Installer):
+    import subprocess
+    def __init__(self, file_url, install_dir):
+        super().__init__("pigz", file_url, install_dir)
+    def install(self):
+        self.fetch_and_unpack()
+        install_dir = self.install_dir
+        pigz_source_dir = os.path.join(install_dir,"pigz")
+        os.chdir(pigz_source_dir)
+        # 编译源代码
+        result = subprocess.run(['make'], stderr=subprocess.PIPE)
+        return_code = result.returncode
+        error_message = result.stderr.decode()
+        logger.info(f' pig build Return code: {return_code}  Error message: {error_message}')
+        # 将可执行文件复制到安装目录
+        shutil.copy('pigz', install_dir)
+        shutil.copy('unpigz', install_dir)
+        os.chdir('../..')
+        # 删除源代码压缩包
+        os.remove(pigz_source_dir)
+

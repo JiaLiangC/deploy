@@ -12,29 +12,9 @@ import logging
 from python.common.constants import *
 from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
+from python.common.basic_logger import get_logger
 
-# 创建一个日志记录器
-logger = logging.getLogger('bigdata_nexus_sync_logger')
-logger.setLevel(logging.INFO)
-
-# 创建一个文件处理器，用于将日志记录到文件
-file_handler = logging.FileHandler('bigdata_nexus_sync.log')
-file_handler.setLevel(logging.DEBUG)
-
-# 创建一个控制台处理器，用于将日志输出到控制台
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
-# 创建一个日志格式器
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# 将格式器添加到处理器
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-
-# 将处理器添加到日志记录器
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
+logger = get_logger(log_file="bigdata_nexus_sync.log")
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -51,15 +31,17 @@ OS_INFO = {
 
 
 class NexusSynchronizer:
-    def __init__(self, os_type, local_dir):
+    def __init__(self, os_type, local_dir, arch="x86_64"):
+        assert arch in SUPPORTED_ARCHS
         self.os_type = os_type
+        self.arch = arch
         self.local_dir = local_dir
         self.success_file = os.path.join(SCRIPT_DIR, 'success.json')
         self.failure_file = os.path.join(SCRIPT_DIR, 'failure.json')
         self.retry_limit = 3
 
     def get_local_pkgs_dir(self):
-        pkgs_path = os.path.join(self.local_dir, f"{self.os_type}_pkgs")
+        pkgs_path = os.path.join(self.local_dir, f"{self.os_type}_{self.arch}_pkgs")
         if not os.path.exists(pkgs_path):
             os.mkdir(pkgs_path)
         return pkgs_path
@@ -153,7 +135,6 @@ class NexusSynchronizer:
             return False, str(e)
         return False, None
 
-
     def scan_package(self, pkg_name, pkg_md5):
         local_filename = os.path.join(self.get_local_pkgs_dir(), pkg_name)
         if os.path.exists(local_filename):
@@ -168,13 +149,13 @@ class NexusSynchronizer:
             logger.info(f"The {pkg_name} rpm is not exist,will be downloading")
             return pkg_name
 
-
     def concurrent_scan_packages(self):
         packages_need_download = {}
         repo_packages = self.get_packages()
 
         with ProcessPoolExecutor(max_workers=15) as executor:  # 设置并发进程数为10
-            future_to_pkg = {executor.submit(self.scan_package, pkg_name, pkg_md5): pkg_name for pkg_name, pkg_md5 in repo_packages.items()}
+            future_to_pkg = {executor.submit(self.scan_package, pkg_name, pkg_md5): pkg_name for pkg_name, pkg_md5 in
+                             repo_packages.items()}
             for future in concurrent.futures.as_completed(future_to_pkg):
                 pkg_name = future_to_pkg[future]
                 result = future.result()
@@ -206,7 +187,7 @@ class NexusSynchronizer:
         return packages_need_download
 
     def sync_repository(self):
-        #packages_need_download = self.scan_packages()
+        # packages_need_download = self.scan_packages()
         packages_need_download = self.concurrent_scan_packages()
         if len(packages_need_download) <= 0:
             logger.info(f"all {self.os_type} repo files synchronized successfully")

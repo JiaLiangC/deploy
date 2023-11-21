@@ -3,7 +3,7 @@ import atexit
 import signal
 import subprocess
 import concurrent.futures
-from python.common.basic_logger import logger
+from python.common.basic_logger import get_logger
 from python.common.constants import *
 from python.easyprocess import EasyProcess
 import shutil
@@ -18,6 +18,7 @@ import traceback
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SUCCESS_FILE = os.path.join(OUTPUT_DIR, 'success_components.json')
 
+logger = get_logger()
 
 class BigtopBuilder(object):
 

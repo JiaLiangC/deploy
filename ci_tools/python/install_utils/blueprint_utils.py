@@ -6,8 +6,8 @@ from jinja2 import Template
 from .conf_utils import services_map
 from .conf_utils import InvalidConfigurationException
 from python.common.constants import *
-from python.common.basic_logger import logger
-
+from python.common.basic_logger import get_logger
+logger = get_logger()
 
 class BlueprintUtils:
     def __init__(self, conf):
