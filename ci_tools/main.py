@@ -187,6 +187,7 @@ class NexusTask(BaseTask):
         super().__init__()
 
     def install_nexus_and_jdk(self):
+        logger.info("install_nexus_and_jdk")
         nexus_installer = NexusInstaller(self.conf["nexus"]["local_tar"],
                                          self.conf["nexus"]["install_dir"])
         jdk_installer = JDKInstaller(self.conf["nexus"]["jdk_local_tar"], self.conf["nexus"]["jdk_install_dir"])
@@ -195,6 +196,7 @@ class NexusTask(BaseTask):
         nexus_installer.install()
 
     def upload_bigdata_copms2nexus(self, comps):
+        logger.info("upload bigdata copmponents to nexus")
         nexus_url = "localhost:8081"
         nexus_client = NexusClient(nexus_url, self.conf["nexus"]["user_name"], self.conf["nexus"]["user_pwd"])
         for comp in comps:
@@ -207,6 +209,7 @@ class NexusTask(BaseTask):
     def repo_sync(self, os_type, upload_ospkgs):
         ## ['centos7', 'centos8', 'openeuler22', 'kylinv10']
         # os_type = 'centos7'
+        logger.info(f"repo_sync sync {os_type} upload_ospkgs:{upload_ospkgs}")
         synchronizer = NexusSynchronizer(os_type, self.conf["nexus"]["repo_data_dir"])
         synchronizer.generate_pkg_meta()
         synchronizer.sync_repository()
@@ -219,6 +222,7 @@ class NexusTask(BaseTask):
             nexus_client.batch_upload_os_pkgs(pkgs_dir)
 
     def kill_nexus_process(self):
+        logger.info("kill nexus process")
         find_process_command = ["pgrep", "-f", "org.sonatype.nexus.karaf.NexusMain"]
         try:
             process_ids = subprocess.check_output(find_process_command).decode().split()
