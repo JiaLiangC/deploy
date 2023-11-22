@@ -264,7 +264,12 @@ class BigtopBuilder(object):
                 os.remove(file_path)
 
     def get_compile_command(self, component):
-        cmd = f". /etc/profile.d/bigtop.sh;./gradlew {component}-clean {component}-pkg"
+        ci_conf = self.get_ci_conf()
+        if ci_conf["bigtop"]["use_docker"]:
+            cmd = f". /etc/profile.d/bigtop.sh;./gradlew {component}-clean {component}-pkg"
+        else:
+            cmd = f"./gradlew {component}-clean {component}-pkg"
+
         if self.conf["stack"] == "ambari":
             cmd += " -PpkgSuffix -PparentDir=/usr/bigtop"
         return cmd
@@ -323,7 +328,7 @@ class BigtopBuilder(object):
                 else:
                     logger.info("build hadoop failed")
                     failed_components.append(component)
-                    return
+                    return failed_components
 
             for component in components:
                 if component not in self.success_components.keys() and component.strip() != "hadoop":
@@ -362,9 +367,11 @@ class BigtopBuilder(object):
         logger.info(f"{buid_dir} clean_after_build finished  {output}")
 
     def config_host_env(self):
-        self.set_git_config()
-        self.set_yum_repo()
-        self.set_maven_conf("/usr/local/maven/conf")
+        ci_conf = self.get_ci_conf()
+        if ci_conf["bigtop"]["use_docker"]:
+            self.set_git_config()
+            self.set_yum_repo()
+        self.set_maven_conf(ci_conf["bigtop"]["maven_conf_dir"])
         self.set_web_compile_envirment()
 
     def load_success_components(self):

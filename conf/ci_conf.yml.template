@@ -14,6 +14,7 @@ bigtop:
   dl_dir: /home/jialiang/sdp/prjs/container_dep/dl
   net_proxy: 172.27.8.22:7890
   local_maven_repo_dir: /data/sdv1/repository
+  maven_conf_dir: /usr/local/maven/conf
   use_docker: true
   ci_scripts_module_path: ci_tools/python
 docker:

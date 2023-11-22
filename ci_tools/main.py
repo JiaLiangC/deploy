@@ -63,7 +63,7 @@ class BaseTask:
                 logger.info(f"Command to be executed: {cmd}")
             else:
                 logger.error("No command provided.")
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=shell,
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
                                        universal_newlines=True)
             output, error = process.communicate()
             exit_code = process.returncode
@@ -149,6 +149,7 @@ class ContainerTask(BaseTask):
         if self.conf["bigtop"]["use_docker"]:
             container = self.create_container()
         else:
+            logger.info("not use docker to compile, build in local")
             container = None
         # todo
         # self.install_dependencies(container)
