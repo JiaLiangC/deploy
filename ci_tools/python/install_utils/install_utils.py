@@ -112,7 +112,22 @@ export JAVA_HOME={self.install_dir}/jdk
 export PATH=$JAVA_HOME/bin:$PATH
 """)
 
+    def is_java_installed(self, version):
+        command = "java -version"
+        try:
+            output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True)
+            if 'version "{}'.format(version) in str(output):
+                return True
+            else:
+                return False
+        except subprocess.CalledProcessError:
+            # java 命令未找到，说明 Java 没有安装
+            return False
+
     def install(self):
+        if self.is_java_installed("1.8.0"):
+            logger.info("java already installed")
+            return
         self.fetch_and_unpack()
         self.set_environment_variables()
         logger.info("JDK 安装完成！")
