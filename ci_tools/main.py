@@ -451,6 +451,9 @@ def main():
         build_components_task.run()
 
     if upload_nexus:
+        #如果没通过buid参数指定传哪些包，默认传全部
+        if not components_str or len(components_str)==0:
+            components_str = ",".join(ALL_COMPONENTS)
         components_arr = components_str.split(",")
         if len(components_arr) > 0:
             nexus_task = NexusTask()

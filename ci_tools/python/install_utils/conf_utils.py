@@ -57,10 +57,11 @@ def services_map():
             "server": ["INFRA_SOLR"],
             "clients": ["INFRA_SOLR_CLIENT"]
         },
-        "solr": {
-            "server": ["SOLR_SERVER"],
-            "clients": []
-        },
+        # 不支持solr 了，没人使用
+        # "solr": {
+        #     "server": ["SOLR_SERVER"],
+        #     "clients": []
+        # },
         "ambari": {
             "server": ["AMBARI_SERVER"],
             "clients": []

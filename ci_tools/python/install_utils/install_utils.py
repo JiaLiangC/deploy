@@ -6,6 +6,7 @@ import shutil
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 from python.common.basic_logger import get_logger
+import subprocess
 logger = get_logger()
 
 class Installer:
@@ -78,8 +79,8 @@ After=network.target
 [Service]
 Type=forking
 LimitNOFILE=65536
-ExecStart={self.install_dir}/nexus3/bin/nexus start
-ExecStop={self.install_dir}/nexus3/bin/nexus stop
+ExecStart={self.install_dir}/nexus/nexus/bin/nexus start
+ExecStop={self.install_dir}/nexus/nexus/bin/nexus stop
 User=nexus
 Restart=on-abort
 
@@ -91,6 +92,49 @@ WantedBy=multi-user.target
         os.system("systemctl daemon-reload")
         os.system("systemctl enable nexus")
         os.system("systemctl start nexus")
+        self.test_nexus_service()
+
+    def test_nexus_service(self):
+        # 300s
+        nexus_base_url = "localhost:8081"
+        max_wait_time = 300
+        max_end_time = time.time() + max_wait_time
+        nexus_service_ok = False
+
+        nexus_test_url = "{}/service/rest/v1/status/writable".format(nexus_base_url)
+        logger.info(nexus_test_url)
+        while time.time() <= max_end_time:
+            try:
+                response = urllib.request.urlopen(nexus_test_url)
+                nexus_service_response_code = str(response.getcode())
+                logger.info(nexus_service_response_code)
+                if nexus_service_response_code == "200":
+                    logger.info("nexus 服务已经可用")
+                    nexus_service_ok = True
+                    break
+                else:
+                    logger.info("nexus 正在启动中，服务还不可用，等待3秒后重试...")
+            except urllib.error.HTTPError as e:
+                logger.error('HTTPError = ' + str(e.code))
+                continue
+            except urllib.error.URLError as e:
+                continue
+            except http.client.HTTPException as e:
+                logger.error('HTTPException')
+                continue
+            except Exception:
+                import traceback
+                logger.error('generic exception: ' + traceback.format_exc())
+                continue
+            time.sleep(5)
+
+        if nexus_service_ok:
+            logger.info("nexus 安装启动完成")
+            return True
+        else:
+            logger.error("nexus 安装启动未完成，请先排除问题再重新安装")
+            return False
+
 
     def install(self):
         self.fetch_and_unpack()
