@@ -1,6 +1,6 @@
 nexus:
   use_existed: true
-  url: 172.27.8.25:8081
+  host: 172.27.8.25
   user_name: admin
   user_pwd: admin222
   local_tar: /home/jialiang/sdp/prjs/container_dep/nexus3.tar.gz

@@ -25,6 +25,7 @@ logger = get_logger()
 ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "tez", "ambari",
                   "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils"]
 
+
 class BaseTask:
     def __init__(self):
         self.conf = self.load_conf()
@@ -190,7 +191,7 @@ class NexusTask(BaseTask):
     def install_nexus_and_jdk(self):
         logger.info("install_nexus_and_jdk")
         nexus_installer = NexusInstaller(self.conf["nexus"]["local_tar"],
-                                         self.conf["nexus"]["install_dir"])
+                                         self.conf["nexus"]["install_dir"], self.conf["nexus"]["user_pwd"])
         jdk_installer = JDKInstaller(self.conf["nexus"]["jdk_local_tar"], self.conf["nexus"]["jdk_install_dir"])
 
         jdk_installer.install()
@@ -198,8 +199,11 @@ class NexusTask(BaseTask):
 
     def upload_bigdata_copms2nexus(self, comps):
         logger.info("upload bigdata copmponents to nexus")
-        nexus_url = "localhost:8081"
-        nexus_client = NexusClient(nexus_url, self.conf["nexus"]["user_name"], self.conf["nexus"]["user_pwd"])
+        if self.conf["nexus"]["use_existed"]:
+            nexus_host = self.conf["nexus"]["host"]
+        else:
+            nexus_host = "localhost"
+        nexus_client = NexusClient(nexus_host, self.conf["nexus"]["user_name"], self.conf["nexus"]["user_pwd"])
         for comp in comps:
             pkg_dir = os.path.join(self.conf["bigtop"]["prj_dir"], f"output/{comp}")
             logger.info(f"uploading {pkg_dir} {comp}")
@@ -214,11 +218,11 @@ class NexusTask(BaseTask):
         synchronizer = NexusSynchronizer(os_type, self.conf["nexus"]["repo_data_dir"])
         synchronizer.generate_pkg_meta()
         synchronizer.sync_repository()
-        nexus_url = "localhost:8081"
+        nexus_host = "localhost"
         if upload_ospkgs:
             pkgs_dir = synchronizer.get_local_pkgs_dir()
-            logger.info(f"will upload os pkgs under  {pkgs_dir} to {nexus_url}")
-            nexus_client = NexusClient(nexus_url, self.conf["nexus"]["user_name"], self.conf["nexus"]["user_pwd"])
+            logger.info(f"will upload os pkgs under  {pkgs_dir} to {nexus_host}")
+            nexus_client = NexusClient(nexus_host, self.conf["nexus"]["user_name"], self.conf["nexus"]["user_pwd"])
             nexus_client.repo_create(nexus_client.get_os_type(), remove_old=True)
             nexus_client.batch_upload_os_pkgs(pkgs_dir)
 
@@ -354,6 +358,9 @@ def setup_options():
                         metavar='components',
                         type=str,
                         help='The components to be build, donat split')
+    parser.add_argument('-install-nexus',
+                        action='store_true',
+                        help='install nexus ')
 
     parser.add_argument('-upload-nexus',
                         action='store_true',
@@ -434,9 +441,14 @@ def main():
     upload_nexus = args.upload_nexus
     upload_ospkgs = args.upload_ospkgs
     os_type = args.repo_sync
+    install_nexus = args.install_nexus
 
     init_task = InitializeTask()
     init_task.run()
+
+    if install_nexus:
+        nexus_task = NexusTask()
+        nexus_task.install_nexus_and_jdk()
 
     if build_all:
         components_str = ",".join(ALL_COMPONENTS)
@@ -457,7 +469,6 @@ def main():
         components_arr = components_str.split(",")
         if len(components_arr) > 0:
             nexus_task = NexusTask()
-            nexus_task.install_nexus_and_jdk()
             nexus_task.upload_bigdata_copms2nexus(components_arr)
 
     if os_type and len(os_type) > 0:

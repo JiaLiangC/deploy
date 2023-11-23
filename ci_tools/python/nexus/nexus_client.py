@@ -4,20 +4,21 @@ import os
 import glob
 import platform
 from python.common.constants import *
+
 logger = get_logger()
 
-# architecture
 
+# architecture
 
 
 class NexusClient:
     def __init__(self, server_host, username, password):
         self.server_host = server_host
+        self.server_por = "8081"
         self.auth = (username, password)
 
-
     def get_nexus_url(self):
-        return f"http://{self.server_host}"
+        return f"http://{self.server_host}:{self.server_por}"
 
     # repository/centos/7/os/x86_64/Packages/Cython-0.19-5.el7.x86_64.rpm
 
@@ -162,7 +163,8 @@ class NexusClient:
 
         logger.info(f"------data is {data}")
         response = requests.post(url, headers=headers, json=data, auth=self.auth)
-        logger.info(f"nexus delete_folder params:{repo_name} {relative_path} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+        logger.info(
+            f"nexus delete_folder url:{url} params:{repo_name} {relative_path} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
     def do_repo_create(self, repo_name):
         recipe = "yum-hosted"
@@ -184,16 +186,18 @@ class NexusClient:
 
         logger.info(f"------data is {data}")
         response = requests.post(url, headers=headers, json=data, auth=self.auth)
-        logger.info(f"do_repo_create repo_name:{repo_name} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+        logger.info(
+            f"do_repo_create url:{url} repo_name:{repo_name} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
-
-    def repo_create(self, repo_name,remove_old=False):
+    def repo_create(self, repo_name, remove_old=False):
         repo_list = self.get_repos()
-        result = filter(lambda d: d['name'] == repo_name, repo_list)
+        result = list(filter(lambda d: d['name'] == repo_name, repo_list))
+        logger.info(f"repo_create check  {repo_name} whether exist, result: {result}")
         if len(result) > 0:
-            if  remove_old:
+            if remove_old:
                 self.repo_remove(repo_name)
         else:
+            logger.info(f"do_repo_create {repo_name}")
             self.do_repo_create(repo_name)
 
     def repo_remove(self, repo_name):
@@ -207,7 +211,7 @@ class NexusClient:
 
         logger.info(f"------data is {data}")
         response = requests.post(url, headers=headers, json=data, auth=self.auth)
-        logger.info(f"Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+        logger.info(f" url:{url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
     def get_repos(self):
         url = f"{self.get_nexus_url()}/service/extdirect"
@@ -238,7 +242,25 @@ class NexusClient:
             headers=headers,
             data=new_pwd
         )
-        logger.info(f"Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+        logger.info(f"url: {url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+
+    def set_pwd_first_launch(self, initila_pwd, new_pwd):
+        url = f"{self.get_nexus_url()}/service/rest/internal/ui/onboarding/change-admin-password"
+        response = requests.put(
+            url,
+            auth=("admin", initila_pwd),
+            data=new_pwd
+        )
+        logger.info(f"url: {url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        url = f"{self.get_nexus_url()}/service/extdirect"
+        data = {"action": "coreui_AnonymousSettings", "method": "update",
+                "data": [{"enabled": True, "userId": "anonymous", "realmName": "NexusAuthorizingRealm"}], "type": "rpc",
+                "tid": 7}
+        response = requests.post(url, headers=headers, json=data, auth=("admin", initila_pwd))
+        logger.info(f"url: {url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
 
 if __name__ == '__main__':
