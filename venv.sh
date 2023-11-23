@@ -40,7 +40,7 @@ if [ ! -d "${install_dir}/venv" ]; then
     deactivate
 
     # Archive the venv directory
-    tar zcvf venv.tar.gz venv
+    tar zcvf ${install_dir}/venv.tar.gz ${install_dir}/venv
 fi
 
 # Activate the virtual environment
