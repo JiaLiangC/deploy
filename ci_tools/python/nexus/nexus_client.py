@@ -176,7 +176,7 @@ class NexusClient:
         data = {
             "action": "coreui_Repository",
             "method": "create",
-            "data": [{"attributes": {f"{repo_name}": {"repodataDepth": 3, "deployPolicy": "STRICT"},
+            "data": [{"attributes": {f"{repo_name}": {"repodataDepth": 1, "deployPolicy": "STRICT"},
                                      "storage": {"blobStoreName": "default", "strictContentTypeValidation": True,
                                                  "writePolicy": "ALLOW_ONCE"},
                                      "component": {"proprietaryComponents": False}, "cleanup": {"policyName": []}},

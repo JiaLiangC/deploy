@@ -203,6 +203,7 @@ class NexusTask(BaseTask):
             nexus_host = self.conf["nexus"]["host"]
         else:
             nexus_host = "localhost"
+        logger.info(f'upload_bigdata_copms2nexus user_name:{self.conf["nexus"]["user_name"]} user_pwd:{self.conf["nexus"]["user_pwd"]}')
         nexus_client = NexusClient(nexus_host, self.conf["nexus"]["user_name"], self.conf["nexus"]["user_pwd"])
         for comp in comps:
             pkg_dir = os.path.join(self.conf["bigtop"]["prj_dir"], f"output/{comp}")
