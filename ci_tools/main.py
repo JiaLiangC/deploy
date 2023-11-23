@@ -250,7 +250,6 @@ class DeployClusterTask(BaseTask):
         playbook_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/install_cluster.yml')
         inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
         log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
-        ansible_install_dir = self.conf["ansible_install_dir"]
         # todo move to prepare environment
 
         from python.install_utils.conf_utils import ConfUtils
