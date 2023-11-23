@@ -215,7 +215,8 @@ class NexusClient:
 
     def get_repos(self):
         url = f"{self.get_nexus_url()}/service/extdirect"
-        data = {"action": "coreui_Repository", "method": "read", "data": None, "type": "rpc", "tid": 44}
+        data = {"action":"coreui_Repository","method":"readReferences","data":[{"page":1,"start":0,"limit":100}],"type":"rpc","tid":30}
+
         headers = {
             'Content-Type': 'application/json',
         }
