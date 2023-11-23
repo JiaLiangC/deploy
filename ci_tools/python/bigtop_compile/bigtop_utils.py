@@ -369,8 +369,8 @@ class BigtopBuilder(object):
     def config_host_env(self):
         ci_conf = self.get_ci_conf()
         if ci_conf["bigtop"]["use_docker"]:
-            self.set_git_config()
             self.set_yum_repo()
+        self.set_git_config()
         self.set_maven_conf(ci_conf["bigtop"]["maven_conf_dir"])
         self.set_web_compile_envirment()
 
