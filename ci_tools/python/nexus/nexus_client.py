@@ -3,7 +3,9 @@ from python.common.basic_logger import get_logger
 import os
 import glob
 import platform
+import base64
 from python.common.constants import *
+import json
 
 logger = get_logger()
 
@@ -245,23 +247,58 @@ class NexusClient:
         )
         logger.info(f"url: {url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
-    def set_pwd_first_launch(self, initila_pwd, new_pwd):
-        url = f"{self.get_nexus_url()}/service/rest/internal/ui/onboarding/change-admin-password"
-        response = requests.put(
+    def upload_script(self, admin_password):
+        url = f"{self.get_nexus_url()}/service/rest/v1/script"
+        script_name = os.path.splitext(os.path.basename(GROOVY_FILE))[0]
+
+        with open(f'{GROOVY_FILE}', 'r') as file:
+            script_content = file.read()
+        body = {
+            "name": script_name,
+            "type": "groovy",
+            "content": script_content
+        }
+
+        response = requests.post(
             url,
-            auth=("admin", initila_pwd),
-            data=new_pwd
+            timeout=30,
+            auth=('admin', admin_password),
+            headers={'Content-Type': 'application/json'},
+            verify=False,
+            data=json.dumps(body)
         )
         logger.info(f"url: {url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
-        headers = {
-            'Content-Type': 'application/json',
-        }
-        url = f"{self.get_nexus_url()}/service/extdirect"
-        data = {"action": "coreui_AnonymousSettings", "method": "update",
-                "data": [{"enabled": True, "userId": "anonymous", "realmName": "NexusAuthorizingRealm"}], "type": "rpc",
-                "tid": 7}
-        response = requests.post(url, headers=headers, json=data, auth=("admin", initila_pwd))
+
+        # 检查响应
+        if response.status_code == 204:
+            logger.info('Script declaration was successful.')
+        else:
+            logger.info(f'Unexpected status code: {response.status_code}')
+
+    def run_script(self, admin_password, new_pwd):
+        script_name = os.path.splitext(os.path.basename(GROOVY_FILE))[0]
+        url = f"{self.get_nexus_url()}/service/rest/v1/script/{script_name}/run"
+        args = {"new_password": new_pwd}
+        response = requests.post(
+            url,
+            timeout=30,
+            auth=('admin', admin_password),
+            headers={'Content-Type': 'text/plain'},
+            verify=False,
+            data=json.dumps(args)
+        )
+
+        if response.status_code == 200:
+            logger.info('Script run was successful.')
+        else:
+            logger.info(f'Unexpected status code: {response.status_code}')
+
         logger.info(f"url: {url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+
+
+    def set_pwd_first_launch(self, initila_pwd, new_pwd):
+        self.upload_script(initila_pwd)
+        self.run_script(initila_pwd, new_pwd)
 
 
 if __name__ == '__main__':

@@ -403,7 +403,7 @@ def setup_options():
     parser.add_argument('-parallel',
                         metavar='parallel',
                         type=int,
-                        default=1,
+                        default=3,
                         help='The parallel build parallel threads used in build')
 
     parser.add_argument('-release',

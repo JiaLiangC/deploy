@@ -62,6 +62,8 @@ class Installer:
             else:
                 raise FileNotFoundError(f"Local file {local_path} does not exist.")
     def get_top_level_dir_name(self, file_path):
+        if not os.path.exists(file_path):
+            return
         extension = os.path.splitext(file_path)[1]
         if extension == ".gz" or extension == ".bz2":
             with tarfile.open(file_path, "r") as tar:
@@ -147,8 +149,8 @@ After=network.target
 [Service]
 Type=forking
 LimitNOFILE=65536
-ExecStart={self.comp_dir}/nexus/bin/nexus start
-ExecStop={self.comp_dir}/nexus/bin/nexus stop
+ExecStart={self.comp_dir}/nexus-3/bin/nexus start
+ExecStop={self.comp_dir}/nexus-3/bin/nexus stop
 User=nexus
 Restart=on-abort
 
@@ -165,7 +167,7 @@ WantedBy=multi-user.target
     def test_nexus_service(self):
         # 300s
         nexus_base_url = "http://localhost:8081"
-        max_wait_time = 300
+        max_wait_time = 600
         max_end_time = time.time() + max_wait_time
         nexus_service_ok = False
 
@@ -200,19 +202,50 @@ WantedBy=multi-user.target
             logger.error("nexus 安装启动未完成，请先排除问题再重新安装")
             return False
 
+    def generate_properties(self):
+        user = "nexus"
+        group= "nexus"
+        nexus_etc_dir = os.path.join(self.comp_dir,"sonatype-work/nexus3/etc")
+        if not os.path.exists(nexus_etc_dir):
+            os.makedirs(nexus_etc_dir,exist_ok=True)
+        content = "nexus.scripts.allowCreation=true"
+        file_path = os.path.join(nexus_etc_dir,"nexus.properties")
+        with open(file_path, 'w') as f:
+            f.write(content)
+        subprocess.run(["chown", "-R", f"{user}:{group}", nexus_etc_dir], check=True)
+
     def set_pwd_first_launch(self):
         pwd_file = os.path.join(self.comp_dir,"sonatype-work/nexus3/admin.password")
         initial_password = self.read_file_contents(pwd_file).strip()
         nexus_client = NexusClient("localhost", "admin", initial_password)
         logger.info(f"change pwd from initial password is{initial_password}to {self.password}")
         nexus_client.set_pwd_first_launch(initial_password, self.password)
+        if os.path.exists(pwd_file):
+            os.remove(pwd_file)
+            logger.info(f"nexus initialize fineshed delete pwd file")
+
+    def fix_nexus_pref(self):
+        prefs = "-Djava.util.prefs.userRoot=${NEXUS_DATA}/javaprefs"
+        file_path = f"{self.comp_dir}/nexus-3/bin/nexus.vmoptions"
+
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+
+        lines.insert(0, prefs + '\n')
+
+        with open(file_path, 'w') as file:
+            file.writelines(lines)
+
+
 
     def install(self):
         self.kill_nexus_process()
         self.fetch_and_unpack()
         self.delete_user_if_exists("nexus")
         self.create_user("nexus")
+        self.fix_nexus_pref()
         self.configure_service()
+        self.generate_properties()
         self.start_service()
         self.set_pwd_first_launch()
         logger.info("Nexus 安装完成！")

@@ -19,3 +19,4 @@ CI_CONF_FILE = os.path.join(CONF_DIR, "ci_conf.yml")
 CI_CONF_FILE_TEMPLATE = os.path.join(CONF_DIR, "ci_conf.yml.template")
 REPO_FILES_DIR = os.path.join(PRJDIR, "ci_tools/resources/repo_info")
 SUPPORTED_ARCHS = ["x86_64", "aarch64", "c86_64"]
+GROOVY_FILE = os.path.join(PRJDIR, "ci_tools/python/install_utils/groovy/initialize.groovy")
