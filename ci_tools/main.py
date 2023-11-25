@@ -265,7 +265,7 @@ class DeployClusterTask(BaseTask):
         b.build()
         b.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
 
-        command = ["ansible-playbook", playbook_path, f"--inventory={inventory_path}"]
+        command = ["python3", f"{PRJ_BIN_DIR}/ansible-playbook", playbook_path, f"--inventory={inventory_path}"]
         with open(log_file, "w") as log:
             logger.info(f"run playbook {command}")
             process = subprocess.Popen(command, shell=False, stdout=log, stderr=log,

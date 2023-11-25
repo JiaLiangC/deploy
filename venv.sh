@@ -1,47 +1,27 @@
 #!/bin/bash
 
-install_dir=/opt/bigdata_tools_venv
-mkdir -p ${install_dir}
+# 获取当前脚本所在的目录
+prjdir=$(pwd)
 
-# 配置pip源
-if [ ! -d "$HOME/.config/pip" ]; then
-    mkdir -p "$HOME/.config/pip"
+# 如果 prjdir/bin/ 目录不存在，创建它
+if [[ ! -d "${prjdir}/bin" ]]; then
+  echo "Directory ${prjdir}/bin/ does not exist. Creating it..."
+  mkdir -p "${prjdir}/bin"
 fi
 
-# 将内容写入 pip.conf 文件
-cat << EOF > $HOME/.config/pip/pip.conf
-[global]
-index-url = https://mirrors.aliyun.com/pypi/simple
+# 解压 portable-ansible.zip 到 prjdir/bin/ 目录
+echo "Unzipping portable-ansible.zip to ${prjdir}/bin/..."
+unzip ${prjdir}/ci_tools/resources/pkgs/portable-ansible.zip -d "${prjdir}/bin"
 
-[install]
-trusted-host = mirrors.aliyun.com
-EOF
-
-# Check if virtual environment does not exist
-if [ ! -d "${install_dir}/venv" ]; then
-	if ! command -v python3 > /dev/null; then
-        echo "python3 未找到，正在进行安装..."
-        sudo yum install -y python3
-    else
-        echo "python3 已存在."
-    fi
-    # Create virtual environment
-    python3 -m pip install virtualenv
-
-    (cd ${install_dir} && python3 -m virtualenv -p /usr/bin/python3 venv)
-
-    # Activate the virtual environment
-    source ${install_dir}/venv/bin/activate
-
-    # Install Python packages
-    pip3 install requests xmltodict ansible docker
-
-    # Deactivate the virtual environment
-    deactivate
-
-    # Archive the venv directory
-    tar zcvf ${install_dir}/venv.tar.gz ${install_dir}/venv
+# 如果软链接 prjdir/bin/ansible-playbook 不存在，创建它
+if [[ ! -L "${prjdir}/bin/ansible-playbook" ]]; then
+  echo "Symbolic link ${prjdir}/bin/ansible-playbook does not exist. Creating it..."
+  ln -s "${prjdir}/bin/portable-ansible" "${prjdir}/bin/ansible-playbook"
 fi
 
-# Activate the virtual environment
-source ${install_dir}/venv/bin/activate
+# 设置环境变量
+echo "Setting environment variables..."
+export ANSIBLE_COLLECTIONS_PATHS="${prjdir}"
+export PYTHONPATH="${prjdir}/ci_tools/python:${prjdir}/bin/portable-ansible:${PYTHONPATH}"
+
+echo "Done."
