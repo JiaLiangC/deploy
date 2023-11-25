@@ -4,3 +4,6 @@
 
 - name: yum-makecache
   command: yum makecache
+
+- name: yum-clean-packages
+  command: yum clean packages

@@ -27,12 +27,12 @@
         - name: Check if /usr/bin/python3 exists
           raw: bash -c "test -e /usr/bin/python3 && echo -n exists || echo -n"
           register: default_python3_path
-          when: default_python2_path.stdout == ""
+          when: default_python2_path is not defined
 
         - name: Fail if no standard python path could be found
           fail:
             msg: "Python could not be found at /usr/bin/python or /usr/bin/python3. If using a custom python path, set the 'ansible_python_interpreter' inventory variable to the valid path for your environment."
-          when: default_python2_path.stdout == "" and default_python3_path.stdout != "exists"
+          when: default_python2_path is not defined  and default_python3_path.stdout != "exists"
 
         - name: Set the ansible_python_interpreter to /usr/bin/python2
           set_fact:

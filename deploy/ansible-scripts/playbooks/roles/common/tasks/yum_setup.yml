@@ -36,5 +36,6 @@
   notify:
     - yum-clean-metadata
     - yum-makecache
+    - yum-clean-packages
 
 

@@ -23,6 +23,7 @@
     name: "/tmp/{{ item }}"
     state: present
   loop: "{{ lookup('fileglob', '*.rpm', wantlist=True) | map('basename') | list }}"
+  when: ansible_os_family | lower == "redhat" and  ansible_distribution_major_version | int == 7
 
 - name: Install the ambari-agent package
   package:
