@@ -8,7 +8,7 @@ host_groups:
 group_services:
   group0: [AMBARI_SERVER, NAMENODE, ZKFC, HIVE_METASTORE, SPARK_THRIFTSERVER,FLINK_HISTORYSERVER,HISTORYSERVER,RANGER_TAGSYNC, RANGER_USERSYNC,ZOOKEEPER_SERVER,JOURNALNODE]
   group1: [APP_TIMELINE_SERVER, RANGER_ADMIN,NAMENODE, METRICS_GRAFANA,ZKFC, HBASE_MASTER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER, RESOURCEMANAGER, SPARK_JOBHISTORYSERVER, INFRA_SOLR, JOURNALNODE,KAFKA_BROKER]
-  group2: [TIMELINE_READER,YARN_REGISTRY_DNS,METRICS_COLLECTOR, RESOURCEMANAGER, HBASE_REGIONSERVER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER,HIVE_SERVER, JOURNALNODE,SOLR_SERVER,WEBHCAT_SERVER,KAFKA_BROKER]
+  group2: [TIMELINE_READER,YARN_REGISTRY_DNS,METRICS_COLLECTOR, RESOURCEMANAGER, HBASE_REGIONSERVER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER,HIVE_SERVER, JOURNALNODE,WEBHCAT_SERVER,KAFKA_BROKER]
 
 ##################################
 ## other security configuration ##
@@ -40,6 +40,14 @@ packages_need_install: []
 external_ntp_server_hostname: ''                                             # if this is empty, ntp server will install and prepare on the ambari-server node
 
 data_dirs: ["/data/sdv1"]
+
+
+
+nexus:
+  install_dir: /opt/
+  jdk_install_dir: /opt/jvm/
+  user_name: admin            #don't change this
+  user_pwd: admin222
 
 ###########################
 ## general configuration ##

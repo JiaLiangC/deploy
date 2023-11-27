@@ -10,6 +10,7 @@ import subprocess
 import time
 import pwd
 from python.nexus.nexus_client import NexusClient
+from python.utils.os_utils import *
 
 logger = get_logger()
 
@@ -126,18 +127,6 @@ class NexusInstaller(Installer):
         self.password = password
         super().__init__("nexus", file_url, install_dir)
 
-    def kill_nexus_process(self):
-        logger.info("kill nexus process")
-        find_process_command = ["pgrep", "-f", "org.sonatype.nexus.karaf.NexusMain"]
-        try:
-            process_ids = subprocess.check_output(find_process_command).decode().split()
-            for pid in process_ids:
-                logger.info(f"Killing process {pid}")
-                kill_command = ["kill", "-9", pid]
-                subprocess.run(kill_command)
-        except subprocess.CalledProcessError:
-            logger.info("No such process found")
-
     def configure_service(self):
         nexus_service_path = "/etc/systemd/system/nexus.service"
         with open(nexus_service_path, "w") as file:
@@ -239,7 +228,7 @@ WantedBy=multi-user.target
 
 
     def install(self):
-        self.kill_nexus_process()
+        kill_nexus_process()
         self.fetch_and_unpack()
         self.delete_user_if_exists("nexus")
         self.create_user("nexus")
@@ -249,7 +238,6 @@ WantedBy=multi-user.target
         self.start_service()
         self.set_pwd_first_launch()
         logger.info("Nexus 安装完成！")
-
 
 
 class JDKInstaller(Installer):

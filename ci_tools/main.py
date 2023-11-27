@@ -5,6 +5,7 @@ from python.common.constants import *
 from python.nexus.nexus_client import NexusClient
 from python.nexus.nexus_repo_sync import NexusSynchronizer
 from python.install_utils.install_utils import *
+from python.utils.os_utils import *
 import docker
 import queue
 import threading
@@ -121,10 +122,6 @@ class ContainerTask(BaseTask):
 
         return container
 
-    def install_dependencies(self, container):
-        cmd_install = 'pip3 install jinja2 pyyaml requests'
-        self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
-
     def setup_environment(self, container):
         conf_args = {"prepare_env": True, "local_repo": self.conf["bigtop"]["local_maven_repo_dir"],
                      "proxy": self.conf["bigtop"]["net_proxy"]}
@@ -135,9 +132,6 @@ class ContainerTask(BaseTask):
         ci_scripts_module_path = os.path.join(prj_dir, self.conf['bigtop']['ci_scripts_module_path'])
 
         logger.info(f"conf_str is {conf_str_quoted}")
-        cmd_pyenv = ['/bin/bash', '-c',
-                     f"echo 'export PYTHONPATH={ci_scripts_module_path}:$PYTHONPATH' >> /etc/profile && source /etc/profile"]
-        self.logged_exec_run(container, cmd=cmd_pyenv, workdir='/')
         cmd = ['/bin/bash', '-c',
                f"source /etc/profile && python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={conf_str_quoted}"]
         self.logged_exec_run(container, cmd=cmd, workdir=f'{prj_dir}/ci_tools')
@@ -153,7 +147,6 @@ class ContainerTask(BaseTask):
             logger.info("not use docker to compile, build in local")
             container = None
         # todo
-        # self.install_dependencies(container)
         self.setup_environment(container)
         return container
 
@@ -185,8 +178,14 @@ class BuildComponentsTask(BaseTask):
 
 
 class NexusTask(BaseTask):
-    def __init__(self):
+    def __init__(self, os_type, os_version, os_arch):
         super().__init__()
+        self.os_type = os_type
+        self.os_version = os_version
+        self.os_arch = os_arch
+        self.synchronizer = NexusSynchronizer(os_type, os_version, os_arch, self.conf["nexus"]["repo_data_dir"])
+        self.nexus_client = NexusClient(self.conf["nexus"]["host"], self.conf["nexus"]["user_name"],
+                                        self.conf["nexus"]["user_pwd"])
 
     def install_nexus_and_jdk(self):
         logger.info("install_nexus_and_jdk")
@@ -198,46 +197,41 @@ class NexusTask(BaseTask):
         nexus_installer.install()
 
     def upload_bigdata_copms2nexus(self, comps):
-        logger.info("upload bigdata copmponents to nexus")
-        if self.conf["nexus"]["use_existed"]:
-            nexus_host = self.conf["nexus"]["host"]
-        else:
-            nexus_host = "localhost"
-        logger.info(f'upload_bigdata_copms2nexus user_name:{self.conf["nexus"]["user_name"]} user_pwd:{self.conf["nexus"]["user_pwd"]}')
-        nexus_client = NexusClient(nexus_host, self.conf["nexus"]["user_name"], self.conf["nexus"]["user_pwd"])
+        logger.info(
+            f'upload_bigdata_copms2nexus user_name:{self.conf["nexus"]["user_name"]} user_pwd:{self.conf["nexus"]["user_pwd"]}')
+
         for comp in comps:
             pkg_dir = os.path.join(self.conf["bigtop"]["prj_dir"], f"output/{comp}")
             logger.info(f"uploading {pkg_dir} {comp}")
-            nexus_client.repo_create("yum",remove_old=False)
-            nexus_client.batch_upload_bigdata_pkgs(pkg_dir, comp)
+            self.nexus_client.repo_create(UDH_NEXUS_REPO_NAME, remove_old=False)
+            self.nexus_client.batch_upload_bigdata_pkgs(pkg_dir, comp)
 
+    def repo_sync(self):
+        self.synchronizer.generate_pkg_meta()
+        self.synchronizer.sync_repository()
 
-    def repo_sync(self, os_type, upload_ospkgs):
-        ## ['centos7', 'centos8', 'openeuler22', 'kylinv10']
-        # os_type = 'centos7'
-        logger.info(f"repo_sync sync {os_type} upload_ospkgs:{upload_ospkgs}")
-        synchronizer = NexusSynchronizer(os_type, self.conf["nexus"]["repo_data_dir"])
-        synchronizer.generate_pkg_meta()
-        synchronizer.sync_repository()
-        nexus_host = "localhost"
-        if upload_ospkgs:
-            pkgs_dir = synchronizer.get_local_pkgs_dir()
-            logger.info(f"will upload os pkgs under  {pkgs_dir} to {nexus_host}")
-            nexus_client = NexusClient(nexus_host, self.conf["nexus"]["user_name"], self.conf["nexus"]["user_pwd"])
-            nexus_client.repo_create(nexus_client.get_os_type(), remove_old=True)
-            nexus_client.batch_upload_os_pkgs(pkgs_dir)
+    def upload_os_pkgs(self):
+        pkgs_dir = self.synchronizer.get_local_pkgs_dir()
+        # os package 的reponame等于 os type比如redhat
+        self.nexus_client.repo_create(self.os_type, remove_old=True)
+        self.nexus_client.batch_upload_os_pkgs(pkgs_dir, (self.os_type, self.os_version, self.os_arch))
 
-    def kill_nexus_process(self):
-        logger.info("kill nexus process")
-        find_process_command = ["pgrep", "-f", "org.sonatype.nexus.karaf.NexusMain"]
-        try:
-            process_ids = subprocess.check_output(find_process_command).decode().split()
-            for pid in process_ids:
-                logger.info(f"Killing process {pid}")
-                kill_command = ["kill", "-9", pid]
-                subprocess.run(kill_command)
-        except subprocess.CalledProcessError:
-            logger.info("No such process found")
+    def package_nexus(self, include_os_pkg):
+        self.install_nexus_and_jdk()
+        # create repo if not exist and upload bigdata pkgs to nexus
+        self.upload_bigdata_copms2nexus(ALL_COMPONENTS)
+
+        # create repo and sync and upload os pkgs to nexus
+        if include_os_pkg:
+            self.repo_sync()
+            self.upload_os_pkgs()
+        kill_nexus_process()
+
+        nexus_dir = self.conf["nexus"]["install_dir"]
+        parent_dir_path = os.path.dirname(nexus_dir)
+        subprocess.run(["tar", "-zcvf", "nexus3.tar.gz", nexus_dir], check=True, cwd=parent_dir_path)
+        shutil.move(f"{parent_dir_path}/nexus3.tar.gz", RELEASE_NEXUS_TAR_FILE)
+
     def run(self):
         logger.info()
 
@@ -280,8 +274,12 @@ class DeployClusterTask(BaseTask):
 
 
 class UDHReleaseTask(BaseTask):
-    def __init__(self):
+    def __init__(self, os_type, os_version, os_arch, include_os_pkg):
         super().__init__()
+        self.os_type = os_type
+        self.os_version = os_version
+        self.os_arch = os_arch
+        self.include_os_pkg = include_os_pkg
 
     # ansible 依赖都是要分操作系统的
     # nexus 安装，组件上传，停止，打包
@@ -292,7 +290,7 @@ class UDHReleaseTask(BaseTask):
         udh_release_output_dir = self.conf["udh_release_output_dir"]
 
         if os.path.exists(udh_release_output_dir):
-            shutil.rmtree(udh_release_output_dir,ignore_errors=True)
+            shutil.rmtree(udh_release_output_dir, ignore_errors=True)
         os.makedirs(udh_release_output_dir)
 
         # 1. Copy project directory into udh_release_output_dir
@@ -302,39 +300,22 @@ class UDHReleaseTask(BaseTask):
         if os.path.exists(".git"):
             shutil.rmtree(".git")
 
-        tar_files_dir = os.path.join(udh_release_output_dir,"bigdata_deploy/ci_tools/resources/pkgs/")
-        prj_bin_files_dir = os.path.join(udh_release_output_dir,"bigdata_deploy/bin")
+        prj_bin_files_dir = os.path.join(udh_release_output_dir, "bigdata_deploy/bin")
 
-        #install pigz
-        prj_bin_dir = os.path.join(udh_release_output_dir, "venv.tar.gz")
+        # install pigz
         pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, prj_bin_files_dir)
         pigz_installer.install()
-        #pyenv
-        install_dir = self.conf["python_venv_install_dir"]
-        venv_file = os.path.join(install_dir, "venv.tar.gz")
-        shutil.move(venv_file, tar_files_dir)
-        #nexus
-        self.package_nexus(tar_files_dir)
+        #jdk
+        shutil.move(f'{self.conf["nexus"]["jdk_local_tar"]}', RELEASE_JDK_TAR_FILE)
+        # nexus
+        nexus_task = NexusTask(self.os_type, self.os_version, self.os_arch)
+        nexus_task.package_nexus(self.include_os_pkg)
 
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
-        udh_release_name = f"UDH_RELEASE_{time_dir_name}.tar.gz"
+        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
         # 3. Start a subprocess to compress
-        subprocess.run(["tar", "-zcvf", udh_release_name, udh_release_output_dir], check=True,cwd=udh_release_output_dir)
-
-    def package_nexus(self,tar_files_dir):
-        nexus_task = NexusTask()
-        #install nexus and jdk
-        nexus_task.install_nexus_and_jdk()
-        #create repo if not exist and upload bigdata pkgs to nexus
-        nexus_task.upload_bigdata_copms2nexus(ALL_COMPONENTS)
-        #create repo and sync and upload os pkgs to nexus
-        nexus_task.repo_sync(os_type, True)
-        nexus_task.kill_nexus_process()
-        nexus_dir = self.conf["nexus"]["install_dir"]
-        parent_dir_path = os.path.dirname(nexus_dir)
-        subprocess.run(["tar", "-zcvf", "nexus.tar.gz", nexus_dir], check=True, cwd=parent_dir_path)
-        shutil.move(f"{parent_dir_path}/nexus.tar.gz", tar_files_dir)
-
+        subprocess.run(["tar", "-zcvf", udh_release_name, udh_release_output_dir], check=True,
+                       cwd=udh_release_output_dir)
 
 
 class InitializeTask(BaseTask):
@@ -344,10 +325,6 @@ class InitializeTask(BaseTask):
     def run(self):
         if not os.path.exists(OUTPUT_DIR):
             os.mkdir(OUTPUT_DIR)
-        # ansible_installer = AnsibleInstaller(PORTABLE_ANSIBLE_PATH, self.conf["ansible_install_dir"])
-        # ansible_installer.install()
-        # self.create_link_for_ansible()
-
 
 
 def setup_options():
@@ -389,10 +366,18 @@ def setup_options():
                         help='Rebuild all packages')
 
     parser.add_argument('-repo-sync',
-                        metavar='repo_sync',
+                        action='store_true',
+                        help='the repo_sync params,os_name and arch ')
+
+    parser.add_argument('include-os-pkg',
+                        action='store_true',
+                        help='the repo_sync params,os_name and arch ')
+
+    parser.add_argument('-os-info',
+                        metavar='os_info',
                         type=str,
                         default="",
-                        help='The parallel build parallel threads used in build')
+                        help='the repo_sync params,os_name and arch ')
 
     parser.add_argument('-stack',
                         metavar='stack',
@@ -440,7 +425,9 @@ def main():
     stack = args.stack
     upload_nexus = args.upload_nexus
     upload_ospkgs = args.upload_ospkgs
-    os_type = args.repo_sync
+    repo_sync = args.repo_sync
+    os_info = args.os_info
+    include_os_pkg = args.include_os_pkg
     install_nexus = args.install_nexus
 
     init_task = InitializeTask()
@@ -463,28 +450,32 @@ def main():
         build_components_task.run()
 
     if upload_nexus:
-        #如果没通过buid参数指定传哪些包，默认传全部
-        if not components_str or len(components_str)==0:
+        # 如果没通过buid参数指定传哪些包，默认传全部
+        os_type, os_version, os_arch = os_info.split(",")
+        if not components_str or len(components_str) == 0:
             components_str = ",".join(ALL_COMPONENTS)
         components_arr = components_str.split(",")
         if len(components_arr) > 0:
-            nexus_task = NexusTask()
+            nexus_task = NexusTask(os_type, os_version, os_arch)
             nexus_task.upload_bigdata_copms2nexus(components_arr)
 
-    if os_type and len(os_type) > 0:
-        nexus_task = NexusTask()
-        nexus_task.repo_sync(os_type, upload_ospkgs)
+    if repo_sync and os_info and len(os_info) > 0:
+        os_type, os_version, os_arch = os_info.split(",")
+        assert os_arch in SUPPORTED_ARCHS
+        assert os_type in SUPPORTED_OS
+        nexus_task = NexusTask(os_type, os_version, os_arch)
+        nexus_task.repo_sync()
 
     if deploy:
         deploy_cluster_task = DeployClusterTask()
         deploy_cluster_task.run()
 
     if release:
+        os_type, os_version, os_arch = os_info.split(",")
+        udh_release_task = UDHReleaseTask(os_type, os_version, os_arch, include_os_pkg)
+        udh_release_task.package()
         logger.info("do release")
 
-    # todo 离线python依赖
-    # todo 增加多操作系统支持
-    # todo 测试 nexus sync
     # todo 使用设计模式重构
     # todo 制作大包，使用大发布包部署
 
@@ -492,33 +483,18 @@ def main():
 if __name__ == '__main__':
     main()
 
+# todo 目前同步包等只能在对应的操作系统上
+# 场景开发过程的宿主机编译，容器编译，nexus 安装，组件上传，部署集群，发布 release 包(主要是nexus 包)
+# 客户部署场景的集群部署：1.手动解压大部署包 2.执行source venv.sh 如果选择nexus 就解压安装nexus 到配置目录, 然后自动化部署
+# 目前只能在对应操作系统打发布包
+# todo 根据 os 和 arch打不同的发布包（影响 nexus sync, jdk 和nexus bin包 arch）
+# todo 这里要区分 测试打包时安装nexus 时nexus tar 未知和客户部署时nexus 和jdk的位置.
 # todo 容器默认安装python3-devel
 # todo 1.增加发布一个操作系统的大包的功能 (检查nexus repo,编译组件打rpm,rpm 上传到nexus,打包nexus 和部署脚本)
 # todo 梳理容器依赖和宿主机依赖
 # todo 程序退出时杀死ansible 进程
 # todo component name and params check
-# only work with python 3.7 and higher
 
 # docker run -d -it --network host -v ${PWD}:/ws -v /data/sdv1/bigtop_reporoot:/root --workdir /ws --name BIGTOP bigtop/slaves:3.2.0-centos-7
 # {根据os 获取对应的镜像的名字}
 # todo 把容器需要的都丢到一个目录，挂载到容器对应的目录下
-
-# download all static files first
-# todo nexus install, password set, repo create
-# todo rpm available test
-# todo 整理所有依赖 1.xml2dict
-#virtualenv -p /usr/bin/python3 --no-site-packages venv
-# python3 -m pip install virtualenv
-# python3 -m virtualenv ansible  # Create a virtualenv if one does not already exist
-# source ansible/bin/activate   # Activate the virtual environment
-# python3 -m pip install ansible
-# deactivate
-
-
-#todo 依赖整理: requests  xml2dict ansible
-#mkdir /opt/bigdata_tools_venv/
-#cd /opt/bigdata_tools_venv/
-#python3 -m virtualenv -p /usr/bin/python3  venv
-#/opt/bigdata_tools_venv/bin/pip3 install requests  xml2dict ansible
-#tar zcvf venv.tar.gz venv
-

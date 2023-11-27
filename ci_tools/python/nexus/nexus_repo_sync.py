@@ -18,33 +18,44 @@ logger = get_logger(log_file="bigdata_nexus_sync.log")
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# centos7.9
+# kylinv10_sp3
+# openeuler22
 OS_INFO = {
-    "centos7": {"repo_url": "http://mirrors.aliyun.com/centos/7/os/x86_64/Packages/",
-                "meta_file": "centos7-primary.xml"},
-    "centos8": {"repo_url": "http://mirrors.aliyun.com/centos/8/BaseOS/x86_64/os/Packages",
-                "meta_file": "centos8-primary.xml"},
-    "openeuler22": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/Packages/",
-                    "meta_file": "openeuler22-primary.xml"},
-    "kylinv10": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP2/os/adv/lic/base/aarch64/Packages/",
-                 "meta_file": "kylinv10-primary.xml"}
+    "centos7_x86_64": {"repo_url": "http://mirrors.aliyun.com/centos/7/os/x86_64/Packages/",
+                       "meta_file": "centos7-primary.xml"},
+    "centos8_x86_64": {"repo_url": "http://mirrors.aliyun.com/centos/8/BaseOS/x86_64/os/Packages",
+                       "meta_file": "centos8-primary.xml"},
+    "openeuler22_x86_64": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/Packages/",
+                           "meta_file": "openeuler22-primary.xml"},
+    "kylinv10_aarch64": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/aarch64/Packages/",
+                         "meta_file": "kylinv10-primary.xml"},
+    "kylinv10_x86_64": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/x86_64/Packages/",
+                        "meta_file": "kylinv10-primary.xml"}
 }
 
 
 class NexusSynchronizer:
-    def __init__(self, os_type, local_dir, arch="x86_64"):
+    def __init__(self, os_type, os_version, os_arch, local_dir):
         assert arch in SUPPORTED_ARCHS
         self.os_type = os_type
-        self.arch = arch
+        self.os_version = os_version
+        self.os_arch = os_arch
         self.local_dir = local_dir
         self.success_file = os.path.join(SCRIPT_DIR, 'success.json')
         self.failure_file = os.path.join(SCRIPT_DIR, 'failure.json')
         self.retry_limit = 3
 
+
+    def get_os_info(self,key):
+        return OS_INFO.get(f"{self.os_type}{self.os_version}_{self.os_arch}").get(key)
+
     def get_local_pkgs_dir(self):
-        pkgs_path = os.path.join(self.local_dir, f"{self.os_type}_{self.arch}_pkgs")
+        pkgs_path = os.path.join(self.local_dir, f"{self.os_type}{self.os_version}_{self.os_arch}_pkgs")
         if not os.path.exists(pkgs_path):
             os.mkdir(pkgs_path)
         return pkgs_path
+
 
     def load_json_data(self, filepath):
         if os.path.exists(filepath):
@@ -58,8 +69,10 @@ class NexusSynchronizer:
         with open(filepath, 'w') as jsonfile:
             json.dump(json_data, jsonfile, indent=4)
 
+
+
     def get_meta_json_file_path(self):
-        repo_metadata_file = OS_INFO.get(self.os_type).get("meta_file")
+        repo_metadata_file = self.get_os_info("meta_file")
 
         return os.path.join(REPO_FILES_DIR, f'{repo_metadata_file}.json')
 
@@ -76,6 +89,7 @@ class NexusSynchronizer:
             for n in iter(lambda: f.readinto(mv), 0):
                 h.update(mv[:n])
         return h.hexdigest()
+
 
     def validate_md5(self, downloaded_file, md5_hash):
         dh = self.sha256sum(downloaded_file)
@@ -196,7 +210,7 @@ class NexusSynchronizer:
         logger.info("synchronizing repository")
         success_packages = {}
         failure_packages = {}
-        remote_repo_url = OS_INFO.get(self.os_type).get("repo_url")
+        remote_repo_url = self.get_os_info("repo_url")
 
         for pkg_name, pkg_md5 in packages_need_download.items():
             pkg_url = urljoin(remote_repo_url, pkg_name)
@@ -217,7 +231,7 @@ class NexusSynchronizer:
 
     def generate_pkg_meta(self):
         import xmltodict
-        repo_metadata_file = OS_INFO.get(self.os_type).get("meta_file")
+        repo_metadata_file = self.get_os_info("meta_file")
         logger.info(f"parseing {self.os_type} repo  {repo_metadata_file} file")
         with open(os.path.join(REPO_FILES_DIR, repo_metadata_file)) as fd:
             doc = xmltodict.parse(fd.read())

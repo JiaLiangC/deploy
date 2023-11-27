@@ -6,6 +6,7 @@ import concurrent.futures
 from python.common.basic_logger import get_logger
 from python.common.constants import *
 from python.easyprocess import EasyProcess
+from python.utils.os_utils import *
 import shutil
 from urllib.parse import urlparse, urljoin
 import json
@@ -50,77 +51,6 @@ class BigtopBuilder(object):
 
         return normalized_url1 == normalized_url2
 
-    def get_full_os_major_version(self):
-        os_type = self.get_os_type()
-        os_version = self.get_os_version()
-        full_os_major_version = os_type + os_version
-        logger.info(f"full_os_and_major_version is {full_os_major_version}")
-        return full_os_major_version
-
-    def get_os_type(self):
-        operatingSystem = platform.system().lower()
-        if operatingSystem == 'linux':
-            operatingSystem = platform.linux_distribution()[0].lower()
-
-        # special cases
-        if operatingSystem.startswith('ubuntu'):
-            operatingSystem = 'ubuntu'
-        elif operatingSystem.startswith('red hat enterprise linux'):
-            operatingSystem = 'redhat'
-        elif operatingSystem.startswith('kylin linux'):
-            operatingSystem = 'kylin'
-        elif operatingSystem.startswith('centos linux'):
-            operatingSystem = 'redhat'
-        elif operatingSystem.startswith('rocky linux'):
-            operatingSystem = 'redhat'
-        elif operatingSystem.startswith('uos'):
-            operatingSystem = 'uos'
-        elif operatingSystem.startswith('anolis'):
-            operatingSystem = 'anolis'
-        elif operatingSystem.startswith('asianux server'):
-            operatingSystem = 'asianux'
-        elif operatingSystem.startswith('bclinux'):
-            operatingSystem = 'bclinux'
-        elif operatingSystem.startswith('openeuler'):
-            operatingSystem = 'openeuler'
-
-        if operatingSystem == '':
-            raise Exception("Cannot detect os type. Exiting...")
-
-        return operatingSystem
-
-    def get_os_version(self):
-        os_type = self.get_os_type()
-        version = platform.linux_distribution()[1]
-
-        if version:
-            if os_type == "kylin":
-                # kylin v10
-                if version == 'V10':
-                    version = 'v10'
-            elif os_type == 'anolis':
-                if version == '20':
-                    version = '20'
-            elif os_type == 'uos':
-                # uos 20
-                if version == '20':
-                    version = '20'
-            elif os_type == 'openeuler':
-                # openeuler 22
-                version = '22'
-            elif os_type == 'bclinux':
-                version = '8'
-            elif os_type == '4.0.':
-                # support nfs (zhong ke fang de)
-                version = '4'
-            elif len(version.split(".")) > 2:
-                # support 8.4.0
-                version = version.split(".")[0]
-            else:
-                version = version
-            return version
-        else:
-            raise Exception("Cannot detect os version. Exiting...")
 
     def mv_repo_files(self, source_folder, target_folder):
         for filename in os.listdir(source_folder):

@@ -5,6 +5,7 @@ import glob
 import platform
 import base64
 from python.common.constants import *
+from python.utils.os_utils import *
 import json
 
 logger = get_logger()
@@ -23,84 +24,11 @@ class NexusClient:
         return f"http://{self.server_host}:{self.server_por}"
 
     # repository/centos/7/os/x86_64/Packages/Cython-0.19-5.el7.x86_64.rpm
-
-    def get_os_type(self):
-        operatingSystem = platform.system().lower()
-        if operatingSystem == 'linux':
-            operatingSystem = platform.linux_distribution()[0].lower()
-
-        # special cases
-        if operatingSystem.startswith('ubuntu'):
-            operatingSystem = 'ubuntu'
-        elif operatingSystem.startswith('red hat enterprise linux'):
-            operatingSystem = 'redhat'
-        elif operatingSystem.startswith('kylin linux'):
-            operatingSystem = 'kylin'
-        elif operatingSystem.startswith('centos linux'):
-            operatingSystem = 'redhat'
-        elif operatingSystem.startswith('rocky linux'):
-            operatingSystem = 'redhat'
-        elif operatingSystem.startswith('uos'):
-            operatingSystem = 'uos'
-        elif operatingSystem.startswith('anolis'):
-            operatingSystem = 'anolis'
-        elif operatingSystem.startswith('asianux server'):
-            operatingSystem = 'asianux'
-        elif operatingSystem.startswith('bclinux'):
-            operatingSystem = 'bclinux'
-        elif operatingSystem.startswith('openeuler'):
-            operatingSystem = 'openeuler'
-
-        if operatingSystem == '':
-            raise Exception("Cannot detect os type. Exiting...")
-
-        return operatingSystem
-
-    def get_os_version(self):
-        os_type = self.get_os_type()
-        version = platform.linux_distribution()[1]
-
-        if version:
-            if os_type == "kylin":
-                # kylin v10
-                if version == 'V10':
-                    version = 'v10'
-            elif os_type == 'anolis':
-                if version == '20':
-                    version = '20'
-            elif os_type == 'uos':
-                # uos 20
-                if version == '20':
-                    version = '20'
-            elif os_type == 'openeuler':
-                # openeuler 22
-                version = '22'
-            elif os_type == 'bclinux':
-                version = '8'
-            elif os_type == '4.0.':
-                # support nfs (zhong ke fang de)
-                version = '4'
-            elif len(version.split(".")) > 2:
-                # support 8.4.0
-                version = version.split(".")[0]
-            else:
-                version = version
-            return version
-        else:
-            raise Exception("Cannot detect os version. Exiting...")
-
-    def get_os_packages_relative_dir(self):
-        os_type = self.get_os_type()
-        os_architecture = platform.machine()
-        os_version = self.get_os_version()
-        relative_path = f"{os_type}/{os_version}/os/{os_architecture}/Packages"
-        return relative_path
-
-    def get_os_packages_url(self):
+    def get_os_packages_url(self, os_info):
         import platform
-        os_type = self.get_os_type()
-        os_architecture = platform.machine()
-        os_version = self.get_os_version()
+        os_type = os_info[0]
+        os_version = os_info[1]
+        os_architecture = os_info[2]
         if os_architecture not in SUPPORTED_ARCHS:
             raise Exception(f"os architecture {os_architecture} not supported. only support: {SUPPORTED_ARCHS} ")
         base_url = f"{self.get_nexus_url()}/repository/{os_type}/{os_version}/os/{os_architecture}/Packages"
@@ -108,8 +36,8 @@ class NexusClient:
         return base_url
 
     def get_bigdata_component_url(self, component_dir_name):
-        repo_name = "yum"
-        relative_dir = "udh3/packages"
+        repo_name = UDH_NEXUS_REPO_NAME
+        relative_dir = UDH_NEXUS_REPO_PACKAGES_PATH
         base_url = f"{self.get_nexus_url()}/repository/{repo_name}/{relative_dir}/{component_dir_name}"
         return base_url
 
@@ -122,8 +50,8 @@ class NexusClient:
             logger.info(f"Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
             logger.info(f"Upload completed for {file_path}")
 
-    def upload_os_pkgs(self, file_path):
-        base_url = self.get_os_packages_url()
+    def upload_os_pkgs(self, file_path, os_info):
+        base_url = self.get_os_packages_url(os_info)
         base_url = f"{base_url}/{os.path.basename(file_path)}"
         self.upload(file_path, base_url)
 
@@ -132,15 +60,15 @@ class NexusClient:
         base_url = f"{base_url}/{os.path.basename(file_path)}"
         self.upload(file_path, base_url)
 
-    def batch_upload_os_pkgs(self, source_dir):
+    def batch_upload_os_pkgs(self, source_dir, os_info):
         for filepath in glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True):
             logger.info(f"finding {filepath}")
             if not filepath.endswith("src.rpm"):
-                self.upload_os_pkgs(filepath)
+                self.upload_os_pkgs(filepath, os_info)
 
     def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name):
-        repo_name = "yum"
-        component_relative_path = f"udh3/packages/{component_dir_name}"
+        repo_name = UDH_NEXUS_REPO_NAME
+        component_relative_path = f"{UDH_NEXUS_REPO_PACKAGES_PATH}/{component_dir_name}"
         self.delete_folder(repo_name, component_relative_path)
         for filepath in glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True):
             logger.info(f"finding {filepath}")
@@ -217,7 +145,8 @@ class NexusClient:
 
     def get_repos(self):
         url = f"{self.get_nexus_url()}/service/extdirect"
-        data = {"action":"coreui_Repository","method":"readReferences","data":[{"page":1,"start":0,"limit":100}],"type":"rpc","tid":30}
+        data = {"action": "coreui_Repository", "method": "readReferences",
+                "data": [{"page": 1, "start": 0, "limit": 100}], "type": "rpc", "tid": 30}
 
         headers = {
             'Content-Type': 'application/json',
@@ -294,7 +223,6 @@ class NexusClient:
             logger.info(f'Unexpected status code: {response.status_code}')
 
         logger.info(f"url: {url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
-
 
     def set_pwd_first_launch(self, initila_pwd, new_pwd):
         self.upload_script(initila_pwd)
