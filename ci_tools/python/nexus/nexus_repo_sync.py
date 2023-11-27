@@ -8,6 +8,7 @@ import urllib
 from time import sleep
 import requests
 import argparse
+import xmltodict
 import logging
 from python.common.constants import *
 from concurrent.futures import ProcessPoolExecutor
@@ -230,7 +231,6 @@ class NexusSynchronizer:
             self.write_json_data(self.failure_file, failure_packages)
 
     def generate_pkg_meta(self):
-        import xmltodict
         repo_metadata_file = self.get_os_info("meta_file")
         logger.info(f"parseing {self.os_type} repo  {repo_metadata_file} file")
         with open(os.path.join(REPO_FILES_DIR, repo_metadata_file)) as fd:

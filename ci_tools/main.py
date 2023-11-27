@@ -1,5 +1,5 @@
+# -*- coding:utf8 -*-
 import json
-
 from python.common.basic_logger import get_logger
 from python.common.constants import *
 from python.nexus.nexus_client import NexusClient
@@ -65,7 +65,9 @@ class BaseTask:
                 logger.info(f"Command to be executed: {cmd}")
             else:
                 logger.error("No command provided.")
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
+            env_vars = os.environ.copy()
+            logger.info(f"PYTHONPATH : {env_vars['PYTHONPATH']}")
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, env=dict(env_vars),
                                        universal_newlines=True)
             output, error = process.communicate()
             exit_code = process.returncode
@@ -129,11 +131,9 @@ class ContainerTask(BaseTask):
         conf_str_quoted = shlex.quote(conf_str)
 
         prj_dir = self.get_prj_dir()
-        ci_scripts_module_path = os.path.join(prj_dir, self.conf['bigtop']['ci_scripts_module_path'])
-
         logger.info(f"conf_str is {conf_str_quoted}")
         cmd = ['/bin/bash', '-c',
-               f"source /etc/profile && python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={conf_str_quoted}"]
+               f"python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={conf_str_quoted}"]
         self.logged_exec_run(container, cmd=cmd, workdir=f'{prj_dir}/ci_tools')
 
         # todo
@@ -163,7 +163,7 @@ class BuildComponentsTask(BaseTask):
         self.build_args["proxy"] = self.conf["bigtop"]["net_proxy"]
         conf_str = json.dumps(self.build_args)
         conf_str_quoted = shlex.quote(conf_str)
-        pycmd = f'source /etc/profile && python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={conf_str_quoted}'
+        pycmd = f'python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={conf_str_quoted}'
         cmd = ['/bin/bash', '-c', pycmd]
         exit_code, output = self.logged_exec_run(self.container, cmd=cmd, workdir=f'{prj_dir}/ci_tools')
         return exit_code
@@ -305,7 +305,7 @@ class UDHReleaseTask(BaseTask):
         # install pigz
         pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, prj_bin_files_dir)
         pigz_installer.install()
-        #jdk
+        # jdk
         shutil.move(f'{self.conf["nexus"]["jdk_local_tar"]}', RELEASE_JDK_TAR_FILE)
         # nexus
         nexus_task = NexusTask(self.os_type, self.os_version, self.os_arch)
@@ -369,7 +369,7 @@ def setup_options():
                         action='store_true',
                         help='the repo_sync params,os_name and arch ')
 
-    parser.add_argument('include-os-pkg',
+    parser.add_argument('-include-os-pkg',
                         action='store_true',
                         help='the repo_sync params,os_name and arch ')
 

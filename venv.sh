@@ -11,8 +11,9 @@ fi
 
 # 解压 portable-ansible.zip 到 prjdir/bin/ 目录
 echo "Unzipping portable-ansible.zip to ${prjdir}/bin/..."
-unzip -o ${prjdir}/ci_tools/resources/pkgs/portable-ansible.zip -d "${prjdir}/bin"
-
+if [[ ! -d "${prjdir}/bin/portable-ansible" ]]; then
+	unzip -o ${prjdir}/ci_tools/resources/pkgs/portable-ansible.zip -d "${prjdir}/bin"
+fi
 # 如果软链接 prjdir/bin/ansible-playbook 不存在，创建它
 if [[ ! -L "${prjdir}/bin/ansible-playbook" ]]; then
   echo "Symbolic link ${prjdir}/bin/ansible-playbook does not exist. Creating it..."
@@ -22,6 +23,6 @@ fi
 # 设置环境变量
 echo "Setting environment variables..."
 export ANSIBLE_COLLECTIONS_PATHS="${prjdir}"
-export PYTHONPATH="${prjdir}/ci_tools/python:${prjdir}/bin/portable-ansible:${PYTHONPATH}"
+export PYTHONPATH="${prjdir}/ci_tools:${prjdir}/bin/portable-ansible:${prjdir}/bin/portable-ansible/extras:${PYTHONPATH}"
 
 echo "Done."
