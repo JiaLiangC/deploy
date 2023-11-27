@@ -6,6 +6,7 @@ from python.nexus.nexus_client import NexusClient
 from python.nexus.nexus_repo_sync import NexusSynchronizer
 from python.install_utils.install_utils import *
 from python.utils.os_utils import *
+
 import docker
 import queue
 import threading
@@ -212,7 +213,7 @@ class NexusTask(BaseTask):
 
     def upload_os_pkgs(self):
         pkgs_dir = self.synchronizer.get_local_pkgs_dir()
-        # os package 的reponame等于 os type比如redhat
+        # os package 的 reponame 等于 os type 比如 redhat
         self.nexus_client.repo_create(self.os_type, remove_old=True)
         self.nexus_client.batch_upload_os_pkgs(pkgs_dir, (self.os_type, self.os_version, self.os_arch))
 
@@ -226,11 +227,12 @@ class NexusTask(BaseTask):
             self.repo_sync()
             self.upload_os_pkgs()
         kill_nexus_process()
+        kill_user_processes("nexus")
 
         nexus_dir = self.conf["nexus"]["install_dir"]
         parent_dir_path = os.path.dirname(nexus_dir)
-        subprocess.run(["tar", "-zcvf", "nexus3.tar.gz", nexus_dir], check=True, cwd=parent_dir_path)
-        shutil.move(f"{parent_dir_path}/nexus3.tar.gz", RELEASE_NEXUS_TAR_FILE)
+        subprocess.run(["tar", "-cf", "nexus3.tar", nexus_dir], check=True, cwd=parent_dir_path)
+        shutil.move(f"{parent_dir_path}/nexus3.tar", RELEASE_NEXUS_TAR_FILE)
 
     def run(self):
         logger.info()
@@ -290,31 +292,37 @@ class UDHReleaseTask(BaseTask):
         udh_release_output_dir = self.conf["udh_release_output_dir"]
 
         if os.path.exists(udh_release_output_dir):
+            logger.info(f"rmtree udh_release_output_dir {udh_release_output_dir}")
             shutil.rmtree(udh_release_output_dir, ignore_errors=True)
         os.makedirs(udh_release_output_dir)
 
         # 1. Copy project directory into udh_release_output_dir
-        shutil.copytree(PRJDIR, udh_release_output_dir)
+        target_dir = os.path.join(udh_release_output_dir, os.path.basename(PRJDIR))
+        print(f"---{PRJDIR} {target_dir}, {os.path.basename(PRJDIR)}")
+        shutil.copytree(PRJDIR, target_dir)
         # 2. Change into the copied directory and remove .git
-        os.chdir(os.path.join(udh_release_output_dir, os.path.basename(PRJDIR)))
+        os.chdir(target_dir)
         if os.path.exists(".git"):
             shutil.rmtree(".git")
 
-        prj_bin_files_dir = os.path.join(udh_release_output_dir, "bigdata_deploy/bin")
+        if os.path.exists("portable-ansible"):
+            shutil.rmtree("portable-ansible")
 
-        # install pigz
-        pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, prj_bin_files_dir)
-        pigz_installer.install()
+        if os.path.exists("ansible-playbook"):
+            shutil.rmtree("ansible-playbook")
+
+        prj_bin_files_dir = os.path.join(target_dir, "bin")
+
         # jdk
-        shutil.move(f'{self.conf["nexus"]["jdk_local_tar"]}', RELEASE_JDK_TAR_FILE)
+        shutil.copy(f'{self.conf["nexus"]["jdk_local_tar"]}', RELEASE_JDK_TAR_FILE)
         # nexus
         nexus_task = NexusTask(self.os_type, self.os_version, self.os_arch)
         nexus_task.package_nexus(self.include_os_pkg)
 
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
-        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
+        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar"
         # 3. Start a subprocess to compress
-        subprocess.run(["tar", "-zcvf", udh_release_name, udh_release_output_dir], check=True,
+        subprocess.run(["tar", "-cf", udh_release_name, udh_release_output_dir], check=True,
                        cwd=udh_release_output_dir)
 
 

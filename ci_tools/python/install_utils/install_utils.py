@@ -14,6 +14,7 @@ from python.utils.os_utils import *
 
 logger = get_logger()
 
+
 class Installer:
     def __init__(self, package_name, file_url, install_dir):
         self.package_name = package_name
@@ -21,24 +22,17 @@ class Installer:
         self.install_dir = install_dir
         self.comp_dir = self.get_comp_dir()
 
-    def kill_user_processes(self, username):
-        p = subprocess.Popen(['pgrep', '-u', username], stdout=subprocess.PIPE)
-        out, err = p.communicate()
-
-        for pid in out.splitlines():
-            subprocess.run(['kill', '-9', pid])
-
     def read_file_contents(self, file_path):
         with open(file_path, 'r') as file:
             contents = file.read()
         return contents
 
-    def create_user(self,user):
+    def create_user(self, user):
         os.system(f"useradd --system --shell /bin/false {user}")
         os.system(f"chown -R {user}:{user} {self.comp_dir}")
 
     def delete_user_if_exists(self, username):
-        self.kill_user_processes(username)
+        kill_user_processes(username)
         try:
             pwd.getpwnam(username)
             # If the above function did not raise an error, the user exists. Delete it.
@@ -62,9 +56,10 @@ class Installer:
                 logger.info(f" local {local_path} file exist")
             else:
                 raise FileNotFoundError(f"Local file {local_path} does not exist.")
+
     def get_top_level_dir_name(self, file_path):
         if not os.path.exists(file_path):
-            return
+            raise Exception(f"get_top_level_dir_name {file_path} not exist")
         extension = os.path.splitext(file_path)[1]
         if extension == ".gz" or extension == ".bz2":
             with tarfile.open(file_path, "r") as tar:
@@ -89,18 +84,18 @@ class Installer:
 
     def get_comp_dir(self):
         dir_name = self.get_top_level_dir_name(self.file_url)
-        fdir= os.path.join(self.install_dir,dir_name)
-        return  fdir
+        print(f"get_comp_dir {self.file_url} {dir_name} {self.install_dir}")
+        fdir = os.path.join(self.install_dir, dir_name)
+        return fdir
 
     def extract_package(self):
         if not os.path.exists(self.install_dir):
             os.makedirs(self.install_dir)
-        comp_dir=self.comp_dir
+        comp_dir = self.comp_dir
         logger.info(f"will install into {self.comp_dir}")
         if os.path.exists(comp_dir):
             logger.info(f"delete existing dir {comp_dir}")
             shutil.rmtree(comp_dir)
-
 
         extension = os.path.splitext(self.file_url)[1]
         file_path = self.get_local_path()
@@ -193,18 +188,18 @@ WantedBy=multi-user.target
 
     def generate_properties(self):
         user = "nexus"
-        group= "nexus"
-        nexus_etc_dir = os.path.join(self.comp_dir,"sonatype-work/nexus3/etc")
+        group = "nexus"
+        nexus_etc_dir = os.path.join(self.comp_dir, "sonatype-work/nexus3/etc")
         if not os.path.exists(nexus_etc_dir):
-            os.makedirs(nexus_etc_dir,exist_ok=True)
+            os.makedirs(nexus_etc_dir, exist_ok=True)
         content = "nexus.scripts.allowCreation=true"
-        file_path = os.path.join(nexus_etc_dir,"nexus.properties")
+        file_path = os.path.join(nexus_etc_dir, "nexus.properties")
         with open(file_path, 'w') as f:
             f.write(content)
         subprocess.run(["chown", "-R", f"{user}:{group}", nexus_etc_dir], check=True)
 
     def set_pwd_first_launch(self):
-        pwd_file = os.path.join(self.comp_dir,"sonatype-work/nexus3/admin.password")
+        pwd_file = os.path.join(self.comp_dir, "sonatype-work/nexus3/admin.password")
         initial_password = self.read_file_contents(pwd_file).strip()
         nexus_client = NexusClient("localhost", "admin", initial_password)
         logger.info(f"change pwd from initial password is{initial_password}to {self.password}")
@@ -224,8 +219,6 @@ WantedBy=multi-user.target
 
         with open(file_path, 'w') as file:
             file.writelines(lines)
-
-
 
     def install(self):
         kill_nexus_process()
@@ -285,10 +278,11 @@ class PigzInstaller(Installer):
     import subprocess
     def __init__(self, file_url, install_dir):
         super().__init__("pigz", file_url, install_dir)
+
     def install(self):
         self.fetch_and_unpack()
         install_dir = self.install_dir
-        pigz_source_dir = os.path.join(install_dir,"pigz")
+        pigz_source_dir = self.comp_dir
         os.chdir(pigz_source_dir)
         # 编译源代码
         result = subprocess.run(['make'], stderr=subprocess.PIPE)
@@ -296,9 +290,17 @@ class PigzInstaller(Installer):
         error_message = result.stderr.decode()
         logger.info(f' pig build Return code: {return_code}  Error message: {error_message}')
         # 将可执行文件复制到安装目录
-        shutil.copy('pigz', install_dir)
-        shutil.copy('unpigz', install_dir)
+
+        pigz_source_file = os.path.join(pigz_source_dir, "pigz")
+        pigz_dest_file = os.path.join(install_dir, "pigz")
+        unpigz_source_file = os.path.join(pigz_source_dir, "unpigz")
+        unpigz_dest_file = os.path.join(install_dir, "unpigz")
+        logger.info(f"{install_dir} {pigz_source_dir}   s: {pigz_source_file} d: {pigz_dest_file} ")
+        copy_file(pigz_source_file, pigz_dest_file)
+        copy_file(unpigz_source_file, unpigz_dest_file)
+        os.chmod(pigz_dest_file, 0o777)
+        os.chmod(unpigz_dest_file, 0o777)
+
         os.chdir('../..')
         # 删除源代码压缩包
-        os.remove(pigz_source_dir)
-
+        shutil.rmtree(pigz_source_dir)

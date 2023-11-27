@@ -1,12 +1,22 @@
-
 import platform
 import subprocess
+import sys
+from contextlib import contextmanager
+from pathlib import Path
+from shutil import copyfileobj
+from traceback import format_exc
+
+from python.pgzip.pgzip import PgzipFile
+
 from python.common.basic_logger import get_logger
+
 logger = get_logger()
 
 
 def get_os_arch():
     return platform.machine()
+
+
 def get_os_type():
     operatingSystem = platform.system().lower()
     if operatingSystem == 'linux':
@@ -38,6 +48,7 @@ def get_os_type():
         raise Exception("Cannot detect os type. Exiting...")
 
     return operatingSystem
+
 
 def get_os_version():
     os_type = get_os_type()
@@ -72,6 +83,7 @@ def get_os_version():
     else:
         raise Exception("Cannot detect os version. Exiting...")
 
+
 def get_full_os_major_version():
     os_type = get_os_type()
     os_version = get_os_version()
@@ -92,3 +104,79 @@ def kill_nexus_process():
             subprocess.run(kill_command)
     except subprocess.CalledProcessError:
         logger.info("No such process found")
+
+
+def kill_user_processes(username):
+    p = subprocess.Popen(['pgrep', '-u', username], stdout=subprocess.PIPE)
+    out, err = p.communicate()
+
+    for pid in out.splitlines():
+        subprocess.run(['kill', '-9', pid])
+
+
+def copy_file(src, dst):
+    with open(src, 'rb') as fsrc:
+        with open(dst, 'wb') as fdst:
+            fdst.write(fsrc.read())
+
+
+@contextmanager
+def smart_open(file: str, mode: str, *args, **kwargs):
+    if file == "-":
+        if "w" in mode:
+            yield sys.stdout.buffer
+        else:
+            yield sys.stdin.buffer
+        return
+    with open(file, mode, *args, **kwargs) as fh:
+        yield fh
+
+
+def tar(input_file, output_file, compression_level=0, threads=0, blocksize=10 ** 8):
+    # if not args.filename:
+    #     if args.input != "-":
+    #         filename = Path(args.input).name
+    #     elif args.output != "-":
+    #         args.filename = Path(args.output).name
+    filename = Path(input_file).name
+    try:
+        with smart_open(input_file, "rb") as in_fh, smart_open(
+                output_file, "wb"
+        ) as out_fh:
+            with PgzipFile(
+                    filename=filename,
+                    mode="wb",
+                    compresslevel=compression_level,
+                    fileobj=out_fh,
+                    thread=threads,
+                    blocksize=blocksize,
+            ) as pgzip_fh:
+                copyfileobj(in_fh, pgzip_fh)
+                pgzip_fh.flush()
+    except Exception:
+        exc_info = sys.exc_info()
+        if exc_info[1]:
+            print(f"{exc_info[0].__name__}: {exc_info[1]}", file=sys.stderr)
+        else:
+            print(format_exc(), file=sys.stderr)
+
+
+def untar(input_file, output_file, compression_level=0, threads=0):
+    try:
+        with smart_open(input_file, "rb") as in_fh, smart_open(
+                output_file, "wb"
+        ) as out_fh:
+            with PgzipFile(
+                    mode="rb",
+                    compresslevel=compression_level,
+                    fileobj=in_fh,
+                    thread=threads,
+            ) as pgzip_fh:
+                copyfileobj(pgzip_fh, out_fh)
+                out_fh.flush()
+    except Exception:
+        exc_info = sys.exc_info()
+        if exc_info[1]:
+            print(f"{exc_info[0].__name__}: {exc_info[1]}", file=sys.stderr)
+        else:
+            print(format_exc(), file=sys.stderr)

@@ -38,7 +38,7 @@ OS_INFO = {
 
 class NexusSynchronizer:
     def __init__(self, os_type, os_version, os_arch, local_dir):
-        assert arch in SUPPORTED_ARCHS
+        assert os_arch in SUPPORTED_ARCHS
         self.os_type = os_type
         self.os_version = os_version
         self.os_arch = os_arch
