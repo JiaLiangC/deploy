@@ -7,6 +7,7 @@ import base64
 from python.common.constants import *
 from python.utils.os_utils import *
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger()
 
@@ -42,38 +43,64 @@ class NexusClient:
         return base_url
 
     def upload(self, file_path, base_url):
-        # self.get_bigdata_component_url(component_dir_name)
-        # base_url = f"{self.get_nexus_url()}/repository/{repo_type}/{bigdata_packages_base_dir}/{component_dir_name}/{os.path.basename(file_path)}"
         with open(file_path, 'rb') as f:
             response = requests.put(base_url, data=f, auth=self.auth)
             # 打印状态码
             logger.info(f"Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
-            logger.info(f"Upload completed for {file_path}")
+            if response.status_code == 200:
+                logger.info(f"Upload completed for {file_path}")
+                return True
+            else:
+                logger.info(f"Upload failed for {file_path}")
+                return False
 
     def upload_os_pkgs(self, file_path, os_info):
         base_url = self.get_os_packages_url(os_info)
         base_url = f"{base_url}/{os.path.basename(file_path)}"
-        self.upload(file_path, base_url)
+        is_success = self.upload(file_path, base_url)
+        return is_success
 
     def upload_bigdata_pkgs(self, file_path, component_dir_name):
         base_url = self.get_bigdata_component_url(component_dir_name)
         base_url = f"{base_url}/{os.path.basename(file_path)}"
-        self.upload(file_path, base_url)
+        is_success = self.upload(file_path, base_url)
+        return is_success
 
-    def batch_upload_os_pkgs(self, source_dir, os_info):
-        for filepath in glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True):
-            logger.info(f"finding {filepath}")
-            if not filepath.endswith("src.rpm"):
-                self.upload_os_pkgs(filepath, os_info)
+    def batch_upload_os_pkgs(self, source_dir, os_info, num_threads=10):
+        # 获取所有的 RPM 文件
+        filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
+        non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
 
-    def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name):
-        repo_name = UDH_NEXUS_REPO_NAME
-        component_relative_path = f"{UDH_NEXUS_REPO_PACKAGES_PATH}/{component_dir_name}"
-        self.delete_folder(repo_name, component_relative_path)
-        for filepath in glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True):
-            logger.info(f"finding {filepath}")
-            if not filepath.endswith("src.rpm"):
-                self.upload_bigdata_pkgs(filepath, component_dir_name)
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = {executor.submit(self.upload_os_pkgs, filepath, os_info): filepath for filepath in non_src_filepaths}
+
+            for future in as_completed(futures):
+                filepath = futures[future]
+                try:
+                    success = future.result()
+                    if success:
+                        logger.info(f"Upload was successful for {filepath}")
+                    else:
+                        logger.info(f"Upload failed for {filepath}")
+                except Exception as e:
+                    logger.error(f"Upload resulted in an exception for {filepath}: {e}")
+
+    def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name,num_threads=10):
+        filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
+        non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
+
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = {executor.submit(self.upload_bigdata_pkgs, filepath, component_dir_name): filepath for filepath in non_src_filepaths}
+            for future in as_completed(futures):
+                filepath = futures[future]
+                try:
+                    success = future.result()
+                    if success:
+                        logger.info(f"Upload was successful for {filepath}")
+                    else:
+                        logger.info(f"Upload failed for {filepath}")
+                except Exception as e:
+                    logger.error(f"Upload resulted in an exception for {filepath}: {e}")
 
     # 假定所有的组件都在预定的目录下存储
     def delete_folder(self, repo_name, relative_path):

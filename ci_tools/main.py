@@ -425,7 +425,6 @@ def config_check():
 
 
 def main():
-    clean_logs()
     args = setup_options()
     release = args.release
     deploy = args.deploy
@@ -453,6 +452,7 @@ def main():
         components_str = ",".join(ALL_COMPONENTS)
 
     if components_str and len(components_str) > 0:
+        clean_logs()
         # create container for building
         container_task = ContainerTask()
         container = container_task.run()
@@ -477,6 +477,12 @@ def main():
         assert os_type in SUPPORTED_OS
         nexus_task = NexusTask(os_type, os_version, os_arch)
         nexus_task.repo_sync()
+
+    if upload_ospkgs:
+        os_type, os_version, os_arch = os_info.split(",")
+        nexus_task = NexusTask(os_type, os_version, os_arch)
+        nexus_task.upload_os_pkgs()
+
 
     if deploy:
         deploy_cluster_task = DeployClusterTask()
