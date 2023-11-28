@@ -7,7 +7,7 @@ nexus:
   jdk_local_tar: /home/jialiang/sdp/prjs/container_dep/jdk.zip
   install_dir: /opt/
   jdk_install_dir: /opt/jvm/
-  repo_data_dir: /data/sdv1/nexus_sync
+  os_repo_data_dir: /data/sdv1/nexus_sync
 
 bigtop:
   prj_dir: /home/jialiang/sdp/prjs/bigtop
@@ -25,6 +25,4 @@ docker:
 
 
 build_parallel: 1
-pigz_install_dir: /opt/pigz
-python_venv_install_dir: /opt/bigdata_tools_venv
 udh_release_output_dir: /data/sdv1/UDH/

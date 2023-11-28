@@ -24,15 +24,15 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # openeuler22
 OS_INFO = {
     "centos7_x86_64": {"repo_url": "http://mirrors.aliyun.com/centos/7/os/x86_64/Packages/",
-                       "meta_file": "centos7-primary.xml"},
+                       "meta_file": "centos7_x86_64-primary.xml"},
     "centos8_x86_64": {"repo_url": "http://mirrors.aliyun.com/centos/8/BaseOS/x86_64/os/Packages",
-                       "meta_file": "centos8-primary.xml"},
+                       "meta_file": "centos8_x86_64-primary.xml"},
     "openeuler22_x86_64": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/Packages/",
-                           "meta_file": "openeuler22-primary.xml"},
+                           "meta_file": "openeuler22_x86_64-primary.xml"},
     "kylinv10_aarch64": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/aarch64/Packages/",
-                         "meta_file": "kylinv10-primary.xml"},
+                         "meta_file": "kylinv10_aarch64-primary.xml"},
     "kylinv10_x86_64": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/x86_64/Packages/",
-                        "meta_file": "kylinv10-primary.xml"}
+                        "meta_file": "kylinv10_x86_64-primary.xml"}
 }
 
 
@@ -54,7 +54,7 @@ class NexusSynchronizer:
     def get_local_pkgs_dir(self):
         pkgs_path = os.path.join(self.local_dir, f"{self.os_type}{self.os_version}_{self.os_arch}_pkgs")
         if not os.path.exists(pkgs_path):
-            os.mkdir(pkgs_path)
+            os.makedirs(pkgs_path)
         return pkgs_path
 
 
@@ -201,6 +201,16 @@ class NexusSynchronizer:
         logger.info(f"scan finished, packages need download {packages_need_download.keys()}")
         return packages_need_download
 
+
+    def download(self, pkg_name, pkg_md5):
+        remote_repo_url = self.get_os_info("repo_url")
+        pkg_url = urljoin(remote_repo_url, pkg_name)
+        logger.info(f"downloading  {pkg_name} from {pkg_url}")
+        local_filename = os.path.join(self.get_local_pkgs_dir(), pkg_name)
+
+        success, msg = self.download_package(pkg_url, local_filename, pkg_md5, by_stream=True)
+        return (pkg_name, success, msg)
+
     def sync_repository(self):
         # packages_need_download = self.scan_packages()
         packages_need_download = self.concurrent_scan_packages()
@@ -211,24 +221,21 @@ class NexusSynchronizer:
         logger.info("synchronizing repository")
         success_packages = {}
         failure_packages = {}
-        remote_repo_url = self.get_os_info("repo_url")
 
-        for pkg_name, pkg_md5 in packages_need_download.items():
-            pkg_url = urljoin(remote_repo_url, pkg_name)
-            logger.info(f"downloading  {pkg_name} from {pkg_url}")
-            local_filename = os.path.join(self.get_local_pkgs_dir(), pkg_name)
+        with ProcessPoolExecutor(max_workers=10) as executor:
+            future_to_pkg = {executor.submit(self.download, pkg_name, pkg_md5): pkg_name for pkg_name, pkg_md5 in packages_need_download.items()}
+            for future in concurrent.futures.as_completed(future_to_pkg):
+                pkg_name, success, msg = future.result()
+                if success:
+                    success_packages[pkg_name] = True
+                    if pkg_name in failure_packages:
+                        del failure_packages[pkg_name]
+                else:
+                    failure_packages[pkg_name] = msg
 
-            success, msg = self.download_package(pkg_url, local_filename, pkg_md5, by_stream=True)
-            logger.info(f"The {pkg_name} rpm download success")
-            if success:
-                success_packages[pkg_name] = True
-                if pkg_name in failure_packages:
-                    del failure_packages[pkg_name]
-            else:
-                failure_packages[pkg_name] = msg
+                self.write_json_data(self.success_file, success_packages)
+                self.write_json_data(self.failure_file, failure_packages)
 
-            self.write_json_data(self.success_file, success_packages)
-            self.write_json_data(self.failure_file, failure_packages)
 
     def generate_pkg_meta(self):
         repo_metadata_file = self.get_os_info("meta_file")

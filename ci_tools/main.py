@@ -68,7 +68,8 @@ class BaseTask:
                 logger.error("No command provided.")
             env_vars = os.environ.copy()
             logger.info(f"PYTHONPATH : {env_vars['PYTHONPATH']}")
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, env=dict(env_vars),
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
+                                       env=dict(env_vars),
                                        universal_newlines=True)
             output, error = process.communicate()
             exit_code = process.returncode
@@ -184,7 +185,7 @@ class NexusTask(BaseTask):
         self.os_type = os_type
         self.os_version = os_version
         self.os_arch = os_arch
-        self.synchronizer = NexusSynchronizer(os_type, os_version, os_arch, self.conf["nexus"]["repo_data_dir"])
+        self.synchronizer = NexusSynchronizer(os_type, os_version, os_arch, self.conf["nexus"]["os_repo_data_dir"])
         self.nexus_client = NexusClient(self.conf["nexus"]["host"], self.conf["nexus"]["user_name"],
                                         self.conf["nexus"]["user_pwd"])
 
@@ -296,6 +297,11 @@ class UDHReleaseTask(BaseTask):
             shutil.rmtree(udh_release_output_dir, ignore_errors=True)
         os.makedirs(udh_release_output_dir)
 
+        # package nexus and jdk to deploy
+        shutil.copy(f'{self.conf["nexus"]["jdk_local_tar"]}', RELEASE_JDK_TAR_FILE)
+        nexus_task = NexusTask(self.os_type, self.os_version, self.os_arch)
+        nexus_task.package_nexus(self.include_os_pkg)
+
         # 1. Copy project directory into udh_release_output_dir
         target_dir = os.path.join(udh_release_output_dir, os.path.basename(PRJDIR))
         print(f"---{PRJDIR} {target_dir}, {os.path.basename(PRJDIR)}")
@@ -311,19 +317,14 @@ class UDHReleaseTask(BaseTask):
         if os.path.exists("ansible-playbook"):
             shutil.rmtree("ansible-playbook")
 
-        prj_bin_files_dir = os.path.join(target_dir, "bin")
-
-        # jdk
-        shutil.copy(f'{self.conf["nexus"]["jdk_local_tar"]}', RELEASE_JDK_TAR_FILE)
-        # nexus
-        nexus_task = NexusTask(self.os_type, self.os_version, self.os_arch)
-        nexus_task.package_nexus(self.include_os_pkg)
-
+        os.chdir(udh_release_output_dir)
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
         udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar"
         # 3. Start a subprocess to compress
-        subprocess.run(["tar", "-cf", udh_release_name, udh_release_output_dir], check=True,
-                       cwd=udh_release_output_dir)
+        subprocess.run(
+            ["tar", "-cf", os.path.join(udh_release_output_dir, udh_release_name), os.path.basename(target_dir)],
+            check=True)
+        shutil.rmtree(os.path.basename(target_dir))
 
 
 class InitializeTask(BaseTask):
@@ -418,6 +419,9 @@ def clean_logs():
             print(f"File {log_file} has been removed successfully")
         except Exception as e:
             print(f"Problem occurred: {str(e)}")
+
+def config_check():
+    print("placeholder")
 
 
 def main():

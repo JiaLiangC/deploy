@@ -136,7 +136,6 @@ LimitNOFILE=65536
 ExecStart={self.comp_dir}/nexus-3/bin/nexus start
 ExecStop={self.comp_dir}/nexus-3/bin/nexus stop
 User=nexus
-Restart=on-abort
 
 [Install]
 WantedBy=multi-user.target
