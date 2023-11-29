@@ -9,10 +9,7 @@ from python.utils.os_utils import *
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-logger = get_logger()
-
-
-# architecture
+logger = get_logger(name="nexus_client", log_file="nexus_client.log")
 
 
 class NexusClient:
@@ -72,7 +69,8 @@ class NexusClient:
         non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = {executor.submit(self.upload_os_pkgs, filepath, os_info): filepath for filepath in non_src_filepaths}
+            futures = {executor.submit(self.upload_os_pkgs, filepath, os_info): filepath for filepath in
+                       non_src_filepaths}
 
             for future in as_completed(futures):
                 filepath = futures[future]
@@ -85,12 +83,13 @@ class NexusClient:
                 except Exception as e:
                     logger.error(f"Upload resulted in an exception for {filepath}: {e}")
 
-    def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name,num_threads=10):
+    def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name, num_threads=10):
         filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
         non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = {executor.submit(self.upload_bigdata_pkgs, filepath, component_dir_name): filepath for filepath in non_src_filepaths}
+            futures = {executor.submit(self.upload_bigdata_pkgs, filepath, component_dir_name): filepath for filepath in
+                       non_src_filepaths}
             for future in as_completed(futures):
                 filepath = futures[future]
                 try:

@@ -21,6 +21,7 @@ SUCCESS_FILE = os.path.join(OUTPUT_DIR, 'success_components.json')
 
 logger = get_logger()
 
+
 class BigtopBuilder(object):
 
     def __init__(self, conf):
@@ -50,7 +51,6 @@ class BigtopBuilder(object):
         normalized_url2 = urljoin(url2, '/')
 
         return normalized_url1 == normalized_url2
-
 
     def mv_repo_files(self, source_folder, target_folder):
         for filename in os.listdir(source_folder):
@@ -298,7 +298,7 @@ class BigtopBuilder(object):
         ci_conf = self.get_ci_conf()
         if ci_conf["bigtop"]["use_docker"]:
             self.set_yum_repo()
-        #self.set_git_config()
+        # self.set_git_config()
         self.set_maven_conf(ci_conf["bigtop"]["maven_conf_dir"])
         self.set_web_compile_envirment()
 

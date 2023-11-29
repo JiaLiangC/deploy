@@ -35,7 +35,7 @@ nexus:
 # ambari_repo 必须存在
 repos:
    - {name: "ambari_repo", url: "http://server0:8081/repository/yum/sdp_3.1"}
-   - {name: "centos_base_repo", url: "http://server0:8081/repository/centos/7/os/x86_64"}
+   - {name: "os_base_repo", url: "http://server0:8081/repository/centos/7/os/x86_64"}
 backup_old_repo: no   #是否备份老的yum repo 到 /etc/yum.repos.d/bak，然后删除老的repo 只保留这配置的repo
 
 #额外的需要在所有机器安装的包

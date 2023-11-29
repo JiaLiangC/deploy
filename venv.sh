@@ -14,15 +14,23 @@ echo "Unzipping portable-ansible.zip to ${prjdir}/bin/..."
 if [[ ! -d "${prjdir}/bin/portable-ansible" ]]; then
 	unzip -o ${prjdir}/ci_tools/resources/pkgs/portable-ansible.zip -d "${prjdir}/bin"
 fi
+
+# Check if symbolic link exists
+if [[ -L "${prjdir}/bin/ansible-playbook" ]]; then
+  echo "Symbolic link ${prjdir}/bin/ansible-playbook exists. Removing it..."
+  # Remove the existing symbolic link
+  rm -f ${prjdir}/bin/ansible-playbook
+fi
+
 # 如果软链接 prjdir/bin/ansible-playbook 不存在，创建它
 if [[ ! -L "${prjdir}/bin/ansible-playbook" ]]; then
   echo "Symbolic link ${prjdir}/bin/ansible-playbook does not exist. Creating it..."
-  ln -s "${prjdir}/bin/portable-ansible" "${r,}/bin/ansible-playbook"
+  ln -s ${prjdir}/bin/portable-ansible ${prjdir}/bin/ansible-playbook
 fi
 
 # 设置环境变量
 echo "Setting environment variables..."
-export ANSIBLE_COLLECTIONS_PATHS="${prjdir}"
+export ANSIBLE_COLLECTIONS_PATHS=${prjdir}/bin/portable-ansible/ansible/collections
 export PYTHONPATH="${prjdir}/ci_tools:${prjdir}/bin/portable-ansible:${prjdir}/bin/portable-ansible/extras:${PYTHONPATH}"
 
 echo "Done."

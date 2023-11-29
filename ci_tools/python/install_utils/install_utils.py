@@ -60,8 +60,8 @@ class Installer:
 
     def pigz_decompress(self, tar_file):
         pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
-        command = f"tar -I {pigz_path} -xf {tar_file} -C {self.install_dir}"
-        run_shell_command(command,shell=True)
+        command = f"tar -I {pigz_path} -xf {tar_file} -C {self.comp_dir} --strip-components=1"
+        run_shell_command(command, shell=True)
 
     def get_top_level_dir_name(self, file_path):
         logger.info(f"get_top_level_dir_name {file_path}")
@@ -94,15 +94,12 @@ class Installer:
         logger.info(f"get_comp_dir {fdir}")
         return fdir
 
-
     def extract_package(self):
-        if not os.path.exists(self.install_dir):
-            os.makedirs(self.install_dir)
-        comp_dir = self.comp_dir
         logger.info(f"will install into {self.comp_dir}")
-        if os.path.exists(comp_dir):
-            logger.info(f"delete existing dir {comp_dir}")
-            shutil.rmtree(comp_dir)
+        if os.path.exists(self.comp_dir):
+            logger.info(f"delete existing dir {self.comp_dir}")
+            shutil.rmtree(self.comp_dir)
+        os.makedirs(self.comp_dir)
 
         extension = os.path.splitext(self.file_url)[1]
         file_path = self.get_local_path()
@@ -111,42 +108,14 @@ class Installer:
                 logger.info(f"{os.path.join(PRJ_BIN_DIR, 'pigz')} exist, use pigz in decompress")
                 self.pigz_decompress(file_path)
             else:
-                run_shell_command(['tar', '-xzf', file_path, '-C', self.install_dir, '--strip-components=1'])
+                run_shell_command(['tar', '-xzf', file_path, '-C', self.comp_dir, '--strip-components=1'])
         elif extension == ".bz2":
             # Use tar command to extract .bz2 file
-            run_shell_command(['tar', '-xjf', file_path, '-C', self.install_dir, '--strip-components=1'])
+            run_shell_command(['tar', '-xjf', file_path, '-C', self.comp_dir, '--strip-components=1'])
         elif extension == ".zip":
-            # Use unzip command to extract .zip file
             run_shell_command(['unzip', '-d', self.install_dir, file_path])
         else:
             raise ValueError(f"Unsupported file extension: {extension}. Only .tar.gz, .tar.bz2 and .zip are supported.")
-
-    def extract_package(self):
-        if not os.path.exists(self.install_dir):
-            os.makedirs(self.install_dir)
-        comp_dir = self.comp_dir
-        logger.info(f"will install into {self.comp_dir}")
-        if os.path.exists(comp_dir):
-            logger.info(f"delete existing dir {comp_dir}")
-            shutil.rmtree(comp_dir)
-
-        extension = os.path.splitext(self.file_url)[1]
-        file_path = self.get_local_path()
-        if extension == ".gz":
-            if os.path.exists(os.path.join(PRJ_BIN_DIR, "pigz")):
-                logger.info(f"{os.path.join(PRJ_BIN_DIR, 'pigz')} exist, use pigz in decompress")
-                self.pigz_decompress(file_path)
-            else:
-                with tarfile.open(file_path, "r:gz") as tar:
-                    tar.extractall(path=self.install_dir)
-        elif extension == ".bz2":
-            with tarfile.open(file_path, "r:bz2") as tar:
-                tar.extractall(path=self.install_dir)
-        elif extension == ".zip":
-            with zipfile.ZipFile(file_path, "r") as zip_ref:
-                zip_ref.extractall(path=self.install_dir)
-        else:
-            raise ValueError(f"Unsupported file extension: {extension}. Only .tar.gz and .zip are supported.")
 
     def fetch_and_unpack(self):
         self.download_package()
@@ -316,20 +285,19 @@ class AnsibleInstaller(Installer):
 class PigzInstaller(Installer):
     import subprocess
     def __init__(self, file_url, install_dir):
-        super().__init__("pigz", file_url, install_dir)
+        super().__init__("pigz_source", file_url, install_dir)
 
     def install(self):
         logger.info("start pigz install")
         self.fetch_and_unpack()
-        install_dir = self.install_dir
         pigz_source_dir = self.comp_dir
         os.chdir(pigz_source_dir)
         # 编译源代码
-        logger.info("start pigz compile")
+        logger.info(f"start pigz compile {pigz_source_dir}")
         run_shell_command(['make'])
         pigz_source_file = os.path.join(pigz_source_dir, "pigz")
-        pigz_dest_file = os.path.join(install_dir, "pigz")
-        logger.info(f"{install_dir} {pigz_source_dir}   s: {pigz_source_file} d: {pigz_dest_file} ")
+        pigz_dest_file = os.path.join(self.install_dir, "pigz")
+        logger.info(f"{pigz_source_dir}   s: {pigz_source_file} d: {pigz_dest_file} ")
         logger.info(f"start pigz install,will copy {pigz_source_file} to {pigz_dest_file}")
         copy_file(pigz_source_file, pigz_dest_file)
         os.chmod(pigz_dest_file, 0o777)

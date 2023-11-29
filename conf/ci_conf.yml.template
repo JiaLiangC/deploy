@@ -4,7 +4,7 @@ nexus:
   user_name: admin
   user_pwd: admin222
   local_tar: /home/jialiang/sdp/prjs/container_dep/nexus3.tar.gz
-  jdk_local_tar: /home/jialiang/sdp/prjs/container_dep/jdk.zip
+  jdk_local_tar: /home/jialiang/sdp/prjs/container_dep/jdk.tar.gz
   install_dir: /opt/
   jdk_install_dir: /opt/jvm/
   os_repo_data_dir: /data/sdv1/nexus_sync

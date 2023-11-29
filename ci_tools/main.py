@@ -228,6 +228,8 @@ class NexusTask(BaseTask):
         nexus_dir = self.nexus_installer.comp_dir
         pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
         dest_tar = os.path.join(install_dir, "nexus3.tar.gz")
+
+        os.chdir(install_dir)
         command = f"tar cf - {os.path.basename(nexus_dir)} | {pigz_path} -k -5 -p 8 > {dest_tar}"
         run_shell_command(command, shell=True)
 
@@ -265,12 +267,12 @@ class DeployClusterTask(BaseTask):
         b = BlueprintUtils(conf)
         b.build()
         b.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
-
+        env_vars = os.environ.copy()
         command = ["python3", f"{PRJ_BIN_DIR}/ansible-playbook", playbook_path, f"--inventory={inventory_path}"]
         with open(log_file, "w") as log:
             logger.info(f"run playbook {command}")
             process = subprocess.Popen(command, shell=False, stdout=log, stderr=log,
-                                       universal_newlines=True)
+                                       universal_newlines=True, env=dict(env_vars),cwd=PRJDIR)
         # 等待子进程完成
         exit_status = process.wait()
         logger.info(f"run_playbook {command} exit_status: {exit_status}")
@@ -323,14 +325,21 @@ class UDHReleaseTask(BaseTask):
             shutil.rmtree(portable_ansible_dir)
         ansible_playbook_link = os.path.join(release_prj_dir, "bin/portable-playbook")
         if os.path.exists(ansible_playbook_link):
-            logger.info(f"remove ansible_playbook link {ansible_playbook_link}")
-            shutil.rmtree(ansible_playbook_link)
+            if os.path.islink(ansible_playbook_link):
+                try:
+                    # 删除软链接
+                    os.unlink(ansible_playbook_link)
+                    logger.info(f"Successfully removed the symlink at {ansible_playbook_link}")
+                except OSError as e:
+                    logger.error(f"Error: {e.filename} - {e.strerror}.")
+            else:
+                shutil.rmtree(ansible_playbook_link)
 
         # package nexus and jdk to releas dir
         shutil.copy(f'{self.conf["nexus"]["jdk_local_tar"]}', os.path.join(release_prj_dir, JDK_TAR_RELATIVE_PATH))
         nexus_task = NexusTask(self.os_type, self.os_version, self.os_arch)
         # todo skip = false
-        nexus_task.package_nexus(self.include_os_pkg, skip=True)
+        nexus_task.package_nexus(self.include_os_pkg, skip=False)
 
         os.chdir(udh_release_output_dir)
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
@@ -340,7 +349,8 @@ class UDHReleaseTask(BaseTask):
         run_shell_command(command, shell=True)
         logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
         shutil.rmtree(os.path.basename(release_prj_dir))
-
+        if not os.path.exists(os.path.join(release_prj_dir, "bin/pigz")):
+            shutil.copy(pigz_path, os.path.join(release_prj_dir, "bin/pigz"))
 
 class InitializeTask(BaseTask):
     def __init__(self):

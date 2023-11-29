@@ -35,14 +35,14 @@ class InstallNexusDeployPlugin:
         os_architecture = get_os_arch()
 
         ambari_repo_rl = f"{nexus_url}/repository/{UDH_NEXUS_REPO_NAME}/{UDH_NEXUS_REPO_PATH}"
-        centos_base_repo_url = f"{nexus_url}/repository/{os_type}/{os_version}/os/{os_architecture}/Packages"
+        os_base_repo_url = f"{nexus_url}/repository/{os_type}"
         repos = [
-            {"name": "centos_base_repo", "url": centos_base_repo_url},
+            {"name": "centos_base_repo", "url": os_base_repo_url},
             {"name": "ambari_repo", "url": ambari_repo_rl}
         ]
 
         if len(conf["repos"]) > 0:
-            self.combine_repos(conf["repos"], ambari_repo_rl, centos_base_repo_url)
+            self.combine_repos(conf["repos"], ambari_repo_rl, os_base_repo_url)
         else:
             conf["repos"].extend(repos)
         logger.debug("nexus_install_plugin update_conf {}".format(repos))
@@ -57,22 +57,24 @@ class InstallNexusDeployPlugin:
 
         jdk_installer = JDKInstaller(RELEASE_JDK_TAR_FILE, conf["nexus"]["jdk_install_dir"])
 
-        jdk_installer.install()
-        nexus_installer.install()
+        #jdk_installer.install()
+        #nexus_installer.install()
 
-    def combine_repos(self, old_repos, ambari_repo, centos_base_repo):
+    def combine_repos(self, old_repos, ambari_repo, os_base_repo):
         # add or update
         ambari_repo_updated = False
         centos_base_repo_updated = False
+        logger.info(f"combine_repos {old_repos} - {ambari_repo} - {os_base_repo}")
         for i in old_repos:
             if i["name"] == "ambari_repo":
-                i["url"] == ambari_repo
+                i["url"] = ambari_repo
                 ambari_repo_updated = True
-            if i["name"] == "centos_base_repo":
-                i["url"] == centos_base_repo
+            if i["name"] == "os_base_repo":
+                i["url"] = os_base_repo
                 centos_base_repo_updated = True
         if not ambari_repo_updated:
             old_repos.append({"name": "ambari_repo", "url": ambari_repo})
         if not centos_base_repo_updated:
-            old_repos.append({"name": "centos_base_repo", "url": centos_base_repo})
+            old_repos.append({"name": "os_base_repo", "url": os_base_repo})
+        logger.info(f"combine_repos {old_repos}")
         return old_repos
