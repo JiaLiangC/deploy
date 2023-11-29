@@ -57,8 +57,8 @@ class InstallNexusDeployPlugin:
 
         jdk_installer = JDKInstaller(RELEASE_JDK_TAR_FILE, conf["nexus"]["jdk_install_dir"])
 
-        #jdk_installer.install()
-        #nexus_installer.install()
+        jdk_installer.install()
+        nexus_installer.install()
 
     def combine_repos(self, old_repos, ambari_repo, os_base_repo):
         # add or update
