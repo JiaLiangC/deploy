@@ -15,7 +15,7 @@ from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 from python.common.basic_logger import get_logger
 
-logger = get_logger(log_file="bigdata_nexus_sync.log")
+logger = get_logger(name="nexus_sync",log_file="bigdata_nexus_sync.log")
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -251,7 +251,7 @@ class NexusSynchronizer:
             rel = pinfo["version"]["@rel"]
             ctype = pinfo["checksum"]["@type"]
             hash = pinfo["checksum"]["#text"]
-            if type == "rpm" and (arch == "x86_64" or arch == "noarch"):
+            if type == "rpm" and (arch == self.os_arch.strip() or arch == "noarch"):
                 rpm_name = f"{name}-{ver}-{rel}.{arch}.rpm"
                 rpms[rpm_name] = hash
 
