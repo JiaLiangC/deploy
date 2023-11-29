@@ -6,17 +6,11 @@ from python.nexus.nexus_client import NexusClient
 from python.nexus.nexus_repo_sync import NexusSynchronizer
 from python.install_utils.install_utils import *
 from python.utils.os_utils import *
-
 import docker
-import queue
-import threading
 import subprocess
 import yaml
 import os
 import glob
-import sys
-import site
-from pathlib import Path
 import argparse
 import json
 import shlex
@@ -33,7 +27,6 @@ class BaseTask:
         self.conf = self.load_conf()
 
     def load_conf(self):
-        import yaml
         # "ci_conf.yml.template"
         conf_file_template_path = CI_CONF_FILE_TEMPLATE
         if not os.path.exists(CI_CONF_FILE):
@@ -161,9 +154,9 @@ class BuildComponentsTask(BaseTask):
 
     def build_components(self):
         prj_dir = self.get_prj_dir()
-        # container, components_arr, rebuild_all_packages
         self.build_args["proxy"] = self.conf["bigtop"]["net_proxy"]
         conf_str = json.dumps(self.build_args)
+        logger.info(f"start build components  params {conf_str}")
         conf_str_quoted = shlex.quote(conf_str)
         pycmd = f'python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={conf_str_quoted}'
         cmd = ['/bin/bash', '-c', pycmd]
@@ -188,20 +181,17 @@ class NexusTask(BaseTask):
         self.synchronizer = NexusSynchronizer(os_type, os_version, os_arch, self.conf["nexus"]["os_repo_data_dir"])
         self.nexus_client = NexusClient(self.conf["nexus"]["host"], self.conf["nexus"]["user_name"],
                                         self.conf["nexus"]["user_pwd"])
+        self.nexus_installer = NexusInstaller(self.conf["nexus"]["local_tar"],
+                                              self.conf["nexus"]["install_dir"], self.conf["nexus"]["user_pwd"])
 
     def install_nexus_and_jdk(self):
-        logger.info("install_nexus_and_jdk")
-        nexus_installer = NexusInstaller(self.conf["nexus"]["local_tar"],
-                                         self.conf["nexus"]["install_dir"], self.conf["nexus"]["user_pwd"])
+        logger.info(f"start install nexus and jdk ")
         jdk_installer = JDKInstaller(self.conf["nexus"]["jdk_local_tar"], self.conf["nexus"]["jdk_install_dir"])
-
         jdk_installer.install()
-        nexus_installer.install()
+        self.nexus_installer.install()
 
     def upload_bigdata_copms2nexus(self, comps):
-        logger.info(
-            f'upload_bigdata_copms2nexus user_name:{self.conf["nexus"]["user_name"]} user_pwd:{self.conf["nexus"]["user_pwd"]}')
-
+        logger.info(f'start upload bigdata rpms to nexus')
         for comp in comps:
             pkg_dir = os.path.join(self.conf["bigtop"]["prj_dir"], f"output/{comp}")
             logger.info(f"uploading {pkg_dir} {comp}")
@@ -209,31 +199,45 @@ class NexusTask(BaseTask):
             self.nexus_client.batch_upload_bigdata_pkgs(pkg_dir, comp)
 
     def repo_sync(self):
+        logger.info(f'start nexus repository synchronize')
         self.synchronizer.generate_pkg_meta()
         self.synchronizer.sync_repository()
 
     def upload_os_pkgs(self):
         pkgs_dir = self.synchronizer.get_local_pkgs_dir()
+        logger.info(f'start upload {self.os_type + self.os_version + self.os_arch} os pkgs to local nexus repository')
         # os package 的 reponame 等于 os type 比如 redhat
         self.nexus_client.repo_create(self.os_type, remove_old=True)
         self.nexus_client.batch_upload_os_pkgs(pkgs_dir, (self.os_type, self.os_version, self.os_arch))
 
-    def package_nexus(self, include_os_pkg):
-        self.install_nexus_and_jdk()
-        # create repo if not exist and upload bigdata pkgs to nexus
-        self.upload_bigdata_copms2nexus(ALL_COMPONENTS)
+    def package_nexus(self, include_os_pkg, skip=False):
+        logger.info(f'start package nexus ')
+        if not skip:
+            self.install_nexus_and_jdk()
+            # create repo if not exist and upload bigdata pkgs to nexus
+            self.upload_bigdata_copms2nexus(ALL_COMPONENTS)
 
-        # create repo and sync and upload os pkgs to nexus
-        if include_os_pkg:
-            self.repo_sync()
-            self.upload_os_pkgs()
-        kill_nexus_process()
-        kill_user_processes("nexus")
+            # create repo and sync and upload os pkgs to nexus
+            if include_os_pkg:
+                self.repo_sync()
+                self.upload_os_pkgs()
+            kill_nexus_process()
+            kill_user_processes("nexus")
 
-        nexus_dir = self.conf["nexus"]["install_dir"]
-        parent_dir_path = os.path.dirname(nexus_dir)
-        subprocess.run(["tar", "-cf", "nexus3.tar", nexus_dir], check=True, cwd=parent_dir_path)
-        shutil.move(f"{parent_dir_path}/nexus3.tar", RELEASE_NEXUS_TAR_FILE)
+        install_dir = self.conf["nexus"]["install_dir"]
+        nexus_dir = self.nexus_installer.comp_dir
+        pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
+        dest_tar = os.path.join(install_dir, "nexus3.tar.gz")
+        command = f"tar cf - {os.path.basename(nexus_dir)} | {pigz_path} -k -5 -p 8 > {dest_tar}"
+        run_shell_command(command, shell=True)
+
+        udh_release_output_dir = self.conf["udh_release_output_dir"]
+        release_prj_dir = os.path.join(udh_release_output_dir, os.path.basename(PRJDIR))
+        logger.info("package_nexus finished")
+        release_nexus_tar = os.path.join(release_prj_dir, NEXUS_TAR_RELATIVE_PATH)
+        shutil.move(dest_tar, release_nexus_tar)
+        logger.info(f"move compressed nexus tar from {dest_tar} to {release_nexus_tar}")
+        # todo delete nexus dir
 
     def run(self):
         logger.info()
@@ -289,42 +293,53 @@ class UDHReleaseTask(BaseTask):
     # 打包 pigz pyenv 和 bigdata deploy 代码
     # 解压后根据配置安装nexus pigz pyenv
     def package(self):
-        # todo 删除 pg9 相关的包
+        # todo 删除 pg9 相关的包 tar cf - nexus | pigz -k -5 -p 8 > nexus.tar.gz
+
         udh_release_output_dir = self.conf["udh_release_output_dir"]
+        release_prj_dir = os.path.join(udh_release_output_dir, os.path.basename(PRJDIR))
 
         if os.path.exists(udh_release_output_dir):
             logger.info(f"rmtree udh_release_output_dir {udh_release_output_dir}")
             shutil.rmtree(udh_release_output_dir, ignore_errors=True)
         os.makedirs(udh_release_output_dir)
 
-        # package nexus and jdk to deploy
-        shutil.copy(f'{self.conf["nexus"]["jdk_local_tar"]}', RELEASE_JDK_TAR_FILE)
-        nexus_task = NexusTask(self.os_type, self.os_version, self.os_arch)
-        nexus_task.package_nexus(self.include_os_pkg)
+        # 0. install pigz
+        pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, PRJ_BIN_DIR)
+        pigz_installer.install()
 
         # 1. Copy project directory into udh_release_output_dir
-        target_dir = os.path.join(udh_release_output_dir, os.path.basename(PRJDIR))
-        print(f"---{PRJDIR} {target_dir}, {os.path.basename(PRJDIR)}")
-        shutil.copytree(PRJDIR, target_dir)
+        logger.info(f"packaging: copy {PRJDIR} to {release_prj_dir}")
+        shutil.copytree(PRJDIR, release_prj_dir)
         # 2. Change into the copied directory and remove .git
-        os.chdir(target_dir)
-        if os.path.exists(".git"):
-            shutil.rmtree(".git")
+        os.chdir(release_prj_dir)
+        git_dir = os.path.join(release_prj_dir, ".git")
+        if os.path.exists(git_dir):
+            logger.info(f"remove git dir {git_dir}")
+            shutil.rmtree(git_dir)
 
-        if os.path.exists("portable-ansible"):
-            shutil.rmtree("portable-ansible")
+        portable_ansible_dir = os.path.join(release_prj_dir, "bin/portable-ansible")
+        if os.path.exists(portable_ansible_dir):
+            logger.info(f"remove portable_ansible dir {portable_ansible_dir}")
+            shutil.rmtree(portable_ansible_dir)
+        ansible_playbook_link = os.path.join(release_prj_dir, "bin/portable-playbook")
+        if os.path.exists(ansible_playbook_link):
+            logger.info(f"remove ansible_playbook link {ansible_playbook_link}")
+            shutil.rmtree(ansible_playbook_link)
 
-        if os.path.exists("ansible-playbook"):
-            shutil.rmtree("ansible-playbook")
+        # package nexus and jdk to releas dir
+        shutil.copy(f'{self.conf["nexus"]["jdk_local_tar"]}', os.path.join(release_prj_dir, JDK_TAR_RELATIVE_PATH))
+        nexus_task = NexusTask(self.os_type, self.os_version, self.os_arch)
+        # todo skip = false
+        nexus_task.package_nexus(self.include_os_pkg, skip=True)
 
         os.chdir(udh_release_output_dir)
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
-        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar"
-        # 3. Start a subprocess to compress
-        subprocess.run(
-            ["tar", "-cf", os.path.join(udh_release_output_dir, udh_release_name), os.path.basename(target_dir)],
-            check=True)
-        shutil.rmtree(os.path.basename(target_dir))
+        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
+        pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
+        command = f"tar cf - {os.path.basename(PRJDIR)} | {pigz_path} -k -5 -p 8 > {udh_release_name}"
+        run_shell_command(command, shell=True)
+        logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
+        shutil.rmtree(os.path.basename(release_prj_dir))
 
 
 class InitializeTask(BaseTask):
@@ -420,6 +435,7 @@ def clean_logs():
         except Exception as e:
             print(f"Problem occurred: {str(e)}")
 
+
 def config_check():
     print("placeholder")
 
@@ -482,7 +498,6 @@ def main():
         os_type, os_version, os_arch = os_info.split(",")
         nexus_task = NexusTask(os_type, os_version, os_arch)
         nexus_task.upload_os_pkgs()
-
 
     if deploy:
         deploy_cluster_task = DeployClusterTask()

@@ -29,13 +29,13 @@ class InstallNexusDeployPlugin:
     def update_conf(self, conf):
         nexus_host = self.get_ip_address()
         nexus_url = "http://{}:{}".format(nexus_host, "8081")
-        self.run(conf, nexus_url, conf)
+        self.run(conf)
         os_type = get_os_type()
         os_version = get_os_version()
         os_architecture = get_os_arch()
 
         ambari_repo_rl = f"{nexus_url}/repository/{UDH_NEXUS_REPO_NAME}/{UDH_NEXUS_REPO_PATH}"
-        centos_base_repo_url = f"{nexus_url}/repository/repository/{os_type}/{os_version}/os/{os_architecture}/Packages"
+        centos_base_repo_url = f"{nexus_url}/repository/{os_type}/{os_version}/os/{os_architecture}/Packages"
         repos = [
             {"name": "centos_base_repo", "url": centos_base_repo_url},
             {"name": "ambari_repo", "url": ambari_repo_rl}
@@ -51,8 +51,10 @@ class InstallNexusDeployPlugin:
     def run(self, conf):
         data_dir = conf["data_dirs"][0]
         logger.debug("data dir is {}".format(data_dir))
+        logger.info(f"{RELEASE_NEXUS_TAR_FILE} {RELEASE_JDK_TAR_FILE}")
         nexus_installer = NexusInstaller(RELEASE_NEXUS_TAR_FILE,
                                          conf["nexus"]["install_dir"], conf["nexus"]["user_pwd"])
+
         jdk_installer = JDKInstaller(RELEASE_JDK_TAR_FILE, conf["nexus"]["jdk_install_dir"])
 
         jdk_installer.install()

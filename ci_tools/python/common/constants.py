@@ -1,4 +1,3 @@
-
 import os
 
 PRJDIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../'))
@@ -21,8 +20,10 @@ REPO_FILES_DIR = os.path.join(PRJDIR, "ci_tools/resources/repo_info")
 SUPPORTED_ARCHS = ["x86_64", "aarch64", "c86_64"]
 SUPPORTED_OS = ["centos", "kylin", "openeuler"]
 GROOVY_FILE = os.path.join(PRJDIR, "ci_tools/python/install_utils/groovy/initialize.groovy")
-RELEASE_NEXUS_TAR_FILE = os.path.join(PRJDIR, "ci_tools/resources/pkgs/nexus3.tar.gz")
-RELEASE_JDK_TAR_FILE = os.path.join(PRJDIR, "ci_tools/resources/pkgs/jdk.tar.gz")
+NEXUS_TAR_RELATIVE_PATH = "ci_tools/resources/pkgs/nexus3.tar.gz"
+RELEASE_NEXUS_TAR_FILE = os.path.join(PRJDIR, NEXUS_TAR_RELATIVE_PATH)
+JDK_TAR_RELATIVE_PATH = "ci_tools/resources/pkgs/jdk.tar.gz"
+RELEASE_JDK_TAR_FILE = os.path.join(PRJDIR, JDK_TAR_RELATIVE_PATH)
 UDH_NEXUS_REPO_PATH = "udh3"
 UDH_NEXUS_REPO_PACKAGES_PATH = f"{UDH_NEXUS_REPO_PATH}/Packages"
 UDH_NEXUS_REPO_NAME = "yum"

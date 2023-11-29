@@ -180,3 +180,12 @@ def untar(input_file, output_file, compression_level=0, threads=0):
             print(f"{exc_info[0].__name__}: {exc_info[1]}", file=sys.stderr)
         else:
             print(format_exc(), file=sys.stderr)
+
+
+def run_shell_command(command, shell=False):
+    try:
+        result = subprocess.run(command, check=True, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                universal_newlines=True)
+        logger.info(f"run command: {command} shell:{shell} Output: {result.stdout} Error: {result.stderr}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Command '{e.cmd}' failed with return code {e.returncode} Output: {e.output} Error: {e.stderr}")

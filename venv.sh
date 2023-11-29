@@ -17,7 +17,7 @@ fi
 # 如果软链接 prjdir/bin/ansible-playbook 不存在，创建它
 if [[ ! -L "${prjdir}/bin/ansible-playbook" ]]; then
   echo "Symbolic link ${prjdir}/bin/ansible-playbook does not exist. Creating it..."
-  ln -s "${prjdir}/bin/portable-ansible" "${prjdir}/bin/ansible-playbook"
+  ln -s "${prjdir}/bin/portable-ansible" "${r,}/bin/ansible-playbook"
 fi
 
 # 设置环境变量

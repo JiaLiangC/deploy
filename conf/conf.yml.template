@@ -25,6 +25,11 @@ hdfs_ha_name: 'mytestcluster'
 plugins:
   - nexus_install_plugin: {enabled: false} #开启的话默认在脚本机器安装 一个nexus 仓库，并且会后续安装会自动配置使用该仓库，使用该功能需要提供一个nexus仓库压缩包
 
+nexus:
+  install_dir: /usr/local/
+  jdk_install_dir: /opt/jvm/
+  user_name: admin            #don't change this
+  user_pwd: admin222
 
 #如果机器上没有配置好 centos  ambari 等相关的 repo, 可以在这里配置对应 centos 仓库的地址，脚本会自动添加到所有机器上 不配置就默认使用机器自带的repo
 # ambari_repo 必须存在
@@ -41,13 +46,6 @@ external_ntp_server_hostname: ''                                             # i
 
 data_dirs: ["/data/sdv1"]
 
-
-
-nexus:
-  install_dir: /opt/
-  jdk_install_dir: /opt/jvm/
-  user_name: admin            #don't change this
-  user_pwd: admin222
 
 ###########################
 ## general configuration ##
