@@ -204,11 +204,11 @@ class NexusTask(BaseTask):
         self.synchronizer.sync_repository()
 
     def upload_os_pkgs(self):
-        pkgs_dir = self.synchronizer.get_local_pkgs_dir()
+        pkgs_dirs = self.synchronizer.get_local_pkgs_dirs()
         logger.info(f'start upload {self.os_type + self.os_version + self.os_arch} os pkgs to local nexus repository')
         # os package 的 reponame 等于 os type 比如 redhat
         self.nexus_client.repo_create(self.os_type, remove_old=True)
-        self.nexus_client.batch_upload_os_pkgs(pkgs_dir, (self.os_type, self.os_version, self.os_arch))
+        self.nexus_client.batch_upload_os_pkgs(pkgs_dirs, (self.os_type, self.os_version, self.os_arch))
 
     def package_nexus(self, include_os_pkg, skip=False):
         logger.info(f'start package nexus ')
@@ -449,6 +449,11 @@ def clean_logs():
 
 
 def config_check():
+    #1.supportted os arch version check
+    #2.configged jar check
+    #3.supported commponents check
+    #4.stack check
+    #5.
     print("placeholder")
 
 
@@ -521,21 +526,18 @@ def main():
         udh_release_task.package()
         logger.info("do release")
 
-    # todo 使用设计模式重构
-    # todo 制作大包，使用大发布包部署
+
 
 
 if __name__ == '__main__':
     main()
-
+# todo 使用设计模式重构
+#tar -I pigz -xf nexus.tar.gz -C /tmp
 # todo 目前同步包等只能在对应的操作系统上
 # 场景开发过程的宿主机编译，容器编译，nexus 安装，组件上传，部署集群，发布 release 包(主要是nexus 包)
 # 客户部署场景的集群部署：1.手动解压大部署包 2.执行source venv.sh 如果选择nexus 就解压安装nexus 到配置目录, 然后自动化部署
 # 目前只能在对应操作系统打发布包
-# todo 根据 os 和 arch打不同的发布包（影响 nexus sync, jdk 和nexus bin包 arch）
-# todo 这里要区分 测试打包时安装nexus 时nexus tar 未知和客户部署时nexus 和jdk的位置.
 # todo 容器默认安装python3-devel
-# todo 1.增加发布一个操作系统的大包的功能 (检查nexus repo,编译组件打rpm,rpm 上传到nexus,打包nexus 和部署脚本)
 # todo 梳理容器依赖和宿主机依赖
 # todo 程序退出时杀死ansible 进程
 # todo component name and params check

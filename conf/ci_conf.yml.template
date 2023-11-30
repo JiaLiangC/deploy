@@ -24,5 +24,4 @@ docker:
     prj: /ws1
 
 
-build_parallel: 1
 udh_release_output_dir: /data/sdv1/UDH/

@@ -64,6 +64,11 @@ class NexusSynchronizer:
             os.makedirs(pkgs_path)
         return pkgs_path
 
+    def get_local_pkgs_dirs(self):
+        repo_meta_infos = self.get_repo_meta_infos()
+        pkgs_paths = [self.get_local_pkgs_dir(repo_key=repo_key) for repo_key, repo_meta in repo_meta_infos.items()]
+        return pkgs_paths
+
     def load_json_data(self, filepath):
         if os.path.exists(filepath):
             with open(filepath, 'r') as jsonfile:
@@ -77,8 +82,9 @@ class NexusSynchronizer:
             json.dump(json_data, jsonfile, indent=4)
 
     def get_meta_files_path(self, fn):
+        repo_meta_infos = self.get_repo_meta_infos()
         meta_files = {repo_key: os.path.join(REPO_FILES_DIR, fn(repo_meta.get("meta_file"))) for repo_key, repo_meta in
-                      repo_metadatas.items()}
+                      repo_meta_infos.items()}
         return meta_files
 
     def get_meta_json_files_path(self):
@@ -186,7 +192,7 @@ class NexusSynchronizer:
                         packages_need_download.setdefault(repo_key, {})[pkg_name] = pkg_hash
 
             logger.info(
-                f"repo: {repo_key} scan finished, packages need download {packages_need_download.get(repo_key).keys()}")
+                f"repo: {repo_key} scan finished, packages need download {packages_need_download}")
         return packages_need_download
 
     def download(self, pkg_name, pkg_md5, repo_key):
@@ -229,7 +235,7 @@ class NexusSynchronizer:
     def generate_pkg_meta(self):
         repo_metadata_files_dict = self.get_meta_files_path(lambda x: x)
         for repo_key, repo_metadata_file in repo_metadata_files_dict.items():
-            logger.info(f"parseing {self.os_type} repo  {repo_metadata_file} file")
+            logger.info(f"parseing {repo_key} {self.os_type} repo  {repo_metadata_file} file")
             with open(os.path.join(REPO_FILES_DIR, repo_metadata_file)) as fd:
                 doc = xmltodict.parse(fd.read())
             rpms = {}
@@ -245,7 +251,7 @@ class NexusSynchronizer:
                     rpm_name = f"{name}-{ver}-{rel}.{arch}.rpm"
                     rpms[rpm_name] = hash
 
-            logger.info(f"generating {self.os_type} repo  {self.get_meta_json_file_path()} file")
+            logger.info(f"generating {self.os_type} repo json file")
             json_path = os.path.join(REPO_FILES_DIR, f'{repo_metadata_file}.json')
             self.write_json_data(json_path, rpms)
 

@@ -7,5 +7,4 @@ ci_tools/resources/plugin_files
 output
 conf.yml
 hosts_info.yml
-*.log
 .pytest_cache

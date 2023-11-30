@@ -63,25 +63,26 @@ class NexusClient:
         is_success = self.upload(file_path, base_url)
         return is_success
 
-    def batch_upload_os_pkgs(self, source_dir, os_info, num_threads=10):
+    def batch_upload_os_pkgs(self, source_dirs, os_info, num_threads=10):
         # 获取所有的 RPM 文件
-        filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
-        non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
+        for source_dir in source_dirs:
+            filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
+            non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
 
-        with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = {executor.submit(self.upload_os_pkgs, filepath, os_info): filepath for filepath in
-                       non_src_filepaths}
+            with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                futures = {executor.submit(self.upload_os_pkgs, filepath, os_info): filepath for filepath in
+                           non_src_filepaths}
 
-            for future in as_completed(futures):
-                filepath = futures[future]
-                try:
-                    success = future.result()
-                    if success:
-                        logger.info(f"Upload was successful for {filepath}")
-                    else:
-                        logger.info(f"Upload failed for {filepath}")
-                except Exception as e:
-                    logger.error(f"Upload resulted in an exception for {filepath}: {e}")
+                for future in as_completed(futures):
+                    filepath = futures[future]
+                    try:
+                        success = future.result()
+                        if success:
+                            logger.info(f"Upload was successful for {filepath}")
+                        else:
+                            logger.info(f"Upload failed for {filepath}")
+                    except Exception as e:
+                        logger.error(f"Upload resulted in an exception for {filepath}: {e}")
 
     def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name, num_threads=10):
         filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
