@@ -15,7 +15,7 @@ from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 from python.common.basic_logger import get_logger
 
-logger = get_logger(name="nexus_sync",log_file="bigdata_nexus_sync.log")
+logger = get_logger(name="nexus_sync", log_file="bigdata_nexus_sync.log")
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -23,16 +23,21 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # kylinv10_sp3
 # openeuler22
 OS_INFO = {
-    "centos7_x86_64": {"repo_url": "http://mirrors.aliyun.com/centos/7/os/x86_64/Packages/",
-                       "meta_file": "centos7_x86_64-primary.xml"},
-    "centos8_x86_64": {"repo_url": "http://mirrors.aliyun.com/centos/8/BaseOS/x86_64/os/Packages",
-                       "meta_file": "centos8_x86_64-primary.xml"},
-    "openeuler22_x86_64": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/Packages/",
-                           "meta_file": "openeuler22_x86_64-primary.xml"},
-    "kylinv10_aarch64": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/aarch64/Packages/",
-                         "meta_file": "kylinv10_aarch64-primary.xml"},
-    "kylinv10_x86_64": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/x86_64/Packages/",
-                        "meta_file": "kylinv10_x86_64-primary.xml"}
+    "centos7_x86_64": {"base": {"repo_url": "http://mirrors.aliyun.com/centos/7/os/x86_64/Packages/",
+                                "meta_file": "centos7_x86_64-primary.xml"}},
+    "centos8_x86_64": {"base": {"repo_url": "http://mirrors.aliyun.com/centos/8/BaseOS/x86_64/os/Packages",
+                                "meta_file": "centos8_x86_64-primary.xml"}},
+    "openeuler22_x86_64": {"base": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/Packages/",
+                                    "meta_file": "openeuler22_x86_64-primary.xml"}},
+    "kylinv10_aarch64": {
+        "base": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/aarch64/Packages/",
+                 "meta_file": "kylinv10_aarch64_base-primary.xml"},
+        "updates": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/updates/aarch64/Packages/",
+                    "meta_file": "kylinv10_aarch64_updates-primary.xml"}
+    },
+    "kylinv10_x86_64": {
+        "base": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/x86_64/Packages/",
+                 "meta_file": "kylinv10_x86_64-primary.xml"}}
 }
 
 
@@ -47,16 +52,17 @@ class NexusSynchronizer:
         self.failure_file = os.path.join(SCRIPT_DIR, 'failure.json')
         self.retry_limit = 3
 
+    def get_os_info(self, repo_key, key):
+        return OS_INFO.get(f"{self.os_type}{self.os_version}_{self.os_arch}").get(repo_key).get(key)
 
-    def get_os_info(self,key):
-        return OS_INFO.get(f"{self.os_type}{self.os_version}_{self.os_arch}").get(key)
+    def get_repo_meta_infos(self):
+        return OS_INFO.get(f"{self.os_type}{self.os_version}_{self.os_arch}")
 
-    def get_local_pkgs_dir(self):
-        pkgs_path = os.path.join(self.local_dir, f"{self.os_type}{self.os_version}_{self.os_arch}_pkgs")
+    def get_local_pkgs_dir(self, repo_key="base"):
+        pkgs_path = os.path.join(self.local_dir, f"{self.os_type}{self.os_version}_{self.os_arch}_{repo_key}_pkgs")
         if not os.path.exists(pkgs_path):
             os.makedirs(pkgs_path)
         return pkgs_path
-
 
     def load_json_data(self, filepath):
         if os.path.exists(filepath):
@@ -70,16 +76,18 @@ class NexusSynchronizer:
         with open(filepath, 'w') as jsonfile:
             json.dump(json_data, jsonfile, indent=4)
 
+    def get_meta_files_path(self, fn):
+        meta_files = {repo_key: os.path.join(REPO_FILES_DIR, fn(repo_meta.get("meta_file"))) for repo_key, repo_meta in
+                      repo_metadatas.items()}
+        return meta_files
 
-
-    def get_meta_json_file_path(self):
-        repo_metadata_file = self.get_os_info("meta_file")
-
-        return os.path.join(REPO_FILES_DIR, f'{repo_metadata_file}.json')
+    def get_meta_json_files_path(self):
+        return self.get_meta_files_path(lambda x: f"{x}.json")
 
     def get_packages(self):
-        logger.info(f"get packages meta data from {self.get_meta_json_file_path()}")
-        json_data = self.load_json_data(self.get_meta_json_file_path())
+        repo_json_files_dict = self.get_meta_json_files_path()
+        logger.info(f"get packages meta data from {repo_json_files_dict}")
+        json_data = {repo_key: self.load_json_data(repo_json) for repo_key, repo_json in repo_json_files_dict.items()}
         return json_data
 
     def sha256sum(self, filename):
@@ -90,7 +98,6 @@ class NexusSynchronizer:
             for n in iter(lambda: f.readinto(mv), 0):
                 h.update(mv[:n])
         return h.hexdigest()
-
 
     def validate_md5(self, downloaded_file, md5_hash):
         dh = self.sha256sum(downloaded_file)
@@ -154,65 +161,44 @@ class NexusSynchronizer:
         local_filename = os.path.join(self.get_local_pkgs_dir(), pkg_name)
         if os.path.exists(local_filename):
             if self.validate_md5(local_filename, pkg_md5):
-                logger.info(f"The {pkg_name} rpm is already downloaded and hash is consistent")
+                logger.debug(f"The {pkg_name} rpm is already downloaded and hash is consistent")
                 return None
             else:
-                logger.info(
+                logger.debug(
                     f"The {pkg_name} rpm is already downloaded and hash is not consistent, will be re-downloading")
                 return pkg_name
         else:
-            logger.info(f"The {pkg_name} rpm is not exist,will be downloading")
+            logger.debug(f"The {pkg_name} rpm is not exist,will be downloading")
             return pkg_name
 
     def concurrent_scan_packages(self):
         packages_need_download = {}
-        repo_packages = self.get_packages()
+        repo_packages_dict = self.get_packages()
+        for repo_key, repo_packages in repo_packages_dict.items():
+            with ProcessPoolExecutor(max_workers=15) as executor:  # 设置并发进程数为10
+                future_to_pkg = {executor.submit(self.scan_package, pkg_name, pkg_md5): pkg_name for pkg_name, pkg_md5
+                                 in
+                                 repo_packages.items()}
+                for future in concurrent.futures.as_completed(future_to_pkg):
+                    pkg_name = future.result()
+                    if pkg_name is not None:
+                        pkg_hash = repo_packages[pkg_name]
+                        packages_need_download.setdefault(repo_key, {})[pkg_name] = pkg_hash
 
-        with ProcessPoolExecutor(max_workers=15) as executor:  # 设置并发进程数为10
-            future_to_pkg = {executor.submit(self.scan_package, pkg_name, pkg_md5): pkg_name for pkg_name, pkg_md5 in
-                             repo_packages.items()}
-            for future in concurrent.futures.as_completed(future_to_pkg):
-                pkg_name = future_to_pkg[future]
-                result = future.result()
-                if result is not None:
-                    packages_need_download[result] = repo_packages[result]
-
-        logger.info(f"scan finished, packages need download {packages_need_download.keys()}")
+            logger.info(
+                f"repo: {repo_key} scan finished, packages need download {packages_need_download.get(repo_key).keys()}")
         return packages_need_download
 
-    def scan_packages(self):
-        packages_need_download = {}
-        repo_packages = self.get_packages()
-        for pkg_name, pkg_md5 in repo_packages.items():
-            logger.info(f"scanning  {pkg_name}")
-            local_filename = os.path.join(self.get_local_pkgs_dir(), pkg_name)
-            if os.path.exists(local_filename):
-                if self.validate_md5(local_filename, pkg_md5):
-                    logger.info(f"The {pkg_name} rpm is already downloaded and hash is consistent")
-                    continue
-                else:
-                    packages_need_download[pkg_name] = pkg_md5
-                    logger.info(
-                        f"The {pkg_name} rpm is already downloaded and hash is not consistent, will be re-downloading")
-            else:
-                packages_need_download[pkg_name] = pkg_md5
-                logger.info(f"The {pkg_name} rpm is not exist,will be downloading")
-
-        logger.info(f"scan finished, packages need download {packages_need_download.keys()}")
-        return packages_need_download
-
-
-    def download(self, pkg_name, pkg_md5):
-        remote_repo_url = self.get_os_info("repo_url")
+    def download(self, pkg_name, pkg_md5, repo_key):
+        remote_repo_url = self.get_os_info(repo_key,"repo_url")
         pkg_url = urljoin(remote_repo_url, pkg_name)
         logger.info(f"downloading  {pkg_name} from {pkg_url}")
-        local_filename = os.path.join(self.get_local_pkgs_dir(), pkg_name)
+        local_filename = os.path.join(self.get_local_pkgs_dir(repo_key=repo_key), pkg_name)
 
         success, msg = self.download_package(pkg_url, local_filename, pkg_md5, by_stream=True)
         return (pkg_name, success, msg)
 
     def sync_repository(self):
-        # packages_need_download = self.scan_packages()
         packages_need_download = self.concurrent_scan_packages()
         if len(packages_need_download) <= 0:
             logger.info(f"all {self.os_type} repo files synchronized successfully")
@@ -222,70 +208,75 @@ class NexusSynchronizer:
         success_packages = {}
         failure_packages = {}
 
-        with ProcessPoolExecutor(max_workers=10) as executor:
-            future_to_pkg = {executor.submit(self.download, pkg_name, pkg_md5): pkg_name for pkg_name, pkg_md5 in packages_need_download.items()}
-            for future in concurrent.futures.as_completed(future_to_pkg):
-                pkg_name, success, msg = future.result()
-                if success:
-                    success_packages[pkg_name] = True
-                    if pkg_name in failure_packages:
-                        del failure_packages[pkg_name]
-                else:
-                    failure_packages[pkg_name] = msg
+        # packages_need_download={repo_key: {pkg_name1:pkg_md5,pkg_name2:pkg_md5}}
+        for repo_key, repo_pkgs in packages_need_download.items():
+            with ProcessPoolExecutor(max_workers=10) as executor:
+                future_to_pkg = {executor.submit(self.download, pkg_name, pkg_md5, repo_key): pkg_name for
+                                 pkg_name, pkg_md5 in
+                                 repo_pkgs.items()}
+                for future in concurrent.futures.as_completed(future_to_pkg):
+                    pkg_name, success, msg = future.result()
+                    if success:
+                        success_packages.setdefault(repo_key, {})[pkg_name] = True
+                        if pkg_name in failure_packages:
+                            del failure_packages[pkg_name]
+                    else:
+                        failure_packages.setdefault(repo_key, {})[pkg_name] = msg
 
                 self.write_json_data(self.success_file, success_packages)
                 self.write_json_data(self.failure_file, failure_packages)
 
-
     def generate_pkg_meta(self):
-        repo_metadata_file = self.get_os_info("meta_file")
-        logger.info(f"parseing {self.os_type} repo  {repo_metadata_file} file")
-        with open(os.path.join(REPO_FILES_DIR, repo_metadata_file)) as fd:
-            doc = xmltodict.parse(fd.read())
-        rpms = {}
-        for pinfo in doc["metadata"]["package"]:
-            type = pinfo["@type"]  # rpm
-            name = pinfo["name"]
-            arch = pinfo["arch"]
-            ver = pinfo["version"]["@ver"]
-            rel = pinfo["version"]["@rel"]
-            ctype = pinfo["checksum"]["@type"]
-            hash = pinfo["checksum"]["#text"]
-            if type == "rpm" and (arch == self.os_arch.strip() or arch == "noarch"):
-                rpm_name = f"{name}-{ver}-{rel}.{arch}.rpm"
-                rpms[rpm_name] = hash
+        repo_metadata_files_dict = self.get_meta_files_path(lambda x: x)
+        for repo_key, repo_metadata_file in repo_metadata_files_dict.items():
+            logger.info(f"parseing {self.os_type} repo  {repo_metadata_file} file")
+            with open(os.path.join(REPO_FILES_DIR, repo_metadata_file)) as fd:
+                doc = xmltodict.parse(fd.read())
+            rpms = {}
+            for pinfo in doc["metadata"]["package"]:
+                type = pinfo["@type"]  # rpm
+                name = pinfo["name"]
+                arch = pinfo["arch"]
+                ver = pinfo["version"]["@ver"]
+                rel = pinfo["version"]["@rel"]
+                ctype = pinfo["checksum"]["@type"]
+                hash = pinfo["checksum"]["#text"]
+                if type == "rpm" and (arch == self.os_arch.strip() or arch == "noarch"):
+                    rpm_name = f"{name}-{ver}-{rel}.{arch}.rpm"
+                    rpms[rpm_name] = hash
 
-        logger.info(f"generating {self.os_type} repo  {self.get_meta_json_file_path()} file")
-        self.write_json_data(self.get_meta_json_file_path(), rpms)
+            logger.info(f"generating {self.os_type} repo  {self.get_meta_json_file_path()} file")
+            json_path = os.path.join(REPO_FILES_DIR, f'{repo_metadata_file}.json')
+            self.write_json_data(json_path, rpms)
 
 
 if __name__ == '__main__':
-    # Create the parser
-    parser = argparse.ArgumentParser(description='Sync packages from a source to a local directory.')
+    # # Create the parser
+    # parser = argparse.ArgumentParser(description='Sync packages from a source to a local directory.')
+    #
+    # # Add the arguments
+    # parser.add_argument('--os_type',
+    #                     metavar='os_type',
+    #                     type=str,
+    #                     required=True,
+    #                     choices=['centos7', 'centos8', 'openeuler22', 'kylinv10'],
+    #                     help='The type of OS for which to sync packages. Options are: "centos7", "centos8", "openeuler22", "kylinv10"')
+    #
+    # parser.add_argument('--data_dir',
+    #                     metavar='data_dir',
+    #                     type=str,
+    #                     default=os.getcwd(),
+    #                     help='The directory to which to sync packages. Default is the current working directory.')
+    #
+    # # Parse the arguments
+    # args = parser.parse_args()
+    # # Use the arguments
+    # os_type = args.os_type
+    # DATA_DIR = args.data_dir
+    #
+    # logger.info(f"params os_type: {os_type}, data_dir: {DATA_DIR}")
 
-    # Add the arguments
-    parser.add_argument('--os_type',
-                        metavar='os_type',
-                        type=str,
-                        required=True,
-                        choices=['centos7', 'centos8', 'openeuler22', 'kylinv10'],
-                        help='The type of OS for which to sync packages. Options are: "centos7", "centos8", "openeuler22", "kylinv10"')
-
-    parser.add_argument('--data_dir',
-                        metavar='data_dir',
-                        type=str,
-                        default=os.getcwd(),
-                        help='The directory to which to sync packages. Default is the current working directory.')
-
-    # Parse the arguments
-    args = parser.parse_args()
-    # Use the arguments
-    os_type = args.os_type
-    DATA_DIR = args.data_dir
-
-    logger.info(f"params os_type: {os_type}, data_dir: {DATA_DIR}")
-
-    synchronizer = NexusSynchronizer(os_type, DATA_DIR)
+    synchronizer = NexusSynchronizer("kylin", "v10", "aarch64", "./")
 
     synchronizer.generate_pkg_meta()
     synchronizer.sync_repository()

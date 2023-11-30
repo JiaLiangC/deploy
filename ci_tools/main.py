@@ -341,6 +341,9 @@ class UDHReleaseTask(BaseTask):
         # todo skip = false
         nexus_task.package_nexus(self.include_os_pkg, skip=False)
 
+        if not os.path.exists(os.path.join(release_prj_dir, "bin/pigz")):
+            shutil.copy(pigz_path, os.path.join(release_prj_dir, "bin/pigz"))
+
         os.chdir(udh_release_output_dir)
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
         udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
@@ -349,8 +352,7 @@ class UDHReleaseTask(BaseTask):
         run_shell_command(command, shell=True)
         logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
         shutil.rmtree(os.path.basename(release_prj_dir))
-        if not os.path.exists(os.path.join(release_prj_dir, "bin/pigz")):
-            shutil.copy(pigz_path, os.path.join(release_prj_dir, "bin/pigz"))
+
 
 class InitializeTask(BaseTask):
     def __init__(self):
