@@ -15,7 +15,7 @@ from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 from python.common.basic_logger import get_logger
 
-logger = get_logger(name="nexus_sync", log_file="bigdata_nexus_sync.log")
+logger = get_logger(name="nexus_sync", log_file="nexus_sync.log")
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -163,28 +163,27 @@ class NexusSynchronizer:
             return False, str(e)
         return False, None
 
-    def scan_package(self, pkg_name, pkg_md5):
-        local_filename = os.path.join(self.get_local_pkgs_dir(), pkg_name)
+    def scan_package(self, pkg_name, pkg_md5,repo_key):
+        local_filename = os.path.join(self.get_local_pkgs_dir(repo_key=repo_key), pkg_name)
         if os.path.exists(local_filename):
             if self.validate_md5(local_filename, pkg_md5):
-                logger.debug(f"The {pkg_name} rpm is already downloaded and hash is consistent")
+                logger.info(f"The {pkg_name} rpm is already downloaded and hash is consistent")
                 return None
             else:
-                logger.debug(
-                    f"The {pkg_name} rpm is already downloaded and hash is not consistent, will be re-downloading")
+                logger.info(
+                    f"The {pkg_name} rpm is already downloaded and hash is  inconsistent, will be re-downloading")
                 return pkg_name
         else:
-            logger.debug(f"The {pkg_name} rpm is not exist,will be downloading")
+            logger.info(f"The {pkg_name} rpm is not exist,will be downloading")
             return pkg_name
 
     def concurrent_scan_packages(self):
         packages_need_download = {}
         repo_packages_dict = self.get_packages()
-        for repo_key, repo_packages in repo_packages_dict.items():
-            with ProcessPoolExecutor(max_workers=15) as executor:  # 设置并发进程数为10
-                future_to_pkg = {executor.submit(self.scan_package, pkg_name, pkg_md5): pkg_name for pkg_name, pkg_md5
-                                 in
-                                 repo_packages.items()}
+
+        with ProcessPoolExecutor(max_workers=15) as executor:  # 设置并发进程数为10
+            for repo_key, repo_packages in repo_packages_dict.items():
+                future_to_pkg = {executor.submit(self.scan_package, pkg_name, pkg_md5, repo_key): pkg_name for pkg_name, pkg_md5 in repo_packages.items()}
                 for future in concurrent.futures.as_completed(future_to_pkg):
                     pkg_name = future.result()
                     if pkg_name is not None:
