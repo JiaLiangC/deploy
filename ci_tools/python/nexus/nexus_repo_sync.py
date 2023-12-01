@@ -14,6 +14,8 @@ from python.common.constants import *
 from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 from python.common.basic_logger import get_logger
+import threading
+
 
 logger = get_logger(name="nexus_sync", log_file="nexus_sync.log")
 
@@ -54,6 +56,7 @@ class NexusSynchronizer:
         self.success_file = os.path.join(SCRIPT_DIR, 'success.json')
         self.failure_file = os.path.join(SCRIPT_DIR, 'failure.json')
         self.retry_limit = 3
+        self.lock = threading.Lock()
 
     def get_os_info(self, repo_key, key):
         return OS_INFO.get(f"{self.os_type}{self.os_version}_{self.os_arch}").get(repo_key).get(key)
@@ -62,10 +65,11 @@ class NexusSynchronizer:
         return OS_INFO.get(f"{self.os_type}{self.os_version}_{self.os_arch}")
 
     def get_local_pkgs_dir(self, repo_key="base"):
-        pkgs_path = os.path.join(self.local_dir, f"{self.os_type}{self.os_version}_{self.os_arch}_{repo_key}_pkgs")
-        if not os.path.exists(pkgs_path):
-            os.makedirs(pkgs_path)
-        return pkgs_path
+        with self.lock:
+            pkgs_path = os.path.join(self.local_dir, f"{self.os_type}{self.os_version}_{self.os_arch}_{repo_key}_pkgs")
+            if not os.path.exists(pkgs_path):
+                os.makedirs(pkgs_path)
+            return pkgs_path
 
     def get_local_pkgs_dirs(self):
         repo_meta_infos = self.get_repo_meta_infos()

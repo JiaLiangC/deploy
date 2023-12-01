@@ -43,12 +43,13 @@ class NexusClient:
         with open(file_path, 'rb') as f:
             response = requests.put(base_url, data=f, auth=self.auth)
             # 打印状态码
-            logger.info(f"Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+
             if response.status_code == 200:
-                logger.info(f"Upload completed for {file_path}")
+                logger.info(f"Upload completed for {file_path}, {base_url}")
                 return True
             else:
-                logger.info(f"Upload failed for {file_path}")
+                logger.info(f"Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+                logger.info(f"Upload failed for {file_path}, {base_url}")
                 return False
 
     def upload_os_pkgs(self, file_path, os_info):
@@ -87,7 +88,7 @@ class NexusClient:
     def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name, num_threads=10):
         filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
         non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
-
+        self.delete_folder(UDH_NEXUS_REPO_NAME, f"{UDH_NEXUS_REPO_PACKAGES_PATH}/{component_dir_name}")
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = {executor.submit(self.upload_bigdata_pkgs, filepath, component_dir_name): filepath for filepath in
                        non_src_filepaths}
