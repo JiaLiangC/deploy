@@ -5,14 +5,12 @@ import subprocess
 import concurrent.futures
 from python.common.basic_logger import get_logger
 from python.common.constants import *
-from python.easyprocess import EasyProcess
 from python.utils.os_utils import *
 import shutil
 from urllib.parse import urlparse, urljoin
 import json
 from datetime import datetime
 import argparse
-import platform
 import sys
 import traceback
 
@@ -83,10 +81,7 @@ class BigtopBuilder(object):
         logger.info(f"write new repo {dest_path} to {dest_path}")
 
         # 3.skip unavailable
-        conf_return_code = EasyProcess(
-            ["yum-config-manager", "--save", '--setopt="*.skip_if_unavailable=true"']).call().return_code
-        logger.info(
-            f"skip broken repo set: yum-config-manager --save --setopt=*.skip_if_unavailable=true skip unavailable {conf_return_code}")
+        run_shell_command(["yum-config-manager", "--save", '--setopt="*.skip_if_unavailable=true"'])
         # 3.make cache
         # mk_return_code = EasyProcess(["yum", "makecache"]).call().return_code
 

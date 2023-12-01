@@ -37,7 +37,10 @@ OS_INFO = {
     },
     "kylinv10_x86_64": {
         "base": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/x86_64/Packages/",
-                 "meta_file": "kylinv10_x86_64-primary.xml"}}
+                 "meta_file": "kylinv10_x86_64_base-primary.xml"},
+        "updates": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/updates/x86_64/Packages/",
+                    "meta_file": "kylinv10_x86_64_updates-primary.xml"}
+    }
 }
 
 

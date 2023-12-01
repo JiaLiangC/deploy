@@ -308,6 +308,7 @@ class UDHReleaseTask(BaseTask):
         # 0. install pigz
         pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, PRJ_BIN_DIR)
         pigz_installer.install()
+        pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
 
         # 1. Copy project directory into udh_release_output_dir
         logger.info(f"packaging: copy {PRJDIR} to {release_prj_dir}")
@@ -341,13 +342,13 @@ class UDHReleaseTask(BaseTask):
         # todo skip = false
         nexus_task.package_nexus(self.include_os_pkg, skip=False)
 
-        if not os.path.exists(os.path.join(release_prj_dir, "bin/pigz")):
-            shutil.copy(pigz_path, os.path.join(release_prj_dir, "bin/pigz"))
+        if not os.path.exists(os.path.join(udh_release_output_dir, "pigz")):
+            shutil.copy(pigz_path, os.path.join(udh_release_output_dir, "pigz"))
 
         os.chdir(udh_release_output_dir)
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
         udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
-        pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
+
         command = f"tar cf - {os.path.basename(PRJDIR)} | {pigz_path} -k -5 -p 8 > {udh_release_name}"
         run_shell_command(command, shell=True)
         logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
@@ -531,7 +532,7 @@ def main():
 
 if __name__ == '__main__':
     main()
-# todo 使用设计模式重构
+# todo 使用设计模式重构 gpt intepreter
 #tar -I pigz -xf nexus.tar.gz -C /tmp
 # todo 目前同步包等只能在对应的操作系统上
 # 场景开发过程的宿主机编译，容器编译，nexus 安装，组件上传，部署集群，发布 release 包(主要是nexus 包)
