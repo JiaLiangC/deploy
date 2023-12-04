@@ -25,3 +25,4 @@ docker:
 
 
 udh_release_output_dir: /data/sdv1/UDH/
+udh_nexus_release_output_dir: /data/sdv1/UDH_NEXUS/

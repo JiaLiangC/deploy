@@ -136,9 +136,9 @@ class ContainerTask(BaseTask):
         cmd = ['/bin/bash', '-c', py_cmd]
         self.logged_exec_run(container, cmd=cmd, workdir=f'{prj_dir}')
 
-        # todo
-        # cmd_install = 'yum clean all && yum install -y python3-devel'
-        # self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
+        if container:
+            cmd_install = 'yum clean all && yum install -y python3-devel'
+            self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
 
     def run(self):
         if self.conf["bigtop"]["use_docker"]:
@@ -218,7 +218,7 @@ class NexusTask(BaseTask):
 
     def package_nexus(self):
         logger.info(f'start package nexus ')
-        udh_release_output_dir = self.conf["udh_release_output_dir"]
+        udh_release_output_dir = self.conf["udh_nexus_release_output_dir"]
 
         self.install_nexus_and_jdk()
         # create repo if not exist and upload bigdata pkgs to nexus
@@ -257,7 +257,13 @@ class NexusTask(BaseTask):
         os.chdir(udh_release_output_dir)
         logger.info(f"compresssing {nexus_release_tar}")
         command = f"tar cf - {os.path.basename(nexus_release_dir)} | {pigz_path} -k -5 -p 8 > {nexus_release_tar}"
-        run_shell_command(command, shell=True)
+        returncode =  run_shell_command(command, shell=True)
+
+        if returncode == 0:
+            shutil.rmtree(nexus_release_dir)
+        else:
+            logger.error("package rpm failed, check the log")
+
         # todo delete nexus dir
 
     def run(self):
@@ -361,10 +367,10 @@ class UDHReleaseTask(BaseTask):
         for comp in ALL_COMPONENTS:
             comp_dir = os.path.join(bigdata_rpm_dir, comp)
             if not os.path.exists(comp_dir):
-                os.makedirs(bigdata_rpm_dir)
+                os.makedirs(comp_dir)
 
             pkg_dir = os.path.join(self.conf["bigtop"]["prj_dir"], f"output/{comp}")
-            logger.info(f"package_bigdata_rpms pkg_dir:{pkg_dir} comp:{comp}")
+            logger.info(f"package bigdata rpms pkg_dir:{pkg_dir} comp:{comp}")
             filepaths = glob.glob(os.path.join(pkg_dir, "**", "*.rpm"), recursive=True)
             non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
 
@@ -616,7 +622,7 @@ if __name__ == '__main__':
     main()
 
 # 打包nexus 的时候，OS 的包传进去，如果要UDH，单独上传。
-
+#pip3 install -t ansible/extras
 # todo 使用设计模式重构 gpt intepreter
 # tar -I pigz -xf nexus.tar.gz -C /tmp
 # todo 目前同步包等只能在对应的操作系统上
