@@ -266,30 +266,6 @@ class NexusSynchronizer:
 
 
 if __name__ == '__main__':
-    # # Create the parser
-    # parser = argparse.ArgumentParser(description='Sync packages from a source to a local directory.')
-    #
-    # # Add the arguments
-    # parser.add_argument('--os_type',
-    #                     metavar='os_type',
-    #                     type=str,
-    #                     required=True,
-    #                     choices=['centos7', 'centos8', 'openeuler22', 'kylinv10'],
-    #                     help='The type of OS for which to sync packages. Options are: "centos7", "centos8", "openeuler22", "kylinv10"')
-    #
-    # parser.add_argument('--data_dir',
-    #                     metavar='data_dir',
-    #                     type=str,
-    #                     default=os.getcwd(),
-    #                     help='The directory to which to sync packages. Default is the current working directory.')
-    #
-    # # Parse the arguments
-    # args = parser.parse_args()
-    # # Use the arguments
-    # os_type = args.os_type
-    # DATA_DIR = args.data_dir
-    #
-    # logger.info(f"params os_type: {os_type}, data_dir: {DATA_DIR}")
 
     synchronizer = NexusSynchronizer("centos", "7", "x86_64", "./")
     synchronizer.generate_pkg_meta()

@@ -2,11 +2,11 @@ import requests
 from python.common.basic_logger import get_logger
 import os
 import glob
-import platform
-import base64
 from python.common.constants import *
 from python.utils.os_utils import *
 import json
+from functools import wraps
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger(name="nexus_client", log_file="nexus_client.log")
@@ -39,33 +39,50 @@ class NexusClient:
         base_url = f"{self.get_nexus_url()}/repository/{repo_name}/{relative_dir}/{component_dir_name}"
         return base_url
 
+    def retry(max_retries):
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                for i in range(max_retries):
+                    result = func(*args, **kwargs)
+                    if result:
+                        return result
+                    else:
+                        logger.info(f"Retry {i + 1}/{max_retries}")
+                return False
+
+            return wrapper
+
+        return decorator
+
+    @retry(max_retries=3)
     def upload(self, file_path, base_url):
         with open(file_path, 'rb') as f:
             response = requests.put(base_url, data=f, auth=self.auth)
-            # 打印状态码
-
             if response.status_code == 200:
                 logger.info(f"Upload completed for {file_path}, {base_url}")
                 return True
             else:
-                logger.info(f"Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
-                logger.info(f"Upload failed for {file_path}, {base_url}")
+                logger.info(
+                    f"Upload failed for {file_path}, {base_url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
                 return False
 
-    def upload_os_pkgs(self, file_path, os_info):
-        base_url = self.get_os_packages_url(os_info)
-        base_url = f"{base_url}/{os.path.basename(file_path)}"
+    def upload_pkgs(self, file_path, url_getter, *url_getter_args):
+        base_url = f"{url_getter(*url_getter_args)}/{os.path.basename(file_path)}"
         is_success = self.upload(file_path, base_url)
         return is_success
 
+    def upload_os_pkgs(self, file_path, os_info):
+        is_success = self.upload_pkgs(file_path, self.get_os_packages_url, os_info)
+        return is_success
+
     def upload_bigdata_pkgs(self, file_path, component_dir_name):
-        base_url = self.get_bigdata_component_url(component_dir_name)
-        base_url = f"{base_url}/{os.path.basename(file_path)}"
-        is_success = self.upload(file_path, base_url)
+        is_success = self.upload_pkgs(file_path, self.get_bigdata_component_url, component_dir_name)
         return is_success
 
     def batch_upload_os_pkgs(self, source_dirs, os_info, num_threads=10):
         # 获取所有的 RPM 文件
+
         for source_dir in source_dirs:
             filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
             non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]

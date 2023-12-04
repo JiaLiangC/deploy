@@ -253,10 +253,10 @@ class NexusTask(BaseTask):
         shutil.copy(local_jdk, dest_jdk)
         logger.info(f"move compressed nexus tar from {local_jdk} to {dest_jdk}")
 
-        udh_release_tar = os.path.join(udh_release_output_dir, f"{name}.tar.gz")
+        nexus_release_tar = os.path.join(udh_release_output_dir, f"{name}.tar.gz")
         os.chdir(udh_release_output_dir)
-        logger.info(f"compresssing {udh_release_tar}")
-        command = f"tar cf - {os.path.basename(nexus_dir)} | {pigz_path} -k -5 -p 8 > {udh_release_tar}"
+        logger.info(f"compresssing {nexus_release_tar}")
+        command = f"tar cf - {os.path.basename(nexus_release_dir)} | {pigz_path} -k -5 -p 8 > {nexus_release_tar}"
         run_shell_command(command, shell=True)
         # todo delete nexus dir
 
