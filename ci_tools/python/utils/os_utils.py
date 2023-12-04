@@ -6,7 +6,6 @@ from pathlib import Path
 from shutil import copyfileobj
 from traceback import format_exc
 
-
 from python.common.basic_logger import get_logger
 
 logger = get_logger()
@@ -87,7 +86,7 @@ def get_full_os_major_version():
     os_type = get_os_type()
     os_version = get_os_version()
     os_arch = get_os_arch()
-    full_os_major_version = f"{os_type}_{os_version}_{os_arch}"
+    full_os_major_version = f"{os_type}{os_version}_{os_arch}"
     logger.info(f"full_os_and_major_version is {full_os_major_version}")
     return full_os_major_version
 
@@ -136,5 +135,7 @@ def run_shell_command(command, shell=False):
         result = subprocess.run(command, check=True, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 universal_newlines=True)
         logger.info(f"run command: {command} shell:{shell} Output: {result.stdout} Error: {result.stderr}")
+        return result.returncode
     except subprocess.CalledProcessError as e:
         logger.error(f"Command '{e.cmd}' failed with return code {e.returncode} Output: {e.output} Error: {e.stderr}")
+        return e.returncode

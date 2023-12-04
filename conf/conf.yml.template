@@ -26,6 +26,8 @@ plugins:
 nexus:
   install_dir: /usr/local/
   jdk_install_dir: /opt/jvm/
+  host: server0               #the nexus used to upload bigdata packages
+  port: 8081                  #don't change this
   user_name: admin            #don't change this
   user_pwd: admin222
 

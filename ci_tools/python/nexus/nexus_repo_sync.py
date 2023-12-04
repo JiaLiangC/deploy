@@ -26,9 +26,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # openeuler22
 OS_INFO = {
     "centos7_x86_64": {"base": {"repo_url": "http://mirrors.aliyun.com/centos/7/os/x86_64/Packages/",
-                                "meta_file": "centos7_x86_64-primary.xml"}},
+                                "meta_file": "centos7_x86_64_base-primary.xml"},
+                       "updates": {"repo_url": "http://mirrors.aliyun.com/centos/7/updates/x86_64/Packages/",
+                                "meta_file": "centos7_x86_64_updates-primary.xml"}
+                       },
     "centos8_x86_64": {"base": {"repo_url": "http://mirrors.aliyun.com/centos/8/BaseOS/x86_64/os/Packages",
-                                "meta_file": "centos8_x86_64-primary.xml"}},
+                                "meta_file": "centos8_x86_64_base-primary.xml"}},
     "openeuler22_x86_64": {"base": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/Packages/",
                                     "meta_file": "openeuler22_x86_64-primary.xml"}},
     "kylinv10_aarch64": {
@@ -56,7 +59,7 @@ class NexusSynchronizer:
         self.success_file = os.path.join(SCRIPT_DIR, 'success.json')
         self.failure_file = os.path.join(SCRIPT_DIR, 'failure.json')
         self.retry_limit = 3
-        self.lock = threading.Lock()
+        #self.lock = threading.Lock()
 
     def get_os_info(self, repo_key, key):
         return OS_INFO.get(f"{self.os_type}{self.os_version}_{self.os_arch}").get(repo_key).get(key)
@@ -65,11 +68,11 @@ class NexusSynchronizer:
         return OS_INFO.get(f"{self.os_type}{self.os_version}_{self.os_arch}")
 
     def get_local_pkgs_dir(self, repo_key="base"):
-        with self.lock:
-            pkgs_path = os.path.join(self.local_dir, f"{self.os_type}{self.os_version}_{self.os_arch}_{repo_key}_pkgs")
-            if not os.path.exists(pkgs_path):
-                os.makedirs(pkgs_path)
-            return pkgs_path
+        #with self.lock:
+        pkgs_path = os.path.join(self.local_dir, f"{self.os_type}{self.os_version}_{self.os_arch}_{repo_key}_pkgs")
+        if not os.path.exists(pkgs_path):
+            os.makedirs(pkgs_path)
+        return pkgs_path
 
     def get_local_pkgs_dirs(self):
         repo_meta_infos = self.get_repo_meta_infos()
@@ -288,7 +291,18 @@ if __name__ == '__main__':
     #
     # logger.info(f"params os_type: {os_type}, data_dir: {DATA_DIR}")
 
-    synchronizer = NexusSynchronizer("kylin", "v10", "aarch64", "./")
-
+    synchronizer = NexusSynchronizer("centos", "7", "x86_64", "./")
     synchronizer.generate_pkg_meta()
-    synchronizer.sync_repository()
+
+    synchronizer = NexusSynchronizer("centos", "8", "x86_64", "./")
+    synchronizer.generate_pkg_meta()
+
+
+    synchronizer = NexusSynchronizer("openeuler", "22", "x86_64", "./")
+    synchronizer.generate_pkg_meta()
+
+    synchronizer = NexusSynchronizer("kylin", "v10", "aarch64", "./")
+    synchronizer.generate_pkg_meta()
+
+    synchronizer = NexusSynchronizer("kylin", "v10", "x86_64", "./")
+    synchronizer.generate_pkg_meta()
