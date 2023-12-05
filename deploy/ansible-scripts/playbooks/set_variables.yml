@@ -2,7 +2,7 @@
 - name: Create the required Ansible groups
   hosts: localhost
   connection: local
-  gather_facts: False
+  gather_facts: True
   tasks:
     - name: Fail if no Ansible inventory group called 'hadoop-cluster' exists
       fail:
@@ -21,7 +21,7 @@
     - block:
         - name: Check if the system is CentOS 7
           set_fact:
-            is_centos7: "{{ ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7' }}"
+            is_centos7: "{{ ansible_os_family|lower == 'redhat' and ansible_distribution_major_version == '7' }}"
 
         - name: Check if /usr/bin/python exists
           raw: bash -c "test -e /usr/bin/python && echo -n exists || echo -n"

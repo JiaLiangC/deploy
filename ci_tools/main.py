@@ -318,7 +318,7 @@ class DeployClusterTask(BaseTask):
         for comp in ALL_COMPONENTS:
             pkg_dir = os.path.join(rpms_dir, comp)
             logger.info(f"uploading{comp}  from  {pkg_dir} to nexus ")
-            nexus_client.repo_create(UDH_NEXUS_REPO_NAME, remove_old=False)
+            nexus_client.repo_create(UDH_NEXUS_REPO_NAME, remove_old=True,redeploy=True)
             nexus_client.batch_upload_bigdata_pkgs(pkg_dir, comp)
 
     def run(self):

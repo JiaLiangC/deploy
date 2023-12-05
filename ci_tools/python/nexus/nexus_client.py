@@ -141,7 +141,8 @@ class NexusClient:
         logger.info(
             f"nexus delete_folder url:{url} params:{repo_name} {relative_path} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
-    def do_repo_create(self, repo_name):
+    def do_repo_create(self, repo_name, redeploy=False):
+        write_policy = "ALLOW" if redeploy else "ALLOW_ONCE"
         recipe = "yum-hosted"
         url = f"{self.get_nexus_url()}/service/extdirect"
         logger.info(f"component_delete {url}")
@@ -153,7 +154,7 @@ class NexusClient:
             "method": "create",
             "data": [{"attributes": {f"{repo_name}": {"repodataDepth": 1, "deployPolicy": "STRICT"},
                                      "storage": {"blobStoreName": "default", "strictContentTypeValidation": True,
-                                                 "writePolicy": "ALLOW_ONCE"},
+                                                 "writePolicy": write_policy},
                                      "component": {"proprietaryComponents": False}, "cleanup": {"policyName": []}},
                       "name": repo_name, "format": "", "type": "", "url": "", "online": True, "recipe": recipe}],
             "type": "rpc", "tid": 20
@@ -164,7 +165,7 @@ class NexusClient:
         logger.info(
             f"do_repo_create url:{url} repo_name:{repo_name} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
-    def repo_create(self, repo_name, remove_old=False):
+    def repo_create(self, repo_name, remove_old=False,redeploy=False):
         repo_list = self.get_repos()
         result = list(filter(lambda d: d['name'] == repo_name, repo_list))
         logger.info(f"repo_create check  {repo_name} whether exist, result: {result}")
@@ -173,7 +174,7 @@ class NexusClient:
                 self.repo_remove(repo_name)
         else:
             logger.info(f"do_repo_create {repo_name}")
-            self.do_repo_create(repo_name)
+            self.do_repo_create(repo_name, redeploy=redeploy)
 
     def repo_remove(self, repo_name):
         recipe = "yum-hosted"
