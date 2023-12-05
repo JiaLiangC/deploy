@@ -6,6 +6,8 @@ port = {{ mysql_port }}
 socket = {{ mysql_socket }}
 
 [mysqld]
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
 {% if mysql_version is version('5.7.2', '>=') and mysql_daemon in ['mysqld'] %}
 default_authentication_plugin = mysql_native_password
 {% endif %}
