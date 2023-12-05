@@ -1,0 +1,31 @@
+nexus:
+  use_existed: fase
+  host: localhost
+  user_name: admin
+  user_pwd: admin222
+  local_tar: /home/jialiang/udh/container_dep/nexus3.tar.gz
+  jdk_local_tar: /home/jialiang/udh/container_dep/jdk.tar.gz
+  install_dir: /opt/
+  jdk_install_dir: /opt/jvm/
+  os_repo_data_dir: /data/sdv1/udh/nexus_sync
+
+bigtop:
+ #prj_dir: /home/jialiang/sdp/prjs/bigtop
+  prj_dir: /dev/shm/udh/bigtop
+  dl_dir: /dev/shm/udh/container_dep/dl
+  #dl_dir: /home/jialiang/sdp/prjs/container_dep/dl
+  #net_proxy: 172.27.8.22:7890
+  local_maven_repo_dir: /data/sdv1/repository
+  use_docker: true
+  ci_scripts_module_path: ci_tools/python
+docker:
+  build_container_name: bigtop
+  volumes:
+    bigtop: /ws
+    prj: /ws1
+
+build_parallel: 1
+
+ansible_install_dir: /opt/
+udh_release_output_dir: /data/sdv1/UDH/
+udh_nexus_release_output_dir: /data/sdv1/UDH_NEXUS/
