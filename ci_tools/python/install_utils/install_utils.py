@@ -218,16 +218,12 @@ WantedBy=multi-user.target
             logger.info(f"nexus initialize fineshed delete pwd file")
 
     def fix_nexus_pref(self):
-        prefs = "-Djava.util.prefs.userRoot=${NEXUS_DATA}/javaprefs"
+        data_dir = os.path.join(self.comp_dir, "sonatype-work/nexus3/javaprefs")
+        prefs = f"-Djava.util.prefs.userRoot={data_dir}"
         file_path = f"{self.comp_dir}/nexus-3/bin/nexus.vmoptions"
 
-        with open(file_path, 'r') as file:
-            lines = file.readlines()
-
-        lines.insert(0, prefs + '\n')
-
-        with open(file_path, 'w') as file:
-            file.writelines(lines)
+        with open(file_path, 'a') as file:
+            file.write('\n' + prefs)
 
     def install(self):
         kill_nexus_process()
