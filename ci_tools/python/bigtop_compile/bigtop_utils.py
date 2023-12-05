@@ -72,7 +72,7 @@ class BigtopBuilder(object):
         os.makedirs(backup_dir)
         self.mv_repo_files(repo_path, backup_dir)
 
-        os_full_name = get_full_os_major_versiobn()
+        os_full_name = get_full_os_major_version()
         repo_tpl_file_path = os.path.join(SCRIPT_DIR, f"templates/{os_full_name}_repos/{os_full_name}.repo")
         dest_path = os.path.join(repo_path, f"{os_full_name}.repo")
         with open(repo_tpl_file_path, 'r') as file_a, open(dest_path, 'w') as file_b:
