@@ -136,9 +136,9 @@ class ContainerTask(BaseTask):
         cmd = ['/bin/bash', '-c', py_cmd]
         self.logged_exec_run(container, cmd=cmd, workdir=f'{prj_dir}')
 
-        # todo
-        # cmd_install = 'yum clean all && yum install -y python3-devel'
-        # self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
+        if container:
+            cmd_install = 'yum clean all && yum install -y python3-devel'
+            self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
 
     def run(self):
         if self.conf["bigtop"]["use_docker"]:
@@ -218,7 +218,7 @@ class NexusTask(BaseTask):
 
     def package_nexus(self):
         logger.info(f'start package nexus ')
-        udh_release_output_dir = self.conf["udh_release_output_dir"]
+        udh_release_output_dir = self.conf["udh_nexus_release_output_dir"]
 
         self.install_nexus_and_jdk()
         # create repo if not exist and upload bigdata pkgs to nexus
@@ -257,7 +257,13 @@ class NexusTask(BaseTask):
         os.chdir(udh_release_output_dir)
         logger.info(f"compresssing {nexus_release_tar}")
         command = f"tar cf - {os.path.basename(nexus_release_dir)} | {pigz_path} -k -5 -p 8 > {nexus_release_tar}"
-        run_shell_command(command, shell=True)
+        returncode = run_shell_command(command, shell=True)
+
+        if returncode == 0:
+            shutil.rmtree(nexus_release_dir)
+        else:
+            logger.error("package rpm failed, check the log")
+
         # todo delete nexus dir
 
     def run(self):
@@ -269,8 +275,6 @@ class DeployClusterTask(BaseTask):
         super().__init__()
 
     def deploy(self):
-        # upload_to_nexus()
-
         playbook_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/install_cluster.yml')
         inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
         log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
@@ -279,18 +283,17 @@ class DeployClusterTask(BaseTask):
 
         cf_util = ConfUtils()
         conf = cf_util.get_conf()
+        if not cf_util.is_ambari_repo_configured() and len(conf["nexus"]["host"]) > 0:
+            logger.info("ambari repo not configured,will upload ambari bigdata rpm to specified nexus host. ")
+            self.upload_bigdata_rpms(conf)
+            conf = cf_util.generate_ambari_repo()
 
         hosts_info = cf_util.get_hosts_info()
         ambari_server_host = cf_util.get_ambari_server_host()
-
-        b = BlueprintUtils(conf)
-        ambari_repo = b.get_ambari_repo()
-        b.build()
-        b.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
+        blueprint_utils = BlueprintUtils(conf)
+        blueprint_utils.build()
+        blueprint_utils.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
         env_vars = os.environ.copy()
-
-        if not ambari_repo:
-            self.upload_bigdata_rpms(conf)
 
         command = ["python3", f"{PRJ_BIN_DIR}/ansible-playbook", playbook_path, f"--inventory={inventory_path}"]
         with open(log_file, "w") as log:
@@ -302,7 +305,9 @@ class DeployClusterTask(BaseTask):
         logger.info(f"run_playbook {command} exit_status: {exit_status}")
 
     def upload_bigdata_rpms(self, conf):
-        logger.info(f'start upload bigdata rpms to nexus')
+        if not os.path.exists(UDH_RPMS_PATH) == True:
+            raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
+        logger.info(f'start  decompress {UDH_RPMS_PATH} and upload bigdata rpms to nexus {conf["nexus"]["host"]}')
         pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
         command = f"tar -I {pigz_path} -xf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
         run_shell_command(command, shell=True)
@@ -361,10 +366,10 @@ class UDHReleaseTask(BaseTask):
         for comp in ALL_COMPONENTS:
             comp_dir = os.path.join(bigdata_rpm_dir, comp)
             if not os.path.exists(comp_dir):
-                os.makedirs(bigdata_rpm_dir)
+                os.makedirs(comp_dir)
 
             pkg_dir = os.path.join(self.conf["bigtop"]["prj_dir"], f"output/{comp}")
-            logger.info(f"package_bigdata_rpms pkg_dir:{pkg_dir} comp:{comp}")
+            logger.info(f"package bigdata rpms pkg_dir:{pkg_dir} comp:{comp}")
             filepaths = glob.glob(os.path.join(pkg_dir, "**", "*.rpm"), recursive=True)
             non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
 
@@ -616,7 +621,7 @@ if __name__ == '__main__':
     main()
 
 # 打包nexus 的时候，OS 的包传进去，如果要UDH，单独上传。
-
+# pip3 install -t ansible/extras
 # todo 使用设计模式重构 gpt intepreter
 # tar -I pigz -xf nexus.tar.gz -C /tmp
 # todo 目前同步包等只能在对应的操作系统上
@@ -631,3 +636,6 @@ if __name__ == '__main__':
 # docker run -d -it --network host -v ${PWD}:/ws -v /data/sdv1/bigtop_reporoot:/root --workdir /ws --name BIGTOP bigtop/slaves:3.2.0-centos-7
 # {根据os 获取对应的镜像的名字}
 # todo 把容器需要的都丢到一个目录，挂载到容器对应的目录下
+
+#todo pg 包上传到centos7
+#todo rpm db broker 处理

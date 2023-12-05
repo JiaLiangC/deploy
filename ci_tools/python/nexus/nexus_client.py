@@ -105,22 +105,22 @@ class NexusClient:
     def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name, num_threads=10):
         filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
         non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
+        logger.debug(f"non_src_filepaths: {non_src_filepaths}")
         self.delete_folder(UDH_NEXUS_REPO_NAME, f"{UDH_NEXUS_REPO_PACKAGES_PATH}/{component_dir_name}")
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = {executor.submit(self.upload_bigdata_pkgs, filepath, component_dir_name): filepath for filepath in
                        non_src_filepaths}
             for future in as_completed(futures):
                 filepath = futures[future]
-                try:
-                    success = future.result()
-                    if success:
-                        logger.info(f"Upload was successful for {filepath}")
-                    else:
-                        logger.info(f"Upload failed for {filepath}")
-                except Exception as e:
-                    logger.error(f"Upload resulted in an exception for {filepath}: {e}")
+                success = future.result()
+                if success:
+                    logger.info(f"Upload was successful for {filepath}")
+                else:
+                    logger.info(f"Upload failed for filepath: {filepath} source_dir:{source_dir}")
+                    raise Exception("upload bigdata components failed,please check the log and update again")
 
-    # 假定所有的组件都在预定的目录下存储
+
+                    # 假定所有的组件都在预定的目录下存储
     def delete_folder(self, repo_name, relative_path):
         url = f"{self.get_nexus_url()}/service/extdirect"
         logger.info(f"component_delete {url}")

@@ -16,9 +16,31 @@
 
 - name: Create the Ansible helper variables for all nodes
   hosts: hadoop-cluster
-  gather_facts: True
+  gather_facts: False
   tasks:
     - block:
+        - name: Check if the system is CentOS 7
+          set_fact:
+            is_centos7: "{{ ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7' }}"
+
+        - name: Check if /usr/bin/python exists
+          raw: bash -c "test -e /usr/bin/python && echo -n exists || echo -n"
+          register: default_python2_path
+
+        - name: Check if /usr/bin/python3 exists
+          raw: bash -c "test -e /usr/bin/python3 && echo -n exists || echo -n"
+          register: default_python3_path
+
+        - name: Fail if no standard python path could be found
+          fail:
+            msg: "Python could not be found at /usr/bin/python or /usr/bin/python3. If using a custom python path, set the 'ansible_python_interpreter' inventory variable to the valid path for your environment."
+          when: default_python2_path.stdout == "" and default_python3_path.stdout != "exists"
+
         - name: Set the ansible_python_interpreter to /usr/bin/python3
           set_fact:
             ansible_python_interpreter: "/usr/bin/python3"
+          when:
+            - default_python3_path.stdout is defined
+            - default_python3_path.stdout == "exists"
+            - not is_centos
+      when: ansible_python_interpreter is not defined
