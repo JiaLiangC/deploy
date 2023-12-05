@@ -260,8 +260,8 @@ class BigtopBuilder(object):
                 for future in concurrent.futures.as_completed(list(future_to_component.keys())):
                     try:
                         success, component = future.result()
-                        self.clean_after_build(component)
                         if success:
+                            self.clean_after_build(component)
                             logger.info(f"build success {component} {success}")
                             self.success_components[component] = datetime.now().isoformat()
                             self.save_success_components()

@@ -135,9 +135,9 @@ class ContainerTask(BaseTask):
         cmd = ['/bin/bash', '-c', py_cmd]
         self.logged_exec_run(container, cmd=cmd, workdir=f'{prj_dir}')
 
-        if container:
-            cmd_install = 'yum clean all && yum install -y python3-devel'
-            self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
+        #if container:
+        #    cmd_install = 'yum clean all && yum install -y python3-devel'
+        #    self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
 
     def run(self):
         if self.conf["bigtop"]["use_docker"]:

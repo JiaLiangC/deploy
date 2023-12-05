@@ -33,5 +33,9 @@
           "yarn.nodemanager.log-dirs" : "{{ yarn_nodemanager_log_dirs }}",
           "yarn.timeline-service.leveldb-state-store.path" : "{{ yarn_timeline_leveldb_dir }}",
           "yarn.timeline-service.leveldb-timeline-store.path" : "{{ yarn_timeline_leveldb_dir }}"
+      },
+      "yarn-hbase-env": {
+        "hbase_within_cluster": "true",
+        "use_external_hbase": "true"
       }
 }
