@@ -1,4 +1,5 @@
 # Ignore everything in this directory
 hosts
+static
 # Except this file
 !.gitignore

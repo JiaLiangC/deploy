@@ -621,7 +621,7 @@ if __name__ == '__main__':
     main()
 
 # 打包nexus 的时候，OS 的包传进去，如果要UDH，单独上传。
-# pip3 install -t ansible/extras
+# pip3 install -t requests ansible/extras
 # todo 使用设计模式重构 gpt intepreter
 # tar -I pigz -xf nexus.tar.gz -C /tmp
 # todo 目前同步包等只能在对应的操作系统上

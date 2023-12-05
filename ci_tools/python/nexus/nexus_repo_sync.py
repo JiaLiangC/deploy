@@ -56,8 +56,8 @@ class NexusSynchronizer:
         self.os_version = os_version
         self.os_arch = os_arch
         self.local_dir = local_dir
-        self.success_file = os.path.join(SCRIPT_DIR, 'success.json')
-        self.failure_file = os.path.join(SCRIPT_DIR, 'failure.json')
+        self.success_file = os.path.join(OUTPUT_DIR, 'success.json')
+        self.failure_file = os.path.join(OUTPUT_DIR, 'failure.json')
         self.retry_limit = 3
         #self.lock = threading.Lock()
 

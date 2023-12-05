@@ -8,3 +8,4 @@ output
 conf.yml
 hosts_info.yml
 .pytest_cache
+*.out
