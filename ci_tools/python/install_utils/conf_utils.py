@@ -8,7 +8,9 @@ from python.common.basic_logger import get_logger
 from python.common.constants import *
 import os
 
-logger=get_logger()
+logger = get_logger()
+
+
 class InvalidConfigurationException(Exception):
     pass
 
@@ -128,9 +130,9 @@ class ConfUtils:
             "yarn": {
                 "RESOURCEMANAGER": {"min_instances": 1, "max_instances": 2,
                                     "desc": "选择部署yarn 时，RESOURCEMANAGER数量最少为1，最大为2。当选择为2时，RESOURCEMANAGER 会开启高可用模式。NODEMANAGER数量大于等于1，HISTORYSERVER 只能部署1台。"},
-                "APP_TIMELINE_SERVER":  {"min_instances": 1, "max_instances": 1},
-                "YARN_REGISTRY_DNS":  {"min_instances": 1, "max_instances": 1},
-                "TIMELINE_READER":  {"min_instances": 1, "max_instances": 1},
+                "APP_TIMELINE_SERVER": {"min_instances": 1, "max_instances": 1},
+                "YARN_REGISTRY_DNS": {"min_instances": 1, "max_instances": 1},
+                "TIMELINE_READER": {"min_instances": 1, "max_instances": 1},
                 "NODEMANAGER": {"min_instances": 1, "max_instances": None},
                 "HISTORYSERVER": {"min_instances": 1, "max_instances": 1},
             },
@@ -176,16 +178,15 @@ class ConfUtils:
             },
             "ambari_metrics": {
                 "METRICS_COLLECTOR": {"min_instances": 1, "max_instances": 1,
-                                          "desc": "选择部署ambari_metrics时,METRICS_COLLECTOR 必须且只能各部署一台"},
+                                      "desc": "选择部署ambari_metrics时,METRICS_COLLECTOR 必须且只能各部署一台"},
                 "METRICS_GRAFANA": {"min_instances": 1, "max_instances": 1,
-                                       "desc": "选择部署ambari_metrics时,METRICS_GRAFANA 必须且只能各部署一台"}
+                                    "desc": "选择部署ambari_metrics时,METRICS_GRAFANA 必须且只能各部署一台"}
             }
         }
 
-
         messages = self.check_pattern(pattern_rules["ambari"], service_counter)
         self.err_messages.extend(messages)
- 
+
         for service_name in services_need_install:
             for pattern_key, service_rules in pattern_rules.items():
                 if pattern_key in checked_services:
@@ -254,9 +255,13 @@ class ConfUtils:
 
         for group_name, services in host_group_services.items():
             host_group_services_group_names.append(group_name)
-            duplicated_services = [sname for sname in services if services.count(sname)>=2]
-            if len(duplicated_services)>0:
-                self.err_messages.append("每个被部署组件名只能在同一个组内列出一次,请检查如下组的配置 组: {} , 组件名: {}".format(group_name, " ".join(list(set(duplicated_services)))))
+            duplicated_services = [sname for sname in services if services.count(sname) >= 2]
+            if len(duplicated_services) > 0:
+                self.err_messages.append(
+                    "每个被部署组件名只能在同一个组内列出一次,请检查如下组的配置 组: {} , 组件名: {}".format(group_name,
+                                                                                                             " ".join(
+                                                                                                                 list(
+                                                                                                                     set(duplicated_services)))))
 
             for service_name in services:
                 is_supported = self.is_service_supported(service_name)
@@ -330,7 +335,7 @@ class ConfUtils:
     def load_conf(self):
         file_path = os.path.join(self.conf_path, 'conf.yml')
         with open(file_path, 'r') as f:
-            data = yaml.load(f,yaml.SafeLoader)
+            data = yaml.load(f, yaml.SafeLoader)
         return data
 
     # 解析哪些组件部署在哪些机器上，主要解析通配符
@@ -368,7 +373,7 @@ class ConfUtils:
         import yaml
         file_path = os.path.join(CONF_DIR, 'hosts_info.yml')
         with open(file_path, 'r') as f:
-            data = yaml.load(f,yaml.SafeLoader)
+            data = yaml.load(f, yaml.SafeLoader)
         configurations = data["hosts"]
         user = data["user"]
         parsed_configs = []
@@ -428,7 +433,7 @@ class ConfUtils:
         if decoder == "json":
             return json.loads(result)
         else:
-            return yaml.load(result,yaml.SafeLoader)
+            return yaml.load(result, yaml.SafeLoader)
 
     # 生成host_group 相关变量，后续蓝图会用到
     def generate_hosts_groups_variables(self, host_groups, host_group_services):
@@ -506,6 +511,15 @@ class ConfUtils:
             ambari_server_host = self.get_ambari_server_host()
             return ambari_server_host
 
+    # 当repos 数组没有配置ambari_repo 时，自动根据nexus 的地址生成一个URL，然后上传对应的库到nexus
+    def generate_ambari_repo(self):
+        if not self.is_ambari_repo_configured():
+            ambari_repo_rl = f"http://{self.conf['nexus']['host']}:8081/repository/yum/udh3"
+            self.conf["repos"].append({"name": "ambari_repo", "url": ambari_repo_rl})
+            logger.info(f"generate_ambari_repo {ambari_repo_rl}")
+
+        return self.conf
+
     # 获取ambari server 所在地址
     def get_ambari_server_host(self):
         group_services = self.raw_conf["group_services"]
@@ -557,6 +571,14 @@ class ConfUtils:
             self.parse_conf()
         return self.hosts_info
 
+    def is_ambari_repo_configured(self):
+        repos = self.conf["repos"]
+        if len(repos) > 0:
+            for repo_item in repos:
+                if "ambari_repo" == repo_item["name"]:
+                    return True
+        return False
+
     def execute_plugins(self):
         # update_conf()
         plugins = self.instantiate_plugins()
@@ -580,7 +602,7 @@ class ConfUtils:
         class_name_pattern = re.compile(".*?DeployPlugin", re.IGNORECASE)
 
         pfs = get_python_files(PLUGINS_DIR)
-        
+
         if len(pfs) == 0:
             return []
         for py_file in pfs:
@@ -593,7 +615,6 @@ class ConfUtils:
 
                     with open(py_file, 'rb') as fp:
                         deploy_plugin = imp.load_source('deploy_plugin_impl', py_file, fp)
-
 
                         # Find the class name by reading from all of the available attributes of the python file.
                         attributes = dir(deploy_plugin)
@@ -611,7 +632,7 @@ class ConfUtils:
                         else:
                             logger.warn("Failed to load or create plugin implementation  {0}: ".format(best_class_name))
                 except Exception as e:
-                    logger.error("Failed to load plugin implementation %s",e)
+                    logger.error("Failed to load plugin implementation %s", e)
 
         return plugins
 
