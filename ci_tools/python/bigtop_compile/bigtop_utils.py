@@ -137,10 +137,6 @@ class BigtopBuilder(object):
         content = f"""
 [user]
     email = jialiangcai@gmail.com
-[https]
-    proxy = http://{self.conf["proxy"]}
-[http]
-    proxy = http://{self.conf["proxy"]}
         """
         file_path = os.path.expanduser("~/.gitconfig")
         with open(file_path, 'w') as f:

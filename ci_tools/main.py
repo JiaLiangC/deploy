@@ -123,8 +123,7 @@ class ContainerTask(BaseTask):
         return container
 
     def setup_environment(self, container):
-        conf_args = {"prepare_env": True, "local_repo": self.conf["bigtop"]["local_maven_repo_dir"],
-                     "proxy": self.conf["bigtop"]["net_proxy"]}
+        conf_args = {"prepare_env": True, "local_repo": self.conf["bigtop"]["local_maven_repo_dir"]}
         conf_str = json.dumps(conf_args)
         conf_str_quoted = shlex.quote(conf_str)
 
@@ -159,7 +158,6 @@ class BuildComponentsTask(BaseTask):
 
     def build_components(self):
         prj_dir = self.get_prj_dir()
-        self.build_args["proxy"] = self.conf["bigtop"]["net_proxy"]
         conf_str = json.dumps(self.build_args)
         logger.info(f"start build components  params {conf_str}")
         conf_str_quoted = shlex.quote(conf_str)
