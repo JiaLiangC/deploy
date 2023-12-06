@@ -135,7 +135,11 @@ def run_shell_command(command, shell=False):
     try:
         result = subprocess.run(command, check=True, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 universal_newlines=True)
-        logger.info(f"run command: {command} shell:{shell} Output: {result.stdout} Error: {result.stderr}")
+
+        if result.returncode != 0:
+            logger.error(f"run command: {command} shell:{shell} Output: {result.stdout} Error: {result.stderr}")
+        else:
+            logger.info(f"run command: {command} shell:{shell} Output: {result.stdout}")
         return result.returncode
     except subprocess.CalledProcessError as e:
         logger.error(f"Command '{e.cmd}' failed with return code {e.returncode} Output: {e.output} Error: {e.stderr}")
@@ -169,7 +173,6 @@ def is_httpd_installed():
         return False
 
 def install_httpd():
-    # CentOS 使用 yum 来安装 httpd
     install_command = ["yum", "install", "httpd", "-y"]
     run_shell_command(install_command)
 
@@ -186,6 +189,13 @@ def render_template(template_path, context, output_path):
     template = Template(template_content)
     rendered_content = template.render(context)
 
-    # 将渲染后的内容写入到输出文件
     with open(output_path, 'w') as output_file:
         output_file.write(rendered_content)
+
+def get_ip_address():
+    try:
+        # 获取主机的 IP 地址
+        ip = subprocess.check_output("hostname -I | cut -d' ' -f1", shell=True).decode().strip()
+        return ip
+    except subprocess.CalledProcessError as e:
+        return "无法获取 IP 地址: " + str(e)

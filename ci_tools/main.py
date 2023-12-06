@@ -281,7 +281,7 @@ class DeployClusterTask(BaseTask):
 
         cf_util = ConfUtils()
         conf = cf_util.get_conf()
-        if not cf_util.is_ambari_repo_configured() and len(conf["nexus"]["host"]) > 0:
+        if not cf_util.is_ambari_repo_configured():
             logger.info("ambari repo not configured,will upload ambari bigdata rpm to specified nexus host. ")
             self.set_udh_repo()
             conf = cf_util.generate_ambari_repo()
@@ -321,12 +321,11 @@ class DeployClusterTask(BaseTask):
         self.deploy()
 
 class UDHReleaseTask(BaseTask):
-    def __init__(self, os_type, os_version, os_arch, include_os_pkg):
+    def __init__(self, os_type, os_version, os_arch):
         super().__init__()
         self.os_type = os_type
         self.os_version = os_version
         self.os_arch = os_arch
-        self.include_os_pkg = include_os_pkg
         self.release_prj_dir = ""
         self.pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
         self.initialize()
@@ -338,16 +337,9 @@ class UDHReleaseTask(BaseTask):
             logger.info(f"rmtree udh_release_output_dir {udh_release_output_dir}")
             shutil.rmtree(udh_release_output_dir, ignore_errors=True)
         os.makedirs(udh_release_output_dir)
-
-        # 0. install pigz
         pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, PRJ_BIN_DIR)
         pigz_installer.install()
-        pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
 
-    # ansible 依赖都是要分操作系统的
-    # nexus 安装，组件上传，停止，打包
-    # 打包 pigz pyenv 和 bigdata deploy 代码
-    # 解压后根据配置安装nexus pigz pyenv
 
     def package_bigdata_rpms(self):
         rpm_dir_name = os.path.basename(UDH_RPMS_PATH).split(".")[0]
@@ -386,7 +378,7 @@ class UDHReleaseTask(BaseTask):
             logger.error("package rpm failed, check the log")
 
     def package(self):
-        # todo 删除 pg9 相关的包 tar cf - nexus | pigz -k -5 -p 8 > nexus.tar.gz
+        # todo centos7 增加pg10的包 tar cf - nexus | pigz -k -5 -p 8 > nexus.tar.gz
 
         udh_release_output_dir = self.conf["udh_release_output_dir"]
         release_prj_dir = self.release_prj_dir
@@ -458,10 +450,6 @@ def setup_options():
                         action='store_true',
                         help='upload components to nexus build')
 
-    parser.add_argument('-upload-ospkgs',
-                        action='store_true',
-                        help='upload components to nexus build')
-
     parser.add_argument('-deploy',
                         action='store_true',
                         help='deploy a cluster')
@@ -481,10 +469,6 @@ def setup_options():
                         help='Rebuild all packages')
 
     parser.add_argument('-repo-sync',
-                        action='store_true',
-                        help='the repo_sync params,os_name and arch ')
-
-    parser.add_argument('-include-os-pkg',
                         action='store_true',
                         help='the repo_sync params,os_name and arch ')
 
@@ -551,10 +535,8 @@ def main():
     components_str = args.components
     stack = args.stack
     upload_nexus = args.upload_nexus
-    upload_ospkgs = args.upload_ospkgs
     repo_sync = args.repo_sync
     os_info = args.os_info
-    include_os_pkg = args.include_os_pkg
     install_nexus = args.install_nexus
     pkg_nexus = args.pkg_nexus
 
@@ -596,10 +578,6 @@ def main():
         nexus_task = NexusTask(os_type, os_version, os_arch)
         nexus_task.repo_sync()
 
-    if upload_ospkgs:
-        nexus_task = NexusTask(os_type, os_version, os_arch)
-        nexus_task.upload_os_pkgs()
-
     if deploy:
         deploy_cluster_task = DeployClusterTask()
         deploy_cluster_task.run()
@@ -610,7 +588,7 @@ def main():
 
     if release:
         os_type, os_version, os_arch = os_info.split(",")
-        udh_release_task = UDHReleaseTask(os_type, os_version, os_arch, include_os_pkg)
+        udh_release_task = UDHReleaseTask(os_type, os_version, os_arch)
         udh_release_task.package()
         logger.info("do release")
 
@@ -634,6 +612,6 @@ if __name__ == '__main__':
 # docker run -d -it --network host -v ${PWD}:/ws -v /data/sdv1/bigtop_reporoot:/root --workdir /ws --name BIGTOP bigtop/slaves:3.2.0-centos-7
 # {根据os 获取对应的镜像的名字}
 # todo 把容器需要的都丢到一个目录，挂载到容器对应的目录下
-
+# yum install createrepo
 # todo pg 包上传到centos7
 # todo rpm db broker 处理

@@ -7,6 +7,7 @@ from jinja2 import Template
 from python.common.basic_logger import get_logger
 from python.common.constants import *
 import os
+from python.utils.os_utils import *
 
 logger = get_logger()
 
@@ -513,8 +514,9 @@ class ConfUtils:
 
     # 当repos 数组没有配置ambari_repo 时，自动根据nexus 的地址生成一个URL，然后上传对应的库到nexus
     def generate_ambari_repo(self):
+        ipaddress = get_ip_address()
         if not self.is_ambari_repo_configured():
-            ambari_repo_rl = f"http://{self.conf['nexus']['host']}:8881/repository/yum/udh3"
+            ambari_repo_rl = f"http://{ipaddress}:8881/repository/yum/udh3"
             self.conf["repos"].append({"name": "ambari_repo", "url": ambari_repo_rl})
             logger.info(f"generate_ambari_repo {ambari_repo_rl}")
 
