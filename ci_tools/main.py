@@ -318,6 +318,9 @@ class DeployClusterTask(BaseTask):
 
         render_template(HTTPD_TPL_FILE, {"udh_local_repo_path": rpms_dir}, HTTPD_CONF_FILE)
 
+        run_shell_command("pgrep -f httpd | xargs kill -9")
+        run_shell_command("service httpd start")
+
     def run(self):
         logger.info("deploy ")
         self.deploy()

@@ -23,13 +23,6 @@ hdfs_ha_name: 'mytestcluster'
 plugins:
   - nexus_install_plugin: {enabled: false} #nexus Plugin:If enabled, a Nexus repository will be installed on the script machine before cluster installation.
 
-nexus:
-  install_dir: /usr/local/
-  jdk_install_dir: /opt/jvm/
-  host: server0               #the nexus used to upload bigdata packages
-  port: 8081                  #don't change this
-  user_name: admin            #don't change this
-  user_pwd: admin222
 
 #If nexus_install_plugin is set to false, the corresponding YUM repository will not be automatically installed. You will need to configure the desired repository address in the repos configuration.
 repos:
