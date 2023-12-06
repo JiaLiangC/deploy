@@ -369,6 +369,18 @@ class UDHReleaseTask(BaseTask):
                 shutil.copy(filepath, dest_path)
                 logger.info(f"copy from {filepath} to {dest_path}")
 
+        if self.os_type.lower().strip() == "centos" and self.os_version.strip() =="7":
+            pg_dir = os.path.join(bigdata_rpm_dir, "pg10")
+            pg_rpm_source = self.conf["centos7_pg_10_dir"]
+            if not os.path.exists(pg_dir):
+                os.makedirs(pg_dir)
+            pg_filepaths = glob.glob(os.path.join(pg_rpm_source, "**", "*.rpm"), recursive=True)
+            for filepath in pg_filepaths:
+                dest_path = os.path.join(pg_dir, os.path.basename(filepath))
+                shutil.copy(filepath, dest_path)
+                logger.info(f"copy from {filepath} to {dest_path}")
+
+
         res = create_yum_repository(bigdata_rpm_dir)
         if not res:
             raise Exception("create repo failed, check the log")
@@ -381,6 +393,8 @@ class UDHReleaseTask(BaseTask):
             shutil.rmtree(bigdata_rpm_dir)
         else:
             logger.error("package rpm failed, check the log")
+
+
 
     def package(self):
         # todo centos7 增加pg10的包 tar cf - nexus | pigz -k -5 -p 8 > nexus.tar.gz
@@ -620,3 +634,6 @@ if __name__ == '__main__':
 # yum install createrepo
 # todo pg 包上传到centos7
 # todo rpm db broker 处理
+
+#todo python3 check httpd check for deploy
+#todo createrepo check for others

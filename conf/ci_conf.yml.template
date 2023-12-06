@@ -3,15 +3,15 @@ nexus:
   host: 172.27.8.25
   user_name: admin
   user_pwd: admin222
-  local_tar: /home/jialiang/sdp/prjs/container_dep/nexus3.tar.gz
-  jdk_local_tar: /home/jialiang/sdp/prjs/container_dep/jdk.tar.gz
+  local_tar: /home/jialiang/udh/container_dep/nexus3.tar.gz
+  jdk_local_tar: /home/jialiang/udh/container_dep/jdk.tar.gz
   install_dir: /opt/
   jdk_install_dir: /opt/jvm/
   os_repo_data_dir: /data/sdv1/nexus_sync
 
 bigtop:
-  prj_dir: /home/jialiang/sdp/prjs/bigtop
-  dl_dir: /home/jialiang/sdp/prjs/container_dep/dl
+  prj_dir: /home/jialiang/udh/bigtop
+  dl_dir: /home/jialiang/udh/container_dep/dl
   net_proxy: 172.27.8.22:7890
   local_maven_repo_dir: /data/sdv1/repository
   maven_conf_dir: /usr/local/maven/conf
@@ -23,6 +23,6 @@ docker:
     bigtop: /ws
     prj: /ws1
 
-
+centos7_pg_10_dir: /home/jialiang/udh/container_dep/pg10
 udh_release_output_dir: /data/sdv1/UDH/
 udh_nexus_release_output_dir: /data/sdv1/UDH_NEXUS/
