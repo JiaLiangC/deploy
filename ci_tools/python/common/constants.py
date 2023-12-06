@@ -29,3 +29,5 @@ RELEASE_JDK_TAR_FILE = os.path.join(PRJDIR, JDK_TAR_RELATIVE_PATH)
 UDH_NEXUS_REPO_PATH = "udh3"
 UDH_NEXUS_REPO_PACKAGES_PATH = f"{UDH_NEXUS_REPO_PATH}/Packages"
 UDH_NEXUS_REPO_NAME = "yum"
+HTTPD_TPL_FILE = os.path.join(PRJDIR, "ci_tools/resources/templates/httpd.conf.tpl")
+HTTPD_CONF_FILE = "/etc/httpd/conf/httpd.conf"

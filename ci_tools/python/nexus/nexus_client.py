@@ -165,7 +165,7 @@ class NexusClient:
         logger.info(
             f"do_repo_create url:{url} repo_name:{repo_name} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
-    def repo_create(self, repo_name, remove_old=False,redeploy=False):
+    def repo_create(self, repo_name, remove_old=False, redeploy=False):
         repo_list = self.get_repos()
         result = list(filter(lambda d: d['name'] == repo_name, repo_list))
         logger.info(f"repo_create check  {repo_name} whether exist, result: {result}")
@@ -184,10 +184,8 @@ class NexusClient:
             'Content-Type': 'application/json',
         }
         data = {"action": "coreui_Repository", "method": "remove", "data": [repo_name], "type": "rpc", "tid": 60}
-
-        logger.info(f"------data is {data}")
         response = requests.post(url, headers=headers, json=data, auth=self.auth)
-        logger.info(f" url:{url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+        logger.info(f"repo_remove repo_name:{repo_name}  url:{url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
     def get_repos(self):
         url = f"{self.get_nexus_url()}/service/extdirect"

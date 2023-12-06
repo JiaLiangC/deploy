@@ -2,9 +2,10 @@ import platform
 import subprocess
 import sys
 from contextlib import contextmanager
-from pathlib import Path
-from shutil import copyfileobj
-from traceback import format_exc
+import shutil
+import os
+from jinja2 import Template
+
 
 from python.common.basic_logger import get_logger
 
@@ -139,3 +140,52 @@ def run_shell_command(command, shell=False):
     except subprocess.CalledProcessError as e:
         logger.error(f"Command '{e.cmd}' failed with return code {e.returncode} Output: {e.output} Error: {e.stderr}")
         return e.returncode
+
+
+def create_yum_repository(repo_data_dir):
+    try:
+        repodata_path = os.path.join(repo_data_dir, "repodata")
+        if os.path.exists(repodata_path):
+            shutil.rmtree(repodata_path)
+
+        command = f"createrepo -o {repo_data_dir} {repo_data_dir}"
+        returncode = run_shell_command(command.split())
+        if returncode != 0:
+            logger.error(f"Error executing createrepo")
+            return False
+        logger.info(f"Successfully created YUM repository")
+        return True
+    except Exception as e:
+        logger.error(f"An error occurred: {e}", file=sys.stderr)
+        return False
+
+def is_httpd_installed():
+    try:
+        subprocess.run(["httpd", "-v"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+    except FileNotFoundError:
+        return False
+
+def install_httpd():
+    # CentOS 使用 yum 来安装 httpd
+    install_command = ["yum", "install", "httpd", "-y"]
+    run_shell_command(install_command)
+
+def render_template(template_path, context, output_path):
+    """
+    从指定的模板文件渲染内容，并将其写入到输出文件中。
+    :param template_path: 模板文件的路径。
+    :param context: 一个字典，包含渲染模板时要使用的变量。
+    :param output_path: 渲染后内容写入的文件路径。
+    """
+    with open(template_path, 'r') as template_file:
+        template_content = template_file.read()
+
+    template = Template(template_content)
+    rendered_content = template.render(context)
+
+    # 将渲染后的内容写入到输出文件
+    with open(output_path, 'w') as output_file:
+        output_file.write(rendered_content)

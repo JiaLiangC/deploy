@@ -514,7 +514,7 @@ class ConfUtils:
     # 当repos 数组没有配置ambari_repo 时，自动根据nexus 的地址生成一个URL，然后上传对应的库到nexus
     def generate_ambari_repo(self):
         if not self.is_ambari_repo_configured():
-            ambari_repo_rl = f"http://{self.conf['nexus']['host']}:8081/repository/yum/udh3"
+            ambari_repo_rl = f"http://{self.conf['nexus']['host']}:8881/repository/yum/udh3"
             self.conf["repos"].append({"name": "ambari_repo", "url": ambari_repo_rl})
             logger.info(f"generate_ambari_repo {ambari_repo_rl}")
 

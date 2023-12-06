@@ -135,7 +135,7 @@ class ContainerTask(BaseTask):
         cmd = ['/bin/bash', '-c', py_cmd]
         self.logged_exec_run(container, cmd=cmd, workdir=f'{prj_dir}')
 
-        #if container:
+        # if container:
         #    cmd_install = 'yum clean all && yum install -y python3-devel'
         #    self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
 
@@ -283,7 +283,7 @@ class DeployClusterTask(BaseTask):
         conf = cf_util.get_conf()
         if not cf_util.is_ambari_repo_configured() and len(conf["nexus"]["host"]) > 0:
             logger.info("ambari repo not configured,will upload ambari bigdata rpm to specified nexus host. ")
-            self.upload_bigdata_rpms(conf)
+            self.set_udh_repo()
             conf = cf_util.generate_ambari_repo()
 
         hosts_info = cf_util.get_hosts_info()
@@ -302,27 +302,23 @@ class DeployClusterTask(BaseTask):
         exit_status = process.wait()
         logger.info(f"run_playbook {command} exit_status: {exit_status}")
 
-    def upload_bigdata_rpms(self, conf):
+    def set_udh_repo(self):
         if not os.path.exists(UDH_RPMS_PATH) == True:
             raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
-        logger.info(f'start  decompress {UDH_RPMS_PATH} and upload bigdata rpms to nexus {conf["nexus"]["host"]}')
+        logger.info(f'start  decompress {UDH_RPMS_PATH} ')
         pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
         command = f"tar -I {pigz_path} -xf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
         run_shell_command(command, shell=True)
         rpms_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
+        if not is_httpd_installed():
+            install_httpd()
+            assert is_httpd_installed() == True
 
-        nexus_client = NexusClient(conf["nexus"]["host"], conf["nexus"]["user_name"],
-                                   conf["nexus"]["user_pwd"])
-        for comp in ALL_COMPONENTS:
-            pkg_dir = os.path.join(rpms_dir, comp)
-            logger.info(f"uploading{comp}  from  {pkg_dir} to nexus ")
-            nexus_client.repo_create(UDH_NEXUS_REPO_NAME, remove_old=True,redeploy=True)
-            nexus_client.batch_upload_bigdata_pkgs(pkg_dir, comp)
+        render_template(HTTPD_TPL_FILE, {"udh_local_repo_path": rpms_dir}, HTTPD_CONF_FILE)
 
     def run(self):
         logger.info("deploy ")
         self.deploy()
-
 
 class UDHReleaseTask(BaseTask):
     def __init__(self, os_type, os_version, os_arch, include_os_pkg):
@@ -375,6 +371,10 @@ class UDHReleaseTask(BaseTask):
                 dest_path = os.path.join(comp_dir, os.path.basename(filepath))
                 shutil.copy(filepath, dest_path)
                 logger.info(f"copy from {filepath} to {dest_path}")
+
+        res = create_yum_repository(bigdata_rpm_dir)
+        if not res:
+            raise Exception("create repo failed, check the log")
 
         dest_tar = f"{bigdata_rpm_dir}.tar.gz"
         os.chdir(os.path.join(self.release_prj_dir, PKG_RELATIVE_PATH))
@@ -635,5 +635,5 @@ if __name__ == '__main__':
 # {根据os 获取对应的镜像的名字}
 # todo 把容器需要的都丢到一个目录，挂载到容器对应的目录下
 
-#todo pg 包上传到centos7
-#todo rpm db broker 处理
+# todo pg 包上传到centos7
+# todo rpm db broker 处理
