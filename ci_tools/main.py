@@ -318,12 +318,13 @@ class DeployClusterTask(BaseTask):
 
         render_template(HTTPD_TPL_FILE, {"udh_local_repo_path": rpms_dir}, HTTPD_CONF_FILE)
 
-        run_shell_command("pgrep -f httpd | xargs kill -9")
-        run_shell_command("service httpd start")
+        run_shell_command("pgrep -f httpd | xargs kill -9", shell=True)
+        run_shell_command("service httpd start", shell=True)
 
     def run(self):
         logger.info("deploy ")
         self.deploy()
+
 
 class UDHReleaseTask(BaseTask):
     def __init__(self, os_type, os_version, os_arch):
@@ -344,7 +345,6 @@ class UDHReleaseTask(BaseTask):
         os.makedirs(udh_release_output_dir)
         pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, PRJ_BIN_DIR)
         pigz_installer.install()
-
 
     def package_bigdata_rpms(self):
         rpm_dir_name = os.path.basename(UDH_RPMS_PATH).split(".")[0]
