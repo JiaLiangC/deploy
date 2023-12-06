@@ -216,6 +216,8 @@ class NexusTask(BaseTask):
 
     def package_nexus(self):
         logger.info(f'start package nexus ')
+        pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, PRJ_BIN_DIR)
+        pigz_installer.install()
         udh_release_output_dir = self.conf["udh_nexus_release_output_dir"]
 
         self.install_nexus_and_jdk()
