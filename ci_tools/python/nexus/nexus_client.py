@@ -1,3 +1,5 @@
+import time
+
 import requests
 from python.common.basic_logger import get_logger
 import os
@@ -33,6 +35,21 @@ class NexusClient:
         logger.info(f"nexus client get_os_packages_url: {base_url}")
         return base_url
 
+    def get_os_repo_name(self,os_info):
+        os_type = os_info[0]
+        return  os_type
+    def get_os_yum_dir(self,os_info):
+        os_type = os_info[0]
+        os_version = os_info[1]
+        os_architecture = os_info[2]
+        yum_dir = f"/{os_version}/os/{os_architecture}/Packages"
+        return yum_dir
+
+    def get_udh_yum_dir(self,component_dir_name):
+        relative_dir = UDH_NEXUS_REPO_PACKAGES_PATH
+        yum_dir = f"/{relative_dir}/{component_dir_name}"
+        return yum_dir
+
     def get_bigdata_component_url(self, component_dir_name):
         repo_name = UDH_NEXUS_REPO_NAME
         relative_dir = UDH_NEXUS_REPO_PACKAGES_PATH
@@ -55,6 +72,20 @@ class NexusClient:
 
         return decorator
 
+    def upload_rpm_to_yum_repo(self, file_path, repo_name, yum_directory):
+        url = f"{self.get_nexus_url()}/service/rest/v1/components?repository={repo_name}"
+        files = {'yum.asset': (file_path.split('/')[-1], open(file_path, 'rb'))}
+        data = {
+            'yum.asset.filename': file_path.split('/')[-1],
+            'yum.directory': yum_directory
+        }
+        response = requests.post(url, auth=self.auth, data=data, files=files)
+        if response.status_code == 204:
+            return True
+        logger.error(
+        f"Upload  failed for {file_path}, {url} Status code:{response.status_code} Headers:  {response.headers}")
+        return True
+
     @retry(max_retries=3)
     def upload(self, file_path, base_url):
         with open(file_path, 'rb') as f:
@@ -67,22 +98,16 @@ class NexusClient:
                     f"Upload failed for {file_path}, {base_url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
                 return False
 
-    def upload_pkgs(self, file_path, url_getter, *url_getter_args):
-        base_url = f"{url_getter(*url_getter_args)}/{os.path.basename(file_path)}"
-        is_success = self.upload(file_path, base_url)
-        return is_success
-
     def upload_os_pkgs(self, file_path, os_info):
-        is_success = self.upload_pkgs(file_path, self.get_os_packages_url, os_info)
+        is_success = self.upload_rpm_to_yum_repo(file_path, self.get_os_repo_name(os_info), self.get_os_yum_dir(os_info))
         return is_success
 
     def upload_bigdata_pkgs(self, file_path, component_dir_name):
-        is_success = self.upload_pkgs(file_path, self.get_bigdata_component_url, component_dir_name)
+        is_success = self.upload_rpm_to_yum_repo(file_path, UDH_NEXUS_REPO_NAME, self.get_udh_yum_dir(component_dir_name))
         return is_success
 
     def batch_upload_os_pkgs(self, source_dirs, os_info, num_threads=10):
         # 获取所有的 RPM 文件
-
         for source_dir in source_dirs:
             filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
             non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
@@ -101,6 +126,8 @@ class NexusClient:
                             logger.info(f"Upload failed for {filepath}")
                     except Exception as e:
                         logger.error(f"Upload resulted in an exception for {filepath}: {e}")
+        self.rebuild_index(self.get_os_repo_name(os_info))
+        time.sleep(100)
 
     def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name, num_threads=10):
         filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
@@ -118,9 +145,20 @@ class NexusClient:
                 else:
                     logger.info(f"Upload failed for filepath: {filepath} source_dir:{source_dir}")
                     raise Exception("upload bigdata components failed,please check the log and update again")
-
-
+        self.rebuild_index(UDH_NEXUS_REPO_NAME)
+        time.sleep(100)
                     # 假定所有的组件都在预定的目录下存储
+
+    def rebuild_index(self,repo_name):
+        url = f"{self.get_nexus_url()}/service/rest/v1/repositories/{repo_name}/rebuild-index"
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        response = requests.post(url, headers=headers, auth=self.auth)
+        logger.info(
+            f"nexus delete_folder url:{url} params:{repo_name}  Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+
+
     def delete_folder(self, repo_name, relative_path):
         url = f"{self.get_nexus_url()}/service/extdirect"
         logger.info(f"component_delete {url}")
@@ -152,7 +190,7 @@ class NexusClient:
         data = {
             "action": "coreui_Repository",
             "method": "create",
-            "data": [{"attributes": {f"{repo_name}": {"repodataDepth": 1, "deployPolicy": "STRICT"},
+            "data": [{"attributes": {f"yum": {"repodataDepth": 1, "deployPolicy": "STRICT"},
                                      "storage": {"blobStoreName": "default", "strictContentTypeValidation": True,
                                                  "writePolicy": write_policy},
                                      "component": {"proprietaryComponents": False}, "cleanup": {"policyName": []}},
@@ -185,7 +223,8 @@ class NexusClient:
         }
         data = {"action": "coreui_Repository", "method": "remove", "data": [repo_name], "type": "rpc", "tid": 60}
         response = requests.post(url, headers=headers, json=data, auth=self.auth)
-        logger.info(f"repo_remove repo_name:{repo_name}  url:{url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+        logger.info(
+            f"repo_remove repo_name:{repo_name}  url:{url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
     def get_repos(self):
         url = f"{self.get_nexus_url()}/service/extdirect"

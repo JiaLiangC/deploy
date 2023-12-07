@@ -469,6 +469,10 @@ def setup_options():
                         action='store_true',
                         help='upload components to nexus build')
 
+    parser.add_argument('-upload-os-pkgs',
+                        action='store_true',
+                        help='upload os pkgs to nexus')
+
     parser.add_argument('-deploy',
                         action='store_true',
                         help='deploy a cluster')
@@ -558,6 +562,7 @@ def main():
     os_info = args.os_info
     install_nexus = args.install_nexus
     pkg_nexus = args.pkg_nexus
+    upload_os_pkgs = args.upload_os_pkgs
 
     init_task = InitializeTask()
     init_task.run()
@@ -612,6 +617,11 @@ def main():
         logger.info("do release")
 
 
+    if upload_os_pkgs:
+        nexus_task = NexusTask(os_type, os_version, os_arch)
+        nexus_task.upload_os_pkgs()
+
+
 if __name__ == '__main__':
     main()
 
@@ -634,6 +644,6 @@ if __name__ == '__main__':
 # yum install createrepo
 # todo pg 包上传到centos7
 # todo rpm db broker 处理
-
+#todo ci_conf files check
 #todo python3 check httpd check for deploy
 #todo createrepo check for others
