@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import shutil
 import os
 from jinja2 import Template
+import time
 
 
 from python.common.basic_logger import get_logger
@@ -199,3 +200,20 @@ def get_ip_address():
         return ip
     except subprocess.CalledProcessError as e:
         return "无法获取 IP 地址: " + str(e)
+
+def sleep_with_logging(total_sleep_time, log_interval, log_message):
+    """
+    使程序睡眠一段时间，每隔一定时间记录一条日志。
+
+    :param total_sleep_time: 总睡眠时间（秒）
+    :param log_interval: 日志打印间隔（秒）
+    :param log_message: 要打印的日志消息
+    """
+    start_time = time.time()  # 开始时间
+    end_time = start_time + total_sleep_time  # 结束时间
+
+    while time.time() < end_time:
+        logger.info(f"{log_message} - {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+        time.sleep(log_interval)  # 睡眠指定的间隔时间
+
+    logger.info("完成睡眠。")
