@@ -141,7 +141,7 @@ Type=forking
 LimitNOFILE=65536
 ExecStart={self.comp_dir}/nexus-3/bin/nexus start
 ExecStop={self.comp_dir}/nexus-3/bin/nexus stop
-User=nexus
+User=root
 
 [Install]
 WantedBy=multi-user.target

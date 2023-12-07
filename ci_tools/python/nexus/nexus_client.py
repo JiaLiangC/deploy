@@ -149,14 +149,14 @@ class NexusClient:
         time.sleep(100)
                     # 假定所有的组件都在预定的目录下存储
 
-    def rebuild_index(self,repo_name):
+    def rebuild_index(self, repo_name):
         url = f"{self.get_nexus_url()}/service/rest/v1/repositories/{repo_name}/rebuild-index"
         headers = {
             'Content-Type': 'application/json',
         }
         response = requests.post(url, headers=headers, auth=self.auth)
         logger.info(
-            f"nexus delete_folder url:{url} params:{repo_name}  Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
+            f"nexus rebuild_index url:{url} params:{repo_name}  Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
 
     def delete_folder(self, repo_name, relative_path):

@@ -234,7 +234,7 @@ class NexusTask(BaseTask):
         nexus_tar = os.path.join(install_dir, "nexus3.tar.gz")
 
         os.chdir(install_dir)
-        command = f"tar cf - {os.path.basename(nexus_dir)} | {pigz_path} -k -5 -p 8 > {nexus_tar}"
+        command = f"tar cf - {os.path.basename(nexus_dir)} | {pigz_path} -k -5 -p 16 > {nexus_tar}"
         run_shell_command(command, shell=True)
 
         logger.info("package_nexus finished")
@@ -256,7 +256,7 @@ class NexusTask(BaseTask):
         nexus_release_tar = os.path.join(udh_release_output_dir, f"{name}.tar.gz")
         os.chdir(udh_release_output_dir)
         logger.info(f"compresssing {nexus_release_tar}")
-        command = f"tar cf - {os.path.basename(nexus_release_dir)} | {pigz_path} -k -5 -p 8 > {nexus_release_tar}"
+        command = f"tar cf - {os.path.basename(nexus_release_dir)} | {pigz_path} -k -5 -p 16 > {nexus_release_tar}"
         returncode = run_shell_command(command, shell=True)
 
         if returncode == 0:
@@ -387,7 +387,7 @@ class UDHReleaseTask(BaseTask):
 
         dest_tar = f"{bigdata_rpm_dir}.tar.gz"
         os.chdir(os.path.join(self.release_prj_dir, PKG_RELATIVE_PATH))
-        command = f"tar cf - {os.path.basename(bigdata_rpm_dir)} | {self.pigz_path} -k -5 -p 8 > {dest_tar}"
+        command = f"tar cf - {os.path.basename(bigdata_rpm_dir)} | {self.pigz_path} -k -5 -p 16 > {dest_tar}"
         returncode = run_shell_command(command, shell=True)
         if returncode == 0:
             shutil.rmtree(bigdata_rpm_dir)
@@ -438,7 +438,7 @@ class UDHReleaseTask(BaseTask):
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
         udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
 
-        command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 8 > {udh_release_name}"
+        command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 16 > {udh_release_name}"
         run_shell_command(command, shell=True)
         logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
         shutil.rmtree(os.path.basename(release_prj_dir))
