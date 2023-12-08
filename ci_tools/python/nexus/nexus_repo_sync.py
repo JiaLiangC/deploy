@@ -33,7 +33,10 @@ OS_INFO = {
     "centos8_x86_64": {"base": {"repo_url": "http://mirrors.aliyun.com/centos/8/BaseOS/x86_64/os/Packages",
                                 "meta_file": "centos8_x86_64_base-primary.xml"}},
     "openeuler22_x86_64": {"base": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/Packages/",
-                                    "meta_file": "openeuler22_x86_64-primary.xml"}},
+                                    "meta_file": "openeuler22_x86_64_base-primary.xml"},
+                           "update": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/update/x86_64/Packages/",
+                                       "meta_file": "openeuler22_x86_64_update-primary.xml"}
+                         },
     "kylinv10_aarch64": {
         "base": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/aarch64/Packages/",
                  "meta_file": "kylinv10_aarch64_base-primary.xml"},
@@ -281,4 +284,7 @@ if __name__ == '__main__':
     synchronizer.generate_pkg_meta()
 
     synchronizer = NexusSynchronizer("kylin", "v10", "x86_64", "./")
+    synchronizer.generate_pkg_meta()
+
+    synchronizer = NexusSynchronizer("openeuler", "22", "x86_64", "./")
     synchronizer.generate_pkg_meta()
