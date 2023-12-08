@@ -24,7 +24,7 @@ hdfs_ha_name: 'mytestcluster'
 repos:
    - {name: "ambari_repo", url: "http://server0:8081/repository/yum/udh3"}
    - {name: "os_base_repo", url: "http://server0:8081/repository/kylin/v10"}
-backup_old_repo: no                 #Whether to back up the old YUM repositories to /etc/yum.repos.d/bak, and then remove the old repositories, keeping only the repositories configured in this configuration.
+backup_old_repo: yes                 #Whether to back up the old YUM repositories to /etc/yum.repos.d/bak, and then remove the old repositories, keeping only the repositories configured in this configuration.
 
 packages_need_install: []
 
