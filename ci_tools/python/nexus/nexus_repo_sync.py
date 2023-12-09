@@ -32,10 +32,11 @@ OS_INFO = {
                        },
     "centos8_x86_64": {"base": {"repo_url": "http://mirrors.aliyun.com/centos/8/BaseOS/x86_64/os/Packages",
                                 "meta_file": "centos8_x86_64_base-primary.xml"}},
-    "openeuler22_x86_64": {"base": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/OS/x86_64/Packages/",
-                                    "meta_file": "openeuler22_x86_64_base-primary.xml"},
+    "openeuler22_x86_64": {
                            "update": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/update/x86_64/Packages/",
-                                       "meta_file": "openeuler22_x86_64_update-primary.xml"}
+                                       "meta_file": "openeuler22_x86_64_update-primary.xml"},
+                           "other": {"repo_url": "https://repo.openeuler.org/openEuler-22.03-LTS/everything/x86_64/Packages/",
+                                      "meta_file": "openeuler22_x86_64_other-primary.xml"}
                          },
     "kylinv10_aarch64": {
         "base": {"repo_url": "https://update.cs2c.com.cn/NS/V10/V10SP3/os/adv/lic/base/aarch64/Packages/",

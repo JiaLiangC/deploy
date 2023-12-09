@@ -1,4 +1,4 @@
 ---
-repo_os_family: "openeuler{{ ansible_distribution_major_version }}"
-baseurl_os_family: "openeuler{{ ansible_distribution_major_version }}"
+repo_os_family: "centos8"
+baseurl_os_family: "redhat8"
 
