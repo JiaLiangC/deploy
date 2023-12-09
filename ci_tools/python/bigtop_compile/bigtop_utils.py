@@ -176,7 +176,7 @@ class BigtopBuilder(object):
         version = "3.1"
         bigtop_dl = ci_conf["bigtop"]["dl_dir"]
 
-        if component.strip() in ["ambari", "ambari-infra", "ambari-metrics"]:
+        if component.strip() in ["ambari-infra", "ambari-metrics"]:
             name = f"apache-{component}-{version}.tar.gz"
             file_path = os.path.join(bigtop_dl, name)
             if os.path.exists(file_path):
