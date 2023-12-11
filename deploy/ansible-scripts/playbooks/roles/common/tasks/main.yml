@@ -118,7 +118,7 @@
   ignore_errors: true
 
 
-- name: Prepare the packages compatible
-  include_tasks: yum_version_control.yml
-  with_items: "{{ versioned_packages }}"
-  when: versioned_packages is defined
+#- name: Prepare the packages compatible
+#  include_tasks: yum_version_control.yml
+#  with_items: "{{ versioned_packages }}"
+#  when: versioned_packages is defined
