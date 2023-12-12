@@ -18,6 +18,8 @@ packages:
   - psmisc
   - libselinux-python3
   - java-1.8.0-openjdk-devel
+  - python3-devel
+  - python3-libs
 
 chrony_path: /etc/
 chrony_service: chronyd
