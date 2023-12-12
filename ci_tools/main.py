@@ -308,8 +308,7 @@ class DeployClusterTask(BaseTask):
         if not os.path.exists(UDH_RPMS_PATH) == True:
             raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
         logger.info(f'start  decompress {UDH_RPMS_PATH} ')
-        pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
-        command = f"tar -I {pigz_path} -xf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
+        command = f"tar  -zxf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
         run_shell_command(command, shell=True)
         rpms_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
         if not is_httpd_installed():
