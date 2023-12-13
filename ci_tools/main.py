@@ -428,7 +428,8 @@ class UDHReleaseTask(BaseTask):
         if not os.path.exists(os.path.join(udh_release_output_dir, "pigz")):
             shutil.copy(self.pigz_path, os.path.join(udh_release_output_dir, "pigz"))
 
-        self.package_bigdata_rpms()
+        if not skip_exist:
+            self.package_bigdata_rpms()
 
         os.chdir(udh_release_output_dir)
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
