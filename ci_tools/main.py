@@ -368,7 +368,7 @@ class UDHReleaseTask(BaseTask):
                 shutil.copy(filepath, dest_path)
                 logger.info(f"copy from {filepath} to {dest_path}")
 
-        if self.os_type.lower().strip() == "centos" and self.os_version.strip() =="7":
+        if self.os_type.lower().strip() == "centos" and self.os_version.strip() == "7":
             pg_dir = os.path.join(bigdata_rpm_dir, "pg10")
             pg_rpm_source = self.conf["centos7_pg_10_dir"]
             if not os.path.exists(pg_dir):
@@ -378,7 +378,6 @@ class UDHReleaseTask(BaseTask):
                 dest_path = os.path.join(pg_dir, os.path.basename(filepath))
                 shutil.copy(filepath, dest_path)
                 logger.info(f"copy from {filepath} to {dest_path}")
-
 
         res = create_yum_repository(bigdata_rpm_dir)
         if not res:
@@ -393,9 +392,7 @@ class UDHReleaseTask(BaseTask):
         else:
             logger.error("package rpm failed, check the log")
 
-
-
-    def package(self):
+    def package(self, skip_exist=False):
         # todo centos7 增加pg10的包 tar cf - nexus | pigz -k -5 -p 8 > nexus.tar.gz
 
         udh_release_output_dir = self.conf["udh_release_output_dir"]
@@ -520,6 +517,10 @@ def setup_options():
                         action='store_true',
                         help='Rebuild all packages make udh release')
 
+    parser.add_argument('-skip-exist',
+                        action='store_true',
+                        help='skip udh rpm package if exist')
+
     # Parse the arguments
     args = parser.parse_args()
     logger.info(f"main program params is : {args}")
@@ -562,6 +563,7 @@ def main():
     install_nexus = args.install_nexus
     pkg_nexus = args.pkg_nexus
     upload_os_pkgs = args.upload_os_pkgs
+    skip_exist = args.skip_exist
 
     init_task = InitializeTask()
     init_task.run()
@@ -610,11 +612,12 @@ def main():
         nexus_task.package_nexus()
 
     if release:
+        skip_exist = True if skip_exist else False
+
         os_type, os_version, os_arch = os_info.split(",")
         udh_release_task = UDHReleaseTask(os_type, os_version, os_arch)
-        udh_release_task.package()
+        udh_release_task.package(skip_exist=skip_exist)
         logger.info("do release")
-
 
     if upload_os_pkgs:
         nexus_task = NexusTask(os_type, os_version, os_arch)
@@ -643,6 +646,6 @@ if __name__ == '__main__':
 # yum install createrepo
 # todo pg 包上传到centos7
 # todo rpm db broker 处理
-#todo ci_conf files check
-#todo python3 check httpd check for deploy
-#todo createrepo check for others
+# todo ci_conf files check
+# todo python3 check httpd check for deploy
+# todo createrepo check for others

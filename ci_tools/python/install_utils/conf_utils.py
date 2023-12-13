@@ -563,9 +563,6 @@ class ConfUtils:
     def get_conf(self):
         if not self.conf:
             self.parse_conf()
-
-        self.execute_plugins()
-
         return self.conf
 
     def get_hosts_info(self):
