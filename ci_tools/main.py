@@ -80,6 +80,7 @@ class ContainerTask(BaseTask):
     # 编译脚本会挂载到容器运行
 
     def create_container(self):
+        image = self.conf["docker"]["image"]
         # Implementation of create_container method
         container_name = self.conf["docker"]["build_container_name"]
         client = docker.from_env()
@@ -109,7 +110,7 @@ class ContainerTask(BaseTask):
             PIP_CONF_FILE: {'bind': f'{os.path.expanduser("~/.config/pip/pip.conf")}', 'mode': 'rw'}
         }
 
-        container = client.containers.run(image='bigtop/slaves:3.2.0-centos-7',
+        container = client.containers.run(image=image,
                                           detach=True,
                                           network_mode='host',
                                           volumes=volumes,
