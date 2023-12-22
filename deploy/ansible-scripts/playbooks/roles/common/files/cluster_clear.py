@@ -27,7 +27,7 @@ class ClusterClear:
             "components": [
                 "ambari", self.stack_name, "elasticsearch", "falcon", "flink", "grafana", "hadoop", "hbase", "hive",
                 "impala", "janusgraph", "kafka", "knox", "livy", "nightingale", "oozie", "phoenix", "pig", "ranger",
-                "redis", "spark", "storm", "tez", "victoriametrics", "webhcat", "zookeeper", "solr", "hdfs", "yarn",
+                "spark", "storm", "tez", "victoriametrics", "webhcat", "zookeeper", "solr", "hdfs", "yarn",
                 "ambari-infra-solr"
             ],
             "bins": [
@@ -77,8 +77,7 @@ class ClusterClear:
             "packages": [
                 "ambari-agent", self.stack_name + "-*", "ambari-infra", "ambari-server", "ambari-metrics",
                 "nightingale",
-                "grafana_agent", "victoriametrics", self.stack_name + "-select", "redis", "postgresql", "krb5-devel",
-                "krb5-workstation", "libkadm5", "krb5-server", "postgresql*-server", "mysql-community-server", "mariadb-server"
+                "grafana_agent", "victoriametrics", self.stack_name + "-select", "postgresql", "postgresql*-server", "mysql-community-server", "mariadb-server"
             ]
         }
 
