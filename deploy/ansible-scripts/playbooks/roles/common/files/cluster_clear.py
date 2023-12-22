@@ -6,7 +6,6 @@ import subprocess
 import sys
 
 
-
 class ClusterClear:
     stack_name = "bigtop"
 
@@ -25,38 +24,32 @@ class ClusterClear:
                 "/usr/bin", "/usr/lib", "/usr/include", "/usr/share"
             ],
             "components": [
-                "ambari", self.stack_name, "elasticsearch", "falcon", "flink", "grafana", "hadoop", "hbase", "hive",
-                "impala", "janusgraph", "kafka", "knox", "livy", "nightingale", "oozie", "phoenix", "pig", "ranger",
-                "spark", "storm", "tez", "victoriametrics", "webhcat", "zookeeper", "solr", "hdfs", "yarn",
+                "ambari", self.stack_name, "flink", "grafana", "hadoop", "hbase", "hive",
+                "kafka", "knox", "livy", "phoenix", "pig", "ranger",
+                "spark", "tez", "webhcat", "zookeeper", "solr", "hdfs", "yarn",
                 "ambari-infra-solr"
             ],
             "bins": [
-                "impala", "accumulo", "atlas-start", "atlas-stop", "beeline", "falcon", "flume-ng", "hadoop", "hbase",
-                "hcat", "hdfs", "hive", "hiveserver2", "kafka", "mahout", "mapred", "oozie", "oozied.sh",
+                "beeline", "flume-ng", "hadoop", "hbase",
+                "hcat", "hdfs", "hive", "hiveserver2", "kafka", "mapred",
                 "phoenix-psql",
-                "phoenix-queryserver", "phoenix-sqlline", "phoenix-sqlline-thin", "pig", "python-wrap", "ranger-admin",
+                "phoenix-queryserver", "phoenix-sqlline", "phoenix-sqlline-thin", "python-wrap", "ranger-admin",
                 "ranger-admin-start", "ranger-admin-stop", "ranger-kms", "ranger-usersync", "ranger-usersync-start",
-                "ranger-usersync-stop", "slider", "sqoop", "sqoop-codegen", "sqoop-create-hive-table", "sqoop-eval",
-                "sqoop-export", "sqoop-help", "sqoop-import", "sqoop-import-all-tables", "sqoop-job",
-                "sqoop-list-databases",
-                "sqoop-list-tables", "sqoop-merge", "sqoop-metastore", "sqoop-version", "storm", "storm-slider",
-                "worker-lanucher", "yarn", "zookeeper-client", "zookeeper-server", "zookeeper-server-cleanup", "solr"
+                "ranger-usersync-stop", "slider",
+                "yarn", "zookeeper-client", "zookeeper-server", "zookeeper-server-cleanup", "solr"
             ],
 
             "user_array": [
-                "yarn-ats" "ambari", "ambari-qa", "ams", "elasticsearch", "flink", "flume", "gsadmin", "hadoop", "hbase",
-                "hcat", "hdfs", "hive", "impala", "infra-solr", "janusgraph", "kafka", "livy", "mapred", "postgres",
-                "ranger", "redis", "slider", "spark", "solr", "tez", "user", "yarn", "zookeeper"
+                "yarn-ats" "ambari", "ambari-qa", "ams", "flink", "flume", "hadoop", "hbase",
+                "hcat", "hdfs", "hive", "infra-solr", "kafka", "livy", "mapred", "postgres",
+                "ranger", "slider", "spark", "solr", "tez", "yarn", "zookeeper"
             ],
 
             "special_paths": [
                 "/usr/%s" % self.stack_name,
-                "/usr/lib/python2.6",
                 "/tmp/hadoop-hdfs",
                 "/tmp/cluster_cache",
-                "/etc/ssoconf",
                 "/var/kafka-logs",
-                "/etc/krb5",
                 "/etc/default/%s" % self.stack_name,
                 "/var/log/kadmin",
                 "/var/log/krb5kdc",
@@ -65,10 +58,8 @@ class ClusterClear:
                 "/var/kerberos",
                 "/usr/pgsql",
                 "/hadoop",
-                "/impalad",
                 "/pg_data",
                 "/kafka",
-                "/etc/init.d/impala",
                 "/etc/init.d/ambari",
                 "/etc/init.d/postgresql",
                 "/etc/rc.d/init.d/postgresql",
@@ -77,7 +68,8 @@ class ClusterClear:
             "packages": [
                 "ambari-agent", self.stack_name + "-*", "ambari-infra", "ambari-server", "ambari-metrics",
                 "nightingale",
-                "grafana_agent", "victoriametrics", self.stack_name + "-select", "postgresql", "postgresql*-server", "mysql-community-server", "mariadb-server"
+                "grafana_agent", "victoriametrics", self.stack_name + "-select", "postgresql", "postgresql*-server",
+                "mysql-community-server", "mariadb-server"
             ]
         }
 
@@ -132,7 +124,7 @@ class ClusterClear:
         bins = info["bins"]
 
         print("循环关闭所有大数据用及其相关进程")
-        p1 = subprocess.Popen(["pgrep", "-f", "ambari|hadoop|n9e|grafana|impala"], stdout=subprocess.PIPE)
+        p1 = subprocess.Popen(["pgrep", "-f", "ambari|hadoop|grafana"], stdout=subprocess.PIPE)
         output, _ = p1.communicate()
 
         if output:
@@ -208,7 +200,7 @@ class ClusterClear:
                 os.remove(path)
             elif os.path.isdir(path):
                 print("Deleting dir:", path)
-                shutil.rmtree(path,ignore_errors=True)
+                shutil.rmtree(path, ignore_errors=True)
             elif os.path.islink(path):
                 print("Deleting link :", path)
                 os.remove(path)
