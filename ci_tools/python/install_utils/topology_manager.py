@@ -14,7 +14,6 @@ class TopologyManager:
         MULTI_NODE = 2
 
     def determine_policy(self, hosts):
-        # 根据 hosts 的数量决定策略
         if len(hosts) == 3:
             return self.Policy.THREE_NODE
         else:
@@ -42,7 +41,6 @@ class TopologyManager:
 
     def _assign_hosts_to_groups(self, group_assignments, hosts):
         policy = self.determine_policy(hosts)
-        # 根据分组配置分配主机和服务
         for group_name, host_indices in group_assignments:
             self.host_groups[group_name] = [hosts[i] for i in host_indices]
             self.group_services[group_name] = self._get_services(int(group_name[-1]), policy)
@@ -87,7 +85,7 @@ class TopologyManager:
         existing_yaml['host_groups'] = self.host_groups
         existing_yaml['group_services'] = self.group_services
 
-        combined_yaml = yaml.dump(existing_yaml, default_flow_style=None,sort_keys=False)
+        combined_yaml = yaml.dump(existing_yaml, default_flow_style=None, sort_keys=False)
 
         with open(file_path, 'w') as file:
             file.write(combined_yaml)

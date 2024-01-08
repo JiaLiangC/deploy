@@ -274,7 +274,7 @@ class ConfUtils:
             self.err_messages.append("host_groups 配置和group_services 中的组名不一致")
 
     def get_hosts_names(self):
-        hosts_info = self.get_hosts_info()
+        hosts_info = self.parse_hosts_config()
         hosts_names = []
         parsed_hosts, user = hosts_info
         for host_info in parsed_hosts:

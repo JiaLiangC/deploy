@@ -1,5 +1,7 @@
 # -*- coding:utf8 -*-
 import json
+import shutil
+
 from python.common.basic_logger import get_logger
 from python.common.constants import *
 from python.nexus.nexus_client import NexusClient
@@ -45,7 +47,6 @@ class BaseTask:
         else:
             return self.conf["bigtop"]["prj_dir"]
 
-    # bigdata 项目会挂载到容器执行
     def get_prj_dir(self):
         if self.conf["bigtop"]["use_docker"]:
             return self.conf["docker"]["volumes"]["prj"]
@@ -80,7 +81,6 @@ class ContainerTask(BaseTask):
     def __init__(self):
         super().__init__()
 
-    # 编译脚本会挂载到容器运行
 
     def create_container(self):
         image = self.conf["docker"]["image"]
@@ -313,6 +313,13 @@ class DeployClusterTask(BaseTask):
         command = f"tar  -zxf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
         run_shell_command(command, shell=True)
         rpms_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
+
+        repodata_dir = os.path.join(rpms_dir, "repodata")
+        if os.path.exists(repodata_dir):
+            shutil.rmtree(repodata_dir)
+
+        create_yum_repository(rpms_dir)
+
         if not is_httpd_installed():
             install_httpd()
             assert is_httpd_installed() == True
@@ -323,14 +330,13 @@ class DeployClusterTask(BaseTask):
         run_shell_command("service httpd start", shell=True)
 
     def generate_deploy_conf(self):
-        for conf in [CONF_NAME, HOSTS_CONF_NAME]:
-            conf_fie = os.path.join(CONF_DIR, conf)
-            if os.path.exists(conf_fie):
-                os.remove(conf_fie)
-                shutil.copy(GET_CONF_TPL_NAME(conf_fie), conf_fie)
-
+        # for conf in [CONF_NAME, HOSTS_CONF_NAME]:
+        #     conf_fie = os.path.join(CONF_DIR, conf)
+        #     if os.path.exists(conf_fie):
+        #         os.remove(conf_fie)
+        #         shutil.copy(GET_CONF_TPL_NAME(conf_fie), conf_fie)
         cf_util = ConfUtils()
-        topology = TopologyManager(cf_util.get_hosts_names())
+        topology = TopologyManager(cf_util.get_hosts_names)
         topology.generate_topology()
         topology.write_to_yaml(os.path.join(CONF_DIR, CONF_NAME))
 
