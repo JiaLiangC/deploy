@@ -27,12 +27,6 @@
     gpgcheck: no
   loop: "{{repos}}"
 
-- name: Configure Yum Manager
-  become: yes
-  become_user: root
-  become_method: sudo
-  shell: 'yum-config-manager --save --setopt="*.skip_if_unavailable=true"'
-
   notify:
     - yum-clean-metadata
     - yum-makecache

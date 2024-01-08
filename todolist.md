@@ -6,7 +6,6 @@
 * 测试远程数据库是否可用, 存在同名数据库时报错
 * 完善增加各种异常检测，增强建壮性
 * mpack install for all services
-* 按照 hortonworks 原项目增加repo 多操作系统支持
 * 配置里开启 ranger 后必须在组件里选择ranger 组件
 * docker 一键部署
 * 配置简化，方便用户使用

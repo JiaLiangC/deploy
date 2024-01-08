@@ -6,6 +6,9 @@ from python.nexus.nexus_client import NexusClient
 from python.nexus.nexus_repo_sync import NexusSynchronizer
 from python.install_utils.install_utils import *
 from python.utils.os_utils import *
+from python.install_utils.conf_utils import ConfUtils
+from python.install_utils.blueprint_utils import BlueprintUtils
+from python.install_utils.topology_manager import *
 import docker
 import subprocess
 import yaml
@@ -279,8 +282,6 @@ class DeployClusterTask(BaseTask):
         playbook_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/install_cluster.yml')
         inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
         log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
-        from python.install_utils.conf_utils import ConfUtils
-        from python.install_utils.blueprint_utils import BlueprintUtils
 
         cf_util = ConfUtils()
         conf = cf_util.get_conf()
@@ -320,6 +321,18 @@ class DeployClusterTask(BaseTask):
 
         run_shell_command("pgrep -f httpd | xargs kill -9", shell=True)
         run_shell_command("service httpd start", shell=True)
+
+    def generate_deploy_conf(self):
+        for conf in [CONF_NAME, HOSTS_CONF_NAME]:
+            conf_fie = os.path.join(CONF_DIR, conf)
+            if os.path.exists(conf_fie):
+                os.remove(conf_fie)
+                shutil.copy(GET_CONF_TPL_NAME(conf_fie), conf_fie)
+
+        cf_util = ConfUtils()
+        topology = TopologyManager(cf_util.get_hosts_names())
+        topology.generate_topology()
+        topology.write_to_yaml(os.path.join(CONF_DIR, CONF_NAME))
 
     def run(self):
         logger.info("deploy ")
@@ -475,6 +488,11 @@ def setup_options():
                         action='store_true',
                         help='deploy a cluster')
 
+
+    parser.add_argument('-generate-conf',
+                    action='store_true',
+                    help='Generate configuration file')
+
     parser.add_argument('-clean-components',
                         metavar='clean_components',
                         type=str,
@@ -566,6 +584,7 @@ def main():
     pkg_nexus = args.pkg_nexus
     upload_os_pkgs = args.upload_os_pkgs
     skip_exist = args.skip_exist
+    generate_conf = args.generate_conf
 
     init_task = InitializeTask()
     init_task.run()
@@ -608,6 +627,10 @@ def main():
     if deploy:
         deploy_cluster_task = DeployClusterTask()
         deploy_cluster_task.run()
+
+    if generate_conf:
+        deploy_cluster_task = DeployClusterTask()
+        deploy_cluster_task.generate_deploy_conf()
 
     if pkg_nexus:
         nexus_task = NexusTask(os_type, os_version, os_arch)

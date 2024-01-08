@@ -3,6 +3,11 @@ import os
 PRJDIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../'))
 PRJ_BIN_DIR = os.path.join(PRJDIR, 'bin')
 CONF_DIR = os.path.join(PRJDIR, 'conf')
+
+CONF_NAME = 'conf.yml'
+HOSTS_CONF_NAME = 'hosts_info.yml'
+GET_CONF_TPL_NAME = lambda x: f'{x}.template'
+
 ANSIBLE_PRJ_DIR = os.path.join(PRJDIR, 'deploy/ansible-scripts')
 BLUEPRINT_FILES_DIR = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/roles/ambari-blueprint/files/')
 CLUSTER_TEMPLATES_DIR = os.path.join(PRJDIR, "ci_tools/resources/cluster_templates")

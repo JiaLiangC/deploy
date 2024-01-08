@@ -1,48 +1,35 @@
 ---
 
-host_groups:
-  group0: [server0]
-  group1: [server1]
-  group2: [server2]
+host_groups: placeholder
 
-group_services:
-  group0: [AMBARI_SERVER, NAMENODE, ZKFC, HIVE_METASTORE, SPARK_THRIFTSERVER,FLINK_HISTORYSERVER,HISTORYSERVER,RANGER_TAGSYNC, RANGER_USERSYNC,ZOOKEEPER_SERVER,JOURNALNODE]
-  group1: [APP_TIMELINE_SERVER, RANGER_ADMIN,NAMENODE, METRICS_GRAFANA,ZKFC, HBASE_MASTER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER, RESOURCEMANAGER, SPARK_JOBHISTORYSERVER, INFRA_SOLR, JOURNALNODE,KAFKA_BROKER]
-  group2: [TIMELINE_READER,YARN_REGISTRY_DNS,METRICS_COLLECTOR, RESOURCEMANAGER, HBASE_REGIONSERVER, ZOOKEEPER_SERVER, DATANODE, NODEMANAGER,HIVE_SERVER, JOURNALNODE,WEBHCAT_SERVER,KAFKA_BROKER]
+group_services: placeholder
+
+default_password: 'B767610qa4Z'                          # a default password for all required passwords which are not specified in the blueprint,
+
+#fill disk dirs
+data_dirs: ["/data/sdv1"]
+
+repos:
+   - {name: "os_base_repo", url: "http://server0:8081/repository/centos/7"}
+   #- {"name": "ambari_repo", "url": "http://server0:8881/repository/yum/udh3/"}
+
+#Should the old YUM repositories be backed up to /etc/yum.repos.d/bak, and then removed, leaving only the repositories configured in this configuration?
+backup_old_repo: yes                      #Don't change this
 
 
-default_password: 'AsdQwe123456'                          # a default password for all required passwords which are not specified in the blueprint,
+
+
+
+#*******************************************************************************************************************************************
+## Advanced Configurations, Don't change this in most scenarios. If you want to make changes, consult with a professional big data expert.
+#*******************************************************************************************************************************************
 
 ###########################
 ## cluster configuration ##
 ###########################
-cluster_name: 'mytestcluster'
-hdfs_ha_name: 'mytestcluster'
+cluster_name: 'udh-cluster'
+hdfs_ha_name: 'udh'
 
-
-#If nexus_install_plugin is set to false, the corresponding YUM repository will not be automatically installed. You will need to configure the desired repository address in the repos configuration.
-repos:
-   - {name: "ambari_repo", url: "http://server0:8081/repository/yum/udh3"}
-   - {name: "os_base_repo", url: "http://server0:8081/repository/kylin/v10"}
-backup_old_repo: yes                 #Whether to back up the old YUM repositories to /etc/yum.repos.d/bak, and then remove the old repositories, keeping only the repositories configured in this configuration.
-
-packages_need_install: []
-
-external_ntp_server_hostname: ''                     # if this is empty, ntp server will install and prepare on the ambari-server node
-
-data_dirs: ["/data/sdv1"]
-
-
-###########################
-## general configuration ##
-###########################
-
-external_dns: yes                                         # set to yes to use the existing DNS (when no, it will update the /etc/hosts file - must be set to 'no' when using Azure)
-disable_firewall: yes                                      # set to yes to disable the existing local firewall service (iptables, firewalld, ufw)
-timezone: Asia/Shanghai
-
-registry_dns_bind_port: "53"
-blueprint_name: 'my_blueprint'         # the name of the blueprint as it will be stored in Ambari
 ############################
 ## database configuration ##
 ############################
@@ -55,17 +42,16 @@ database_options:
   external_hostname: ''                                   # if this is empty, Ansible will install and prepare the databases on the ambari-server node
   ambari_db_name: 'ambari'
   ambari_db_username: 'ambari'
-  ambari_db_password: 'bigdata'
+  ambari_db_password: '{{ default_password }}'
   hive_db_name: 'hive'
   hive_db_username: 'hive'
-  hive_db_password: 'hive'
+  hive_db_password: '{{ default_password }}'
   rangeradmin_db_name: 'ranger'
   rangeradmin_db_username: 'ranger'
-  rangeradmin_db_password: 'ranger'
+  rangeradmin_db_password: '{{ default_password }}'
   rangerkms_db_name: 'rangerkms'
   rangerkms_db_username: 'rangerkms'
-  rangerkms_db_password: 'rangerkms'
-
+  rangerkms_db_password: '{{ default_password }}'
 
 #####################################
 ## kerberos security configuration ##
@@ -83,6 +69,19 @@ security_options:
   manage_krb5_conf: yes                                   # set to no if using FreeIPA/IdM
 
 ##########################
+## ambari configuration ##
+##########################
+# ambari_server
+ambari_options:
+  ambari_run_user: 'ambari'
+  ambari_shell_password: 'ambari'
+  ambari_admin_user: 'admin'
+  ambari_admin_password: '{{ default_password }}'
+  ambari_admin_default_password: 'admin'                   # no need to change this (unless the Ambari default changes)
+  config_recommendation_strategy: 'ALWAYS_APPLY'           # choose between 'NEVER_APPLY', 'ONLY_STACK_DEFAULTS_APPLY', 'ALWAYS_APPLY', 'ALWAYS_APPLY_DONT_OVERRIDE_CUSTOM_VALUES'
+
+
+##########################
 ## ranger configuration ##                                # only useful if blueprint is dynamic
 ##########################
 
@@ -94,17 +93,18 @@ ranger_security_options:                                  # only used if RANGER_
   ranger_keyadmin_password: "{{ default_password }}"      # the password for the Ranger keyadmin user (will only be set in HDP3, in HDP2 it will remain the default keyadmin)
   kms_master_key_password: "{{ default_password }}"       # password used for encrypting the Master Key
 
-##########################
-## ambari configuration ##
-##########################
-# ambari_server
-ambari_options:
-  ambari_run_user: 'ambari'
-  ambari_shell_password: 'ambari'
-  ambari_admin_user: 'admin'
-  ambari_admin_password: 'admin'
-  ambari_admin_default_password: 'admin'                   # no need to change this (unless the Ambari default changes)
-  config_recommendation_strategy: 'ALWAYS_APPLY'           # choose between 'NEVER_APPLY', 'ONLY_STACK_DEFAULTS_APPLY', 'ALWAYS_APPLY', 'ALWAYS_APPLY_DONT_OVERRIDE_CUSTOM_VALUES'
+###########################
+## general configuration ##
+###########################
+
+external_dns: yes                                         # set to yes to use the existing DNS (when no, it will update the /etc/hosts file - must be set to 'no' when using Azure)
+disable_firewall: yes                                      # set to yes to disable the existing local firewall service (iptables, firewalld, ufw)
+timezone: Asia/Shanghai
+
+external_ntp_server_hostname: ''                     # if this is empty, ntp server will install and prepare on the ambari-server node
+packages_need_install: []
+registry_dns_bind_port: "53"
+blueprint_name: 'udh_blueprint'         # the name of the blueprint as it will be stored in Ambari
 
 wait: true                                                 # wait for the cluster to finish installing
 wait_timeout: 60
@@ -148,6 +148,3 @@ stack_major_version: 3
 ansible_tmp_dir: /tmp/ansible
 ansible_options:
   ansible_ssh_port: 22
-
-
-

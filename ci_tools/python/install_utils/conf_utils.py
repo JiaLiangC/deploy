@@ -273,6 +273,15 @@ class ConfUtils:
                 host_groups_group_names) == set(host_group_services_group_names)):
             self.err_messages.append("host_groups 配置和group_services 中的组名不一致")
 
+    def get_hosts_names(self):
+        hosts_info = self.get_hosts_info()
+        hosts_names = []
+        parsed_hosts, user = hosts_info
+        for host_info in parsed_hosts:
+            hostname = host_info[1]
+            hosts_names.append(hostname)
+        return list(set(hosts_names))
+
     def check_pattern(self, service_rules, service_counter):
         messages = []
         tmp_desc = None
