@@ -422,6 +422,15 @@ class UDHReleaseTask(BaseTask):
             logger.info(f"remove git dir {git_dir}")
             shutil.rmtree(git_dir)
 
+        #3. remove conf file
+        conf_dir = os.path.join(release_prj_dir, "conf")
+        for filename in os.listdir(conf_dir):
+            if not filename.endswith(".template"):
+                conf_file = os.path.join(conf_dir,filename)
+                if os.path.isfile(conf_file):
+                    os.remove(conf_file)
+                    logger.info(f"Removed file: {conf_file}")
+
         portable_ansible_dir = os.path.join(release_prj_dir, "bin/portable-ansible")
         if os.path.exists(portable_ansible_dir):
             logger.info(f"remove portable_ansible dir {portable_ansible_dir}")
