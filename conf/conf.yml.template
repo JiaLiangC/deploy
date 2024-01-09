@@ -1,24 +1,9 @@
----
 
-host_groups: placeholder
 
-group_services: placeholder
 
-default_password: 'B767610qa4Z'                          # a default password for all required passwords which are not specified in the blueprint,
-
-#fill disk dirs
-data_dirs: ["/data/sdv1"]
-
-repos:
-   - {name: "os_base_repo", url: "http://server0:8081/repository/centos/7"}
-   #- {"name": "ambari_repo", "url": "http://server0:8881/repository/yum/udh3/"}
 
 #Should the old YUM repositories be backed up to /etc/yum.repos.d/bak, and then removed, leaving only the repositories configured in this configuration?
 backup_old_repo: yes                      #Don't change this
-
-
-
-
 
 #*******************************************************************************************************************************************
 ## Advanced Configurations, Don't change this in most scenarios. If you want to make changes, consult with a professional big data expert.

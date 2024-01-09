@@ -280,7 +280,7 @@ class ConfUtils:
         for host_info in parsed_hosts:
             hostname = host_info[1]
             hosts_names.append(hostname)
-        return list(set(hosts_names))
+        return hosts_names
 
     def check_pattern(self, service_rules, service_counter):
         messages = []
@@ -344,6 +344,8 @@ class ConfUtils:
 
     def load_conf(self):
         file_path = os.path.join(self.conf_path, 'conf.yml')
+        if not os.path.exists(file_path):
+            return None
         with open(file_path, 'r') as f:
             data = yaml.load(f, yaml.SafeLoader)
         return data
@@ -643,6 +645,38 @@ class ConfUtils:
                     logger.error("Failed to load plugin implementation %s", e)
 
         return plugins
+
+    def generate_conf(self, yaml_dict, dest_file, source_file=None, method="new"):
+        supported_methods = ["new", "prepend", "replace"]
+        assert method in supported_methods
+        final_yaml_str = ""
+
+        if method == "new":
+            final_yaml_str = yaml.dump(yaml_dict, default_flow_style=None, sort_keys=False)
+        elif method == "prepend":
+            try:
+                with open(source_file, 'r') as file:
+                    existing_data = file.read()
+            except FileNotFoundError:
+                existing_data = ""
+            new_yaml_str = yaml.dump(yaml_dict, default_flow_style=None, sort_keys=False)
+
+            final_yaml_str = new_yaml_str + "\n" + existing_data
+        elif method == "replace":
+            try:
+                with open(source_file, 'r') as file:
+                    existing_data = file.read()
+                    existing_yaml = yaml.safe_load(existing_data)
+            except FileNotFoundError:
+                existing_yaml = {}
+
+            for k, v in yaml_dict.items():
+                existing_yaml[k] = v
+
+            final_yaml_str = yaml.dump(existing_yaml, default_flow_style=None, sort_keys=False)
+
+        with open(dest_file, 'w') as file:
+            file.write(final_yaml_str)
 
 
 def is_valid_ip(ip):

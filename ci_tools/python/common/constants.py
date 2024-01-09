@@ -5,6 +5,7 @@ PRJ_BIN_DIR = os.path.join(PRJDIR, 'bin')
 CONF_DIR = os.path.join(PRJDIR, 'conf')
 
 CONF_NAME = 'conf.yml'
+BASE_CONF_NAME = 'base_conf.yml'
 HOSTS_CONF_NAME = 'hosts_info.yml'
 GET_CONF_TPL_NAME = lambda x: f'{x}.template'
 

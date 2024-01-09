@@ -81,7 +81,6 @@ class ContainerTask(BaseTask):
     def __init__(self):
         super().__init__()
 
-
     def create_container(self):
         image = self.conf["docker"]["image"]
         # Implementation of create_container method
@@ -330,15 +329,38 @@ class DeployClusterTask(BaseTask):
         run_shell_command("service httpd start", shell=True)
 
     def generate_deploy_conf(self):
-        # for conf in [CONF_NAME, HOSTS_CONF_NAME]:
-        #     conf_fie = os.path.join(CONF_DIR, conf)
-        #     if os.path.exists(conf_fie):
-        #         os.remove(conf_fie)
-        #         shutil.copy(GET_CONF_TPL_NAME(conf_fie), conf_fie)
         cf_util = ConfUtils()
-        topology = TopologyManager(cf_util.get_hosts_names)
-        topology.generate_topology()
-        topology.write_to_yaml(os.path.join(CONF_DIR, CONF_NAME))
+        base_conf_file = os.path.join(CONF_DIR, BASE_CONF_NAME)
+        assert os.path.exists(base_conf_file)
+
+        try:
+            with open(base_conf_file, 'r') as file:
+                existing_data = file.read()
+                yaml_data = yaml.safe_load(existing_data)
+        except FileNotFoundError:
+            existing_data = ""
+            yaml_data = {}
+        print(yaml_data)
+        conf_yaml_data = {
+            "default_password": yaml_data["default_password"],
+            "data_dirs": yaml_data["data_dirs"],
+            "repos": yaml_data["repos"]
+        }
+
+        hosts_info_yaml_data = {
+            "user": yaml_data["user"],
+            "hosts": yaml_data["hosts"]
+        }
+
+        hosts_info_conf_file = os.path.join(CONF_DIR, HOSTS_CONF_NAME)
+        cf_util.generate_conf(hosts_info_yaml_data, hosts_info_conf_file, method="new")
+
+        conf_fie = os.path.join(CONF_DIR, CONF_NAME)
+        conf_tpl_file = GET_CONF_TPL_NAME(conf_fie)
+        topology_manager = TopologyManager(cf_util.get_hosts_names)
+        topology = topology_manager.generate_topology()
+        topology.update(conf_yaml_data)
+        cf_util.generate_conf(topology, conf_fie, source_file=conf_tpl_file, method="prepend")
 
     def run(self):
         logger.info("deploy ")
@@ -428,11 +450,11 @@ class UDHReleaseTask(BaseTask):
             logger.info(f"remove git dir {git_dir}")
             shutil.rmtree(git_dir)
 
-        #3. remove conf file
+        # 3. remove conf file
         conf_dir = os.path.join(release_prj_dir, "conf")
         for filename in os.listdir(conf_dir):
             if not filename.endswith(".template"):
-                conf_file = os.path.join(conf_dir,filename)
+                conf_file = os.path.join(conf_dir, filename)
                 if os.path.isfile(conf_file):
                     os.remove(conf_file)
                     logger.info(f"Removed file: {conf_file}")
@@ -503,10 +525,9 @@ def setup_options():
                         action='store_true',
                         help='deploy a cluster')
 
-
     parser.add_argument('-generate-conf',
-                    action='store_true',
-                    help='Generate configuration file')
+                        action='store_true',
+                        help='Generate configuration file')
 
     parser.add_argument('-clean-components',
                         metavar='clean_components',

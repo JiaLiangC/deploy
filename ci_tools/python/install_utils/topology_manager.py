@@ -8,6 +8,7 @@ class TopologyManager:
         self.host_fetcher = host_fetcher
         self.host_groups = {}
         self.group_services = {}
+        self.topology={}
 
     class Policy(Enum):
         THREE_NODE = 1
@@ -22,6 +23,11 @@ class TopologyManager:
     def generate_topology(self):
         hosts = self.host_fetcher()
         self._configure_hosts(hosts)
+        self.topology = {
+            'host_groups': self.host_groups,
+            'group_services': self.group_services
+        }
+        return self.topology
 
     def _configure_hosts(self, hosts):
         num_hosts = len(hosts)
@@ -73,26 +79,7 @@ class TopologyManager:
 
         return services.get(group_number, [])
 
-    def write_to_yaml(self, file_path):
-        try:
-            with open(file_path, 'r') as file:
-                existing_data = file.read()
-                existing_yaml = yaml.safe_load(existing_data)
-        except FileNotFoundError:
-            existing_data = ""
-            existing_yaml = {}
-
-        existing_yaml['host_groups'] = self.host_groups
-        existing_yaml['group_services'] = self.group_services
-
-        combined_yaml = yaml.dump(existing_yaml, default_flow_style=None, sort_keys=False)
-
-        with open(file_path, 'w') as file:
-            file.write(combined_yaml)
-
-
 
 if __name__ == '__main__':
     topology = TopologyManager(lambda: ["server1", "server2", "server3", "server4", "server5"])
     topology.generate_topology()
-    topology.write_to_yaml("/Users/jialiangcai/szl/prjs/opensource/bigdata_deploy/output/test.yaml")
