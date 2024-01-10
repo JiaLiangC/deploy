@@ -7,6 +7,7 @@ from jinja2 import Template
 from python.common.basic_logger import get_logger
 from python.common.constants import *
 import os
+import copy
 from python.utils.os_utils import *
 import socket
 from ipaddress import ip_address
@@ -499,7 +500,8 @@ class DynamicVariableGenerator:
         extra_vars = {
             "ntp_server_hostname": self._generate_ntp_server_hostname(),
             "hadoop_base_dir": self.raw_conf["data_dirs"][0], "kdc_hostname": self.get_kdc_server_host(),
-            "database_hostname": self._generate_database_host()
+            "database_hostname": self._generate_database_host(),
+            "ambari_server_host": self.get_ambari_server_host()
         }
         conf_j2_context.update(extra_vars)
         rendered_conf_vars = self.template_renderer.render_template(str_conf, conf_j2_context).decode_result(
@@ -679,6 +681,7 @@ class ValidatorFactory:
         elif validator_type == 'hosts_info':
             return HostsInfoValidator(parsed_data)
 
+
 # Main ConfUtils class using the above components
 
 class ConfigurationLoader:
@@ -713,6 +716,7 @@ class ConfUtils:
         self.dynamic_variable_generator = None
         self.confs = {}
         self.conf = {}
+        self.hosts_conf = {}
         self.parsers = {}
         self.validators = {}
 
@@ -739,14 +743,17 @@ class ConfUtils:
     def parse_conf(self):
         # Parse hosts information
         hosts_info = self.parsers['hosts_info'].parse()
+        self.hosts_conf = hosts_info
+
         print(hosts_info)
         # Parse component topology
         host_groups, host_group_services = self.parsers['component_topology'].parse()
         print(host_groups, host_group_services)
-        cf = self.dynamic_variable_generator.generate()
+        cf = self.generate_dynamic_variables()
+        self.conf.update(cf)
         print(cf)
         # Combine all parts to produce the final configuration
-        self.conf = cf
+
 
     def validate_conf(self):
         validation_manager = ValidationManager(self.validators.values())
@@ -757,10 +764,9 @@ class ConfUtils:
 
     def get_conf(self):
         # Parse and validate the configuration if it hasn't been done yet
-        if not self.conf:
-            self.parse_conf()
-            self.validate_conf()
-            self.generate_dynamic_variables()
+        #if not self.conf:
+        self.parse_conf()
+        self.validate_conf()
 
         # Return the final configuration data
         return self.conf
@@ -770,7 +776,7 @@ class ConfUtils:
             self.dynamic_variable_generator = DynamicVariableGenerator()
         conf_data = self.conf_loader.load_conf(CONF_NAME)
         dynamic_variables = self.dynamic_variable_generator.generate(conf_data)
-        self.conf.update(dynamic_variables)
+        return dynamic_variables
 
     def get_hosts_names(self):
         hosts_info = self.parsers['hosts_info'].parse()
@@ -846,6 +852,302 @@ class ConfUtils:
         self.generate_conf(topology, conf_fie, source_file=conf_tpl_file, method="prepend")
 
 
+class ConfigurationHandler:
+    def __init__(self, conf):
+        self.conf = conf
+        self.get_ambari_repo()
+        self.validate()
+
+    def get_ambari_repo(self):
+        ambari_repo = None
+        repos = self.conf["repos"]
+        if len(repos) > 0:
+            for repo_item in repos:
+                if "ambari_repo" == repo_item["name"]:
+                    ambari_repo = repo_item["url"]
+                    break
+        else:
+            raise InvalidConfigurationException("ambari_repo not configured")
+        if not ambari_repo:
+            ambari_repo = repos[0]["url"]
+
+        self.conf.update({"ambari_repo_url": ambari_repo})
+
+    def get(self, key, default=None):
+        try:
+            return self.conf[key]
+        except KeyError:
+            if default is not None:
+                return default
+            raise InvalidConfigurationException(f"Configuration key '{key}' is missing.")
+
+    def validate(self):
+        required_keys = ["group_services", "repos", "host_groups", "security_options", "ambari_options",
+                         "blueprint_name"]
+        for key in required_keys:
+            if key not in self.conf:
+                raise InvalidConfigurationException(f"Required configuration key '{key}' is missing.")
+
+
+class ServiceManager:
+    def __init__(self, config_handler):
+        self.config_handler = config_handler
+
+    def get_service_key_from_service(self, service_name):
+        for service_key, service_info in ServiceMap().get_services_map().items():
+            if service_name in service_info["server"]:
+                return service_key
+        raise InvalidConfigurationException(f"Service '{service_name}' not found in services map.")
+
+    def get_services_need_install(self):
+        group_services = self.config_handler.get("group_services")
+        services = []
+        for group_name, host_components in group_services.items():
+            services.extend(host_components)
+        return list(set(services))
+
+    def get_service_clients_need_install(self, services):
+        clients = []
+        for service_name in services:
+            service_key = self.get_service_key_from_service(service_name)
+            service_info = ServiceMap().get_services(service_key)
+            if service_info and "clients" in service_info:
+                clients.extend(service_info["clients"])
+        return list(set(clients))
+
+
+class FileManager:
+    @staticmethod
+    def read_file(file_path):
+        with open(file_path, 'r') as file:
+            return file.read()
+
+    @staticmethod
+    def write_file(file_path, content):
+        with open(file_path, 'w') as file:
+            file.write(content)
+
+    @staticmethod
+    def read_json(file_path):
+        with open(file_path, 'r') as file:
+            return json.load(file)
+
+    @staticmethod
+    def write_json(file_path, data):
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+
+    @staticmethod
+    def read_yaml(file_path):
+        with open(file_path, 'r') as file:
+            return yaml.safe_load(file)
+
+    @staticmethod
+    def write_yaml(file_path, data):
+        with open(file_path, 'w') as file:
+            yaml.dump(data, file)
+
+
+# Initialize with ConfigurationHandler and ServiceManager instances
+# Methods to generate blueprint configurations and host groups
+class BlueprintGenerator:
+    def __init__(self, config_handler, service_manager):
+        self.config_handler = config_handler
+        self.service_manager = service_manager
+
+    def generate_blueprint_configurations(self):
+        services_need_install = self.service_manager.get_services_need_install()
+        configurations = []
+        processed_services = []
+
+        for service_name in services_need_install:
+            service_key = self.service_manager.get_service_key_from_service(service_name)
+            if service_key in processed_services:
+                continue
+
+            template_render = TemplateRenderer()
+            tpl_str = FileManager.read_file(self.get_conf_j2template_path(service_name))
+            if not tpl_str:
+                # 有的配置模版为空白
+                continue
+
+            service_confs = template_render.render_template(
+                tpl_str,
+                self.config_handler.conf).decode_result(decoder="json")
+
+            if service_confs:
+                configurations.extend([{k: v} for k, v in service_confs.items() if isinstance(v, dict)])
+            else:
+                logger.error(f"Error in configuration template for service {service_name}")
+
+            processed_services.append(service_key)
+
+        return configurations
+
+    def generate_blueprint_host_groups(self):
+        conf = self.config_handler.conf
+        host_groups = []
+        services_need_install = self.service_manager.get_services_need_install()
+        all_services_clients = self.service_manager.get_service_clients_need_install(services_need_install)
+
+        for group_name, services in conf["group_services"].items():
+            group_services = list(set(services + all_services_clients))
+            host_group_components_config = [{'name': service_name} for service_name in group_services]
+
+            host_group = {
+                "name": group_name,
+                "configurations": [],
+                "cardinality": "1",
+                "components": host_group_components_config
+            }
+            host_groups.append(host_group)
+
+        return host_groups
+
+    def get_conf_j2template_path(self, service_name):
+        service_key = self.service_manager.get_service_key_from_service(service_name)
+        file_name = f"{service_key}_configuration.json.j2"
+        return os.path.join(CLUSTER_TEMPLATES_DIR, file_name)
+
+
+# Initialize with BlueprintGenerator, TemplateRenderer, and FileManager instances
+# Methods to generate Ambari blueprint and cluster template
+class AmbariBlueprintBuilder:
+    def __init__(self, blueprint_generator, file_manager):
+        self.blueprint_generator = blueprint_generator
+        self.file_manager = file_manager
+
+    def generate_ambari_blueprint(self, configurations, host_groups):
+        security = self.blueprint_generator.config_handler.get("security")
+        blueprint_security = "KERBEROS" if security.strip().lower() != "none" else "NONE"
+        ambari_repo_url = self.blueprint_generator.config_handler.get("ambari_repo_url")
+
+        j2_context = {
+            "blueprint_security": blueprint_security,
+            "ambari_blueprint_configurations": json.dumps(configurations),
+            "ambari_blueprint_host_groups": json.dumps(host_groups),
+            "ambari_repo_url": ambari_repo_url,
+        }
+
+        template_renderer = TemplateRenderer(
+            # file_path=os.path.join(CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2"),
+            # context=j2_context
+        )
+
+        blueprint_json = template_renderer.render_template(
+            FileManager.read_file(os.path.join(CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2")),
+            j2_context).decode_result()
+
+        self.file_manager.write_json(
+            file_path=os.path.join(BLUEPRINT_FILES_DIR, "blueprint.json"),
+            data=blueprint_json
+        )
+
+    def generate_ambari_cluster_template(self):
+        conf = self.blueprint_generator.config_handler.conf
+        security = conf["security"]
+        kerberos_admin_principal = f"{conf['security_options']['admin_principal']}@{conf['security_options']['realm']}"
+        kerberos_admin_password = conf["security_options"]["admin_password"]
+        ambari_cluster_template_host_groups = []
+
+        for group_name, group_hosts in conf["host_groups"].items():
+            hosts = [{'fqdn': host} for host in group_hosts]
+            ambari_cluster_template_host_groups.append({
+                "name": group_name,
+                "hosts": hosts
+            })
+
+        cluster_template = {
+            "blueprint": conf["blueprint_name"],
+            "config_recommendation_strategy": conf["ambari_options"]["config_recommendation_strategy"],
+            "default_password": conf["default_password"],
+            "host_groups": ambari_cluster_template_host_groups,
+        }
+
+        if security and security == "mit-kdc":
+            cluster_template["credentials"] = [{
+                "alias": "kdc.admin.credential",
+                "principal": kerberos_admin_principal,
+                "key": kerberos_admin_password,
+                "type": "TEMPORARY"
+            }]
+            cluster_template["security"] = {"type": "KERBEROS"}
+
+        self.file_manager.write_json(
+            file_path=os.path.join(BLUEPRINT_FILES_DIR, "cluster_template.json"),
+            data=cluster_template
+        )
+
+
+# Initialize with ConfigurationHandler and FileManager instances
+# Methods to generate Ansible variables file and hosts file
+class AnsibleFileManager:
+    def __init__(self, config_handler, file_manager):
+        self.config_handler = config_handler
+        self.file_manager = file_manager
+
+    def generate_ansible_variables_file(self):
+        variables = copy.deepcopy(self.config_handler.conf)
+        ambari_repo_url = self.config_handler.get("ambari_repo_url")
+        variables["ambari_repo_url"] = ambari_repo_url
+        for key in ["host_groups", "group_services"]:
+            variables.pop(key, None)
+
+        variables_file_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/group_vars/all')
+        self.file_manager.write_yaml(variables_file_path, variables)
+
+    def generate_ansible_hosts(self,hosts_conf):
+        conf = self.config_handler.conf
+        parsed_hosts, user = hosts_conf
+        ambari_server_host = conf["ambari_server_host"]
+        host_groups = conf["host_groups"]
+
+        hosts_content = self._generate_hosts_content(parsed_hosts, user, host_groups, ambari_server_host)
+        ansible_user = user
+
+        hosts_content += "[all:vars]\nansible_user={}\n".format(ansible_user)
+        hosts_path = os.path.join(ANSIBLE_PRJ_DIR, "inventory", "hosts")
+        self.file_manager.write_file(hosts_path, hosts_content)
+
+    def _generate_hosts_content(self, parsed_hosts, user, host_groups, ambari_server_host):
+        hosts_dict = {hostname: (ip, passwd) for ip, hostname, passwd in parsed_hosts}
+        node_groups = {"ambari-server": [ambari_server_host]}
+        for group_name, hosts in host_groups.items():
+            node_groups.setdefault("hadoop-cluster", []).extend(hosts)
+
+        hosts_content = ""
+        for group, hosts in node_groups.items():
+            hosts_content += "[{}]\n".format(group)
+            for host_name in hosts:
+                if host_name not in hosts_dict:
+                    raise InvalidConfigurationException(f"Host '{host_name}' not found in parsed hosts.")
+                ip, passwd = hosts_dict[host_name]
+                hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name, ip, passwd)
+            hosts_content += "\n"
+
+        return hosts_content
+
+
+# Initialize with conf dictionary
+# Compose all above classes and provide a build method to orchestrate the generation process
+class BlueprintUtils:
+    def __init__(self, conf):
+        self.config_handler = ConfigurationHandler(conf)
+        self.service_manager = ServiceManager(self.config_handler)
+        self.file_manager = FileManager()
+        self.blueprint_generator = BlueprintGenerator(self.config_handler, self.service_manager)
+        self.ambari_blueprint_builder = AmbariBlueprintBuilder(self.blueprint_generator, self.file_manager)
+        self.ansible_file_manager = AnsibleFileManager(self.config_handler, self.file_manager)
+
+    def build(self,hosts_conf):
+        blueprint_configurations = self.blueprint_generator.generate_blueprint_configurations()
+        blueprint_service_host_groups = self.blueprint_generator.generate_blueprint_host_groups()
+        self.ambari_blueprint_builder.generate_ambari_blueprint(blueprint_configurations, blueprint_service_host_groups)
+        self.ambari_blueprint_builder.generate_ambari_cluster_template()
+        self.ansible_file_manager.generate_ansible_variables_file()
+        self.ansible_file_manager.generate_ansible_hosts(hosts_conf)
+
+
 # Main execution function
 def main():
     conf_utils = ConfUtils(ParserFactory, ValidatorFactory, ConfigurationLoader(CONF_DIR))
@@ -853,10 +1155,14 @@ def main():
     conf_utils.initialize_parsers()
     conf_utils.initialize_validators()
     conf_utils.generate_deploy_conf()
-    conf_utils.generate_dynamic_variables()
 
     conf = conf_utils.get_conf()
+    hosts_conf = conf_utils.hosts_conf
     print(conf)
+
+    blueprint_utils = BlueprintUtils(conf)
+    blueprint_utils.build(hosts_conf)
+    # blueprint_utils.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
 
 
 if __name__ == '__main__':
