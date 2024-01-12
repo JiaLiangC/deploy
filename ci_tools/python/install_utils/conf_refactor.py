@@ -18,6 +18,24 @@ logger = get_logger()
 
 
 def to_camel_case(name):
+    """
+    Convert a string from snake_case to camelCase.
+    Args:
+        name (str): The string to be converted.
+    Returns:
+        str: The converted string.
+    Raises:
+        ValueError: If the input name is not a string.
+    """
+    if not isinstance(name, str):
+        raise ValueError("Input 'name' must be a string")
+
+    if not name:
+        return ''
+
+    if '_' not in name:
+        return name
+
     return ''.join(word.capitalize() for word in name.split('_'))
 
 
@@ -43,13 +61,17 @@ class Parser:
 
 
 class HostsInfoParser(Parser):
-    # 解析 10.1.1.[1-3] server[1-3] password4 的机器组
 
     def parse_hosts(self, data):
         hosts = self._expand_range(data)
         return hosts
 
     def parse(self, hosts_configurations):
+        # 解析机器通配符，解析类似 ansible的hosts 的配置
+        # 可以解析 node[1-3] 或者 node[1-3]xx 或者 [1-3]node  的通配符的机器名或者ip格式
+        # hosts_configurations 为 ["10.1.1.15 server4 password4",...]
+        # 输入 hosts_configurations ["10.1.1.[1-3] node[1-3].example.com password4"]，则函数会输出 [("node1.example.com","10.1.1.1","password4"), ("node2.example.com","10.1.1.2","password4"),("node3.example.com","10.1.1.3","password4")]
+
         parsed_configs = []
 
         for config in hosts_configurations:
@@ -74,8 +96,6 @@ class HostsInfoParser(Parser):
                 parsed_configs.append(tuple(config.split()))
 
         return parsed_configs
-
-
 
 
 class Validator:
@@ -205,8 +225,6 @@ class ServiceMap:
         return self.service_map
 
 
-
-
 class ParserFactory:
     _parsers = {}
 
@@ -263,7 +281,8 @@ class ParserFactory:
 # Main ConfUtils class using the above components
 
 class DefaultConfigurationLoader:
-    def __init__(self, conf_dir):
+    def __init__(self, conf_dir, format=FileManager.FileType.YAML):
+        self.format = format
         self.conf_dir = conf_dir
 
     def load_conf(self, conf_name):
@@ -271,8 +290,8 @@ class DefaultConfigurationLoader:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-        with open(file_path, 'r') as f:
-            return yaml.safe_load(f)
+        content = FileManager.read_file(file_path, self.format)
+        return content
 
 
 class ValidationManager:
@@ -461,10 +480,10 @@ class DynamicVariableGenerator:
             return "Unable to retrieve IP address"
 
     def _generate_ambari_repo_url(self):
-        ipaddress= self.get_ip_address()
+        ipaddress = self.get_ip_address()
         if not self.is_ambari_repo_configured():
             ambari_repo_rl = f"http://{ipaddress}:8881/repository/yum/udh3"
-            #todo 在 conf 中生成 {"name": "ambari_repo", "url": ambari_repo_rl}
+            # todo 在 conf 中生成 {"name": "ambari_repo", "url": ambari_repo_rl}
             # self.conf["repos"].append({"name": "ambari_repo", "url": ambari_repo_rl})
             # logger.info(f"generate_ambari_repo {ambari_repo_rl}")
 
@@ -479,11 +498,7 @@ class BaseConfiguration:
         self.name = name
         self.conf = {}
         self.format = FileManager.FileType.YAML
-        self.conf_file_path = self.get_default_path()
-
-    def get_parser(self):
-        class_name = self.__class__.__name__.lower()
-        ParserFactory.get_parser(class_name)
+        self.conf_file_path = os.path.join(CONF_DIR, self.name)
 
     def set_format(self, format):
         self.format = format
@@ -493,16 +508,13 @@ class BaseConfiguration:
         self.conf_file_path = os.path.join(new_dir, self.name)
         return self
 
-    def get_default_path(self):
-        return os.path.join(CONF_DIR, self.name)
-
     def set_conf(self, conf):
         self.conf = conf
         return self
 
     def get_conf(self):
         if not self.conf:
-            self.conf = self.conf_loader(CONF_DIR).load_conf(self.name)
+            self.conf = self.conf_loader(CONF_DIR, self.format).load_conf(self.name)
         return self.conf
 
     def get_str_conf(self):
@@ -522,13 +534,15 @@ class BaseConfiguration:
         FileManager.write_file(self.conf_file_path, self.get_conf(), self.format)
 
     def save_with_str(self, str_conf):
+        if not isinstance(str_conf, str):
+            raise ValueError("Input 'str_conf' must be a string")
         FileManager.write_file(self.conf_file_path, str_conf, FileManager.FileType.RAW)
 
 
 class StandardConfiguration(BaseConfiguration, HostsInfoParser):
     def __init__(self, name):
         super().__init__(name)
-        self.parsed_conf={}
+        self.parsed_conf = {}
 
     class GenerateConfType(Enum):
         AdvancedConfiguration = 'AdvancedConfiguration'
@@ -543,7 +557,7 @@ class StandardConfiguration(BaseConfiguration, HostsInfoParser):
 
         return self.parsed_conf
 
-    def get_parsed_hosts_names(self ):
+    def get_parsed_hosts_names(self):
         parsed_hosts = self.get_conf().get("hosts")
         hosts_names = []
         for host_info in parsed_hosts:
@@ -609,18 +623,6 @@ class AdvancedConfiguration(BaseConfiguration):
 class HostsInfoConfiguration(BaseConfiguration, HostsInfoParser):
     def __init__(self, name=HOSTS_CONF_NAME):
         super().__init__(name)
-
-    # def get_parsed_hosts_names(self):
-    #     parsed_hosts = self.get_hosts_info()
-    #     hosts_names = []
-    #     for host_info in parsed_hosts:
-    #         hostname = host_info[1]
-    #         hosts_names.append(hostname)
-    #     return hosts_names
-
-    # def get_hosts_info(self):
-    #     hosts_info_arr = self.parse(self.get_conf().get("hosts"))
-    #     return hosts_info_arr
 
     def get_hosts_info(self):
         hosts_info_arr = self.get_conf()
