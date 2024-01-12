@@ -75,9 +75,7 @@ class HostsInfoParser(Parser):
 
         return parsed_configs
 
-    def get_hosts_info(self, hosts_configurations):
-        hosts_info_arr = self.parse(hosts_configurations)
-        return hosts_info_arr
+
 
 
 class Validator:
@@ -415,7 +413,7 @@ class DynamicVariableGenerator:
             "kdc_hostname": self.get_kdc_server_host(),
             "database_hostname": self._generate_database_host(),
             "ambari_server_host": self.get_ambari_server_host(),
-            "ambari_repo_url": self._generate_ambari_repo_url
+            "ambari_repo_url": self._generate_ambari_repo_url()
         }
         conf_j2_context = self.advanced_conf.get_conf()
         conf_j2_context.update(extra_vars)
@@ -442,14 +440,35 @@ class DynamicVariableGenerator:
             database_host = self.advanced_conf.get("database_options")["external_hostname"]
         return database_host
 
-    def _generate_ambari_repo_url(self):
+    def is_ambari_repo_configured(self):
         repos = self.advanced_conf.get('repos', [])
-        for repo in repos:
-            if repo.get('name') == 'ambari_repo':
-                return repo.get('url')
-        # If Ambari repo URL is not configured, generate one based on the host's IP address
-        ip_address = socket.gethostbyname(socket.gethostname())
-        return f"http://{ip_address}:8080/path/to/ambari/repo"
+        if len(repos) > 0:
+            for repo_item in repos:
+                if "ambari_repo" == repo_item["name"]:
+                    return True
+        return False
+
+    def get_ip_address(self):
+        try:
+            # 创建一个UDP套接字
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # 连接到一个公共的域名，此处使用Google的域名
+            sock.connect(("8.8.8.8", 80))
+            # 获取本地套接字的IP地址
+            ip_address = sock.getsockname()[0]
+            return ip_address
+        except socket.error:
+            return "Unable to retrieve IP address"
+
+    def _generate_ambari_repo_url(self):
+        ipaddress= self.get_ip_address()
+        if not self.is_ambari_repo_configured():
+            ambari_repo_rl = f"http://{ipaddress}:8881/repository/yum/udh3"
+            #todo 在 conf 中生成 {"name": "ambari_repo", "url": ambari_repo_rl}
+            # self.conf["repos"].append({"name": "ambari_repo", "url": ambari_repo_rl})
+            # logger.info(f"generate_ambari_repo {ambari_repo_rl}")
+
+        return ambari_repo_rl
 
 
 # 两类conf 一种是直接读取得到的conf , 一种是需要render, 动态解析扩展形成的conf
@@ -603,6 +622,10 @@ class HostsInfoConfiguration(BaseConfiguration, HostsInfoParser):
     #     hosts_info_arr = self.parse(self.get_conf().get("hosts"))
     #     return hosts_info_arr
 
+    def get_hosts_info(self):
+        hosts_info_arr = self.get_conf()
+        return hosts_info_arr.get("hosts")
+
     def get_user(self):
         # 默认部署user 为root
         return self.get("user", "root")
@@ -617,9 +640,11 @@ class AnsibleHostConfiguration(BaseConfiguration):
 
     def _generate_hosts_content(self, ambari_server_host):
         parsed_hosts = self.hosts_info_configuration.get_hosts_info()
+        parsed_hosts = [p.split() for p in parsed_hosts]
         hosts_dict = {hostname: (ip, passwd) for ip, hostname, passwd in parsed_hosts}
         node_groups = {"ambari-server": [ambari_server_host]}
-        for ip, hostname, passwd in parsed_hosts.items():
+        for host_info in parsed_hosts:
+            ip, hostname, passwd = host_info
             node_groups.setdefault("hadoop-cluster", []).append(hostname)
 
         hosts_content = ""
@@ -1126,8 +1151,8 @@ def main():
         error_messages = "\n".join(errors)
         raise ValueError(f"Configuration validation failed with the following errors:\n{error_messages}")
 
-    AnsibleVarConfiguration("all", DynamicVariableGenerator(advanced_conf))
-    AnsibleHostConfiguration("hosts", hosts_info_conf, DynamicVariableGenerator(advanced_conf))
+    AnsibleVarConfiguration("all", DynamicVariableGenerator(advanced_conf)).save()
+    AnsibleHostConfiguration("hosts", hosts_info_conf, DynamicVariableGenerator(advanced_conf)).save()
 
     # blueprint_utils.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
 
