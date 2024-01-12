@@ -2,6 +2,7 @@
 import json
 import re
 # import imp
+from enum import Enum
 import yaml
 from jinja2 import Template
 from python.common.basic_logger import get_logger
@@ -16,14 +17,18 @@ from python.install_utils.topology_manager import *
 logger = get_logger()
 
 
+def to_camel_case(name):
+    return ''.join(word.capitalize() for word in name.split('_'))
+
+
 class InvalidConfigurationException(Exception):
     pass
 
 
 class Parser:
 
-    def parse(self):
-        pass
+    def parse(self, *args, **kwargs):
+        raise NotImplementedError("Parse method must be implemented by subclasses")
 
     def _expand_range(self, pattern):
         match = re.search(r'\[(\d+)-(\d+)]', pattern)
@@ -38,13 +43,13 @@ class Parser:
 
 
 class HostsInfoParser(Parser):
-    def __init__(self, raw_conf):
-        self.raw_conf = raw_conf
+    # 解析 10.1.1.[1-3] server[1-3] password4 的机器组
 
-    def parse(self):
+    def parse_hosts(self, data):
+        hosts = self._expand_range(data)
+        return hosts
 
-        hosts_configurations = self.raw_conf["hosts"]
-        user = self.raw_conf["user"]
+    def parse(self, hosts_configurations):
         parsed_configs = []
 
         for config in hosts_configurations:
@@ -55,10 +60,9 @@ class HostsInfoParser(Parser):
                 hostname_part, ip_part, password = config.split()
                 hosts = []
                 ips = []
-                if '[' in hostname_part:
-                    hosts = self._expand_range(hostname_part)
-                if '[' in ip_part:
-                    ips = self._expand_range(ip_part)
+                if '[' in hostname_part and '[' in ip_part:
+                    hosts = self.parse_hosts(hostname_part)
+                    ips = self.parse_hosts(ip_part)
                 else:
                     raise InvalidConfigurationException
 
@@ -67,34 +71,13 @@ class HostsInfoParser(Parser):
                 for index, ip in enumerate(ips):
                     parsed_configs.append((hosts[index], ip, password))
             else:
-
                 parsed_configs.append(tuple(config.split()))
 
-        return parsed_configs, user
+        return parsed_configs
 
-
-class ComponentTopologyParser(Parser):
-    def __init__(self, raw_conf):
-        self.raw_conf = raw_conf
-
-    def parse(self):
-        host_groups_conf = self.raw_conf["host_groups"]
-        group_services_conf = self.raw_conf["group_services"]
-        host_groups = {}
-        host_group_services = group_services_conf
-
-        for group_name, group_hosts in host_groups_conf.items():
-            if group_name not in host_groups:
-                host_groups[group_name] = []
-
-            if isinstance(group_hosts, list):
-                for host_name in group_hosts:
-                    host_groups[group_name].append(host_name)
-            else:
-                hosts = self._expand_range(group_hosts)
-                host_groups[group_name].extend(hosts)
-
-        return host_groups, host_group_services
+    def get_hosts_info(self, hosts_configurations):
+        hosts_info_arr = self.parse(hosts_configurations)
+        return hosts_info_arr
 
 
 class Validator:
@@ -105,12 +88,749 @@ class Validator:
         pass
 
 
+class FileManager:
+    class FileType(Enum):
+        RAW = 'raw'
+        JSON = 'json'
+        YAML = 'yaml'
+
+    @staticmethod
+    def read_file(file_path, file_type: FileType):
+        if file_type == FileManager.FileType.RAW:
+            with open(file_path, 'r') as file:
+                return file.read()
+        elif file_type == FileManager.FileType.JSON:
+            with open(file_path, 'r') as file:
+                try:
+                    return json.load(file)
+                except Exception as e:
+                    print("")
+        elif file_type == FileManager.FileType.YAML:
+            with open(file_path, 'r') as file:
+                return yaml.safe_load(file)
+        else:
+            raise ValueError("Unsupported file type")
+
+    @staticmethod
+    def write_file(file_path, data, file_type: FileType):
+        if file_type == FileManager.FileType.RAW:
+            with open(file_path, 'w') as file:
+                file.write(data)
+        elif file_type == FileManager.FileType.JSON:
+            with open(file_path, 'w') as file:
+                json.dump(data, file, indent=4)
+        elif file_type == FileManager.FileType.YAML:
+            with open(file_path, 'w') as file:
+                yaml.dump(data, file)
+        else:
+            raise ValueError("Unsupported file type")
+
+
+# Define Service-related classes
+class ServiceMap:
+    def __init__(self):
+        self.service_map = {
+            "hbase": {
+                "server": ["HBASE_MASTER", "HBASE_REGIONSERVER"],
+                "clients": ["HBASE_CLIENT"]
+            },
+            "hdfs": {
+                "server": ["NAMENODE", "DATANODE", "SECONDARY_NAMENODE", "JOURNALNODE", "ZKFC"],
+                "clients": ["HDFS_CLIENT", "MAPREDUCE2_CLIENT"]
+            },
+            "yarn": {
+                "server": ["NODEMANAGER", "RESOURCEMANAGER", "HISTORYSERVER", "APP_TIMELINE_SERVER",
+                           "YARN_REGISTRY_DNS",
+                           "TIMELINE_READER"],
+                "clients": ["YARN_CLIENT"]
+            },
+            "hive": {
+                "server": ["HIVE_METASTORE", "WEBHCAT_SERVER", "HIVE_SERVER"],
+                "clients": ["HIVE_CLIENT", "HCAT", "TEZ_CLIENT"]
+            },
+            "zookeeper": {
+                "server": ["ZOOKEEPER_SERVER"],
+                "clients": ["ZOOKEEPER_CLIENT"]
+            },
+            "kafka": {
+                "server": ["KAFKA_BROKER", ],
+                "clients": []
+            },
+            "spark": {
+                "server": ["SPARK_JOBHISTORYSERVER", "SPARK_THRIFTSERVER"],
+                "clients": ["SPARK_CLIENT"]
+            },
+            "flink": {
+                "server": ["FLINK_HISTORYSERVER"],
+                "clients": ["FLINK_CLIENT"]
+            },
+            "ranger": {
+                "server": ["RANGER_ADMIN", "RANGER_TAGSYNC", "RANGER_USERSYNC"],
+                "clients": []
+            },
+            "infra_solr": {
+                "server": ["INFRA_SOLR"],
+                "clients": ["INFRA_SOLR_CLIENT"]
+            },
+            # 不支持solr 了，没人使用
+            # "solr": {
+            #     "server": ["SOLR_SERVER"],
+            #     "clients": []
+            # },
+            "ambari": {
+                "server": ["AMBARI_SERVER"],
+                "clients": []
+            },
+            "ambari_metrics": {
+                "server": ["METRICS_COLLECTOR", "METRICS_GRAFANA"],
+                "clients": ["METRICS_MONITOR"]
+            },
+            "kerberos": {
+                "server": ["KERBEROS_CLIENT"],
+                "clients": ["KERBEROS_CLIENT"]
+            }
+        }
+
+    def is_service_supported(self, service_name):
+        for service_key, info in self.service_map.items():
+            if service_name in info["server"]:
+                return True
+        return False
+
+    def get_services(self, service_name):
+        if self.is_service_supported(service_name):
+            return self.service_map[service_name]
+        else:
+            return None
+
+    def get_services_map(self):
+        return self.service_map
+
+
+
+
+class ParserFactory:
+    _parsers = {}
+
+    @classmethod
+    def register_parser(cls, parser_cls):
+        parser_name = to_camel_case(parser_cls.__name__).lower()
+        cls._parsers[parser_name] = parser_cls
+
+    @classmethod
+    def get_parser(cls, parser_type):
+        parser_class = cls._parsers.get(parser_type)
+        if not parser_class:
+            raise ValueError(f"Unknown parser type: {parser_type}")
+        return parser_class()
+
+
+# class ValidatorFactory:
+#     _validators = {
+#         'service': ServiceValidator,
+#         'topology': TopologyValidator,
+#         'group_consistency': GroupConsistencyValidator,
+#         'hosts_info': HostsInfoValidator,
+#         # Add other validators as needed
+#     }
+#
+#     @classmethod
+#     def get_validator(cls, validator_type, conf_data, parsed_data=None):
+#         validator_class = cls._validators.get(validator_type)
+#         if not validator_class:
+#             raise ValueError(f"Unknown validator type: {validator_type}")
+#         return validator_class(conf_data, parsed_data) if parsed_data else validator_class(conf_data)
+
+# class ValidatorFactory:
+#     _validators = {
+#         'service': ServiceValidator,
+#         'topology': TopologyValidator,
+#         'group_consistency': GroupConsistencyValidator,
+#         'hosts_info': HostsInfoValidator,
+#         # Add other validators as needed
+#     }
+#
+#     @classmethod
+#     def get_validator(cls, validator_type, conf_data, parsed_data=None):
+#         if validator_type == 'service':
+#             return ServiceValidator(ServiceMap())
+#         elif validator_type == 'topology':
+#             return TopologyValidator(conf_data)
+#         elif validator_type == 'group_consistency':
+#             return GroupConsistencyValidator(conf_data, parsed_data)
+#         elif validator_type == 'hosts_info':
+#             return HostsInfoValidator(parsed_data)
+
+
+# Main ConfUtils class using the above components
+
+class DefaultConfigurationLoader:
+    def __init__(self, conf_dir):
+        self.conf_dir = conf_dir
+
+    def load_conf(self, conf_name):
+        file_path = os.path.join(self.conf_dir, conf_name)
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Configuration file not found: {file_path}")
+
+        with open(file_path, 'r') as f:
+            return yaml.safe_load(f)
+
+
+class ValidationManager:
+    def __init__(self, validators):
+        self.validators = validators
+
+    def validate_all(self):
+        errors = []
+        for validator in self.validators:
+            errors.extend(validator.validate().err_messages)
+        return errors
+
+
+class TemplateRenderer:
+    def __init__(self):
+        self.rendered_result = None
+
+    def render_template(self, template_str, context):
+        # template_str = FileManager.read_file(self.file_path)
+        if not template_str:
+            return {}
+        template = Template(template_str)
+        logger.debug(f"Rendering config templates, template_str: {template_str}, context:{context}")
+        self.rendered_result = template.render(context)
+        return self
+
+    def decode_result(self, decoder="json"):
+        if not self.rendered_result:
+            raise Exception("render_template first")
+        if decoder == "json":
+            return json.loads(self.rendered_result)
+        elif decoder == "yaml":
+            return yaml.safe_load(self.rendered_result)
+        else:
+            raise ValueError("Unsupported decoder specified")
+
+
+class ServiceManager:
+    def __init__(self, advanced_conf):
+        self.advanced_conf = advanced_conf
+
+    def get_service_key_from_service(self, service_name):
+        for service_key, service_info in ServiceMap().get_services_map().items():
+            if service_name in service_info["server"]:
+                return service_key
+        raise InvalidConfigurationException(f"Service '{service_name}' not found in services map.")
+
+    def get_services_need_install(self):
+        group_services = self.advanced_conf.get("group_services")
+        services = []
+        for group_name, host_components in group_services.items():
+            services.extend(host_components)
+        return list(set(services))
+
+    def get_service_clients_need_install(self, services):
+        clients = []
+        for service_name in services:
+            service_key = self.get_service_key_from_service(service_name)
+            service_info = ServiceMap().get_services(service_key)
+            if service_info and "clients" in service_info:
+                clients.extend(service_info["clients"])
+        return list(set(clients))
+
+
+class DynamicVariableGenerator:
+    def __init__(self, advanced_conf):
+        self.advanced_conf = advanced_conf
+        self.group_services = self.advanced_conf.get("group_services")
+        self.hosts_groups = self.advanced_conf.get("host_groups")
+        self.template_renderer = TemplateRenderer()
+
+    def generate(self):
+        conf = self.generate_dynamic_j2template_variables()
+        return conf
+
+    def get_kdc_server_host(self):
+        if len(self.advanced_conf.get("security_options")["external_hostname"].strip()) > 0:
+            return self.advanced_conf.get("security_options")["external_hostname"]
+        else:
+            ambari_server_host = self.get_ambari_server_host()
+            return ambari_server_host
+
+    def get_ambari_server_host(self):
+        ambari_server_group = None
+        for group_name, services in self.group_services.items():
+            if "AMBARI_SERVER" in services:
+                ambari_server_group = group_name
+                break
+        if ambari_server_group:
+            ambari_server_host = self.hosts_groups[ambari_server_group][0]
+            return ambari_server_host
+        else:
+            raise InvalidConfigurationException
+
+    def generate_hosts_groups_variables(self):
+        group_hosts = {}
+        hosts_groups_variables = {}
+
+        for group_name, hosts in self.hosts_groups.items():
+            group_hosts[group_name] = hosts
+
+        for group_name, group_services in self.group_services.items():
+            if "NAMENODE" in group_services:
+                hosts_groups_variables.setdefault("namenode_hosts", []).extend(group_hosts[group_name])
+            if "ZKFC" in group_services:
+                hosts_groups_variables.setdefault("zkfc_hosts", []).extend(group_hosts[group_name])
+            if "RESOURCEMANAGER" in group_services:
+                hosts_groups_variables.setdefault("resourcemanager_hosts", []).extend(group_hosts[group_name])
+            if "JOURNALNODE" in group_services:
+                hosts_groups_variables.setdefault("journalnode_hosts", []).extend(group_hosts[group_name])
+            if "ZOOKEEPER_SERVER" in group_services:
+                hosts_groups_variables.setdefault("zookeeper_hosts", []).extend(group_hosts[group_name])
+            if "HIVE_SERVER" in group_services or "HIVE_METASTORE" in group_services:
+                hosts_groups_variables.setdefault("hiveserver_hosts", []).extend(group_hosts[group_name])
+            if "KAFKA_BROKER" in group_services:
+                hosts_groups_variables.setdefault("kafka_hosts", []).extend(group_hosts[group_name])
+            if "RANGER_ADMIN" in group_services:
+                hosts_groups_variables.setdefault("rangeradmin_hosts", []).extend(group_hosts[group_name])
+            if "RANGER_KMS_SERVER" in group_services:
+                hosts_groups_variables.setdefault("rangerkms_hosts", []).extend(group_hosts[group_name])
+            if "SOLR_SERVER" in group_services:
+                hosts_groups_variables.setdefault("solr_hosts", []).extend(group_hosts[group_name])
+
+        for k, v in hosts_groups_variables.items():
+            hosts_groups_variables[k] = list(set(v))
+
+        return hosts_groups_variables
+
+    def generate_dynamic_j2template_variables(self):
+        str_conf = self.advanced_conf.get_str_conf()
+        # 原始的conf, 存在很懂变量
+        # 动态生成一些蓝图的需要用到的namenode_hosts 等变量
+
+        # 根据用户配置动态生成一些变量
+        extra_vars = {
+            "ntp_server_hostname": self._generate_ntp_server_hostname(),
+            "hadoop_base_dir": self.advanced_conf.get("data_dirs")[0],
+            "kdc_hostname": self.get_kdc_server_host(),
+            "database_hostname": self._generate_database_host(),
+            "ambari_server_host": self.get_ambari_server_host(),
+            "ambari_repo_url": self._generate_ambari_repo_url
+        }
+        conf_j2_context = self.advanced_conf.get_conf()
+        conf_j2_context.update(extra_vars)
+        hosts_groups_variables = self.generate_hosts_groups_variables()
+        rendered_conf_vars = self.template_renderer.render_template(str_conf, conf_j2_context).decode_result(
+            decoder="yaml")
+        rendered_conf_vars.update(hosts_groups_variables)
+        rendered_conf_vars.update(extra_vars)
+        return rendered_conf_vars
+
+    def _generate_ntp_server_hostname(self):
+        if len(self.advanced_conf.get("external_ntp_server_hostname").strip()) > 0:
+            return self.advanced_conf.get("external_ntp_server_hostname").strip()
+        else:
+            ambari_server_host = self.get_ambari_server_host()
+            return ambari_server_host
+
+    def _generate_database_host(self):
+        ambari_host = self.get_ambari_server_host()
+        external_database_server_ip = self.advanced_conf.get("database_options")["external_hostname"]
+        if len(external_database_server_ip.strip()) == 0:
+            database_host = ambari_host
+        else:
+            database_host = self.advanced_conf.get("database_options")["external_hostname"]
+        return database_host
+
+    def _generate_ambari_repo_url(self):
+        repos = self.advanced_conf.get('repos', [])
+        for repo in repos:
+            if repo.get('name') == 'ambari_repo':
+                return repo.get('url')
+        # If Ambari repo URL is not configured, generate one based on the host's IP address
+        ip_address = socket.gethostbyname(socket.gethostname())
+        return f"http://{ip_address}:8080/path/to/ambari/repo"
+
+
+# 两类conf 一种是直接读取得到的conf , 一种是需要render, 动态解析扩展形成的conf
+# render 动态扩展的conf是给 ansible 的var conf 使用
+class BaseConfiguration:
+    def __init__(self, name, conf_loader=DefaultConfigurationLoader):
+        self.conf_loader = conf_loader
+        self.name = name
+        self.conf = {}
+        self.format = FileManager.FileType.YAML
+        self.conf_file_path = self.get_default_path()
+
+    def get_parser(self):
+        class_name = self.__class__.__name__.lower()
+        ParserFactory.get_parser(class_name)
+
+    def set_format(self, format):
+        self.format = format
+        return self
+
+    def set_path(self, new_dir):
+        self.conf_file_path = os.path.join(new_dir, self.name)
+        return self
+
+    def get_default_path(self):
+        return os.path.join(CONF_DIR, self.name)
+
+    def set_conf(self, conf):
+        self.conf = conf
+        return self
+
+    def get_conf(self):
+        if not self.conf:
+            self.conf = self.conf_loader(CONF_DIR).load_conf(self.name)
+        return self.conf
+
+    def get_str_conf(self):
+        str_conf = FileManager.read_file(os.path.join(CONF_DIR, self.name), FileManager.FileType.RAW)
+        return str_conf
+
+    def get(self, key, default=None):
+        conf = self.get_conf()
+        try:
+            return conf[key]
+        except KeyError:
+            if default is not None:
+                return default
+            raise InvalidConfigurationException(f"Configuration key '{key}' is missing.")
+
+    def save(self):
+        FileManager.write_file(self.conf_file_path, self.get_conf(), self.format)
+
+    def save_with_str(self, str_conf):
+        FileManager.write_file(self.conf_file_path, str_conf, FileManager.FileType.RAW)
+
+
+class StandardConfiguration(BaseConfiguration, HostsInfoParser):
+    def __init__(self, name):
+        super().__init__(name)
+        self.parsed_conf={}
+
+    class GenerateConfType(Enum):
+        AdvancedConfiguration = 'AdvancedConfiguration'
+        HostsInfoConfiguration = 'HostsInfoConfiguration'
+
+    def get_conf(self):
+        if not self.parsed_conf:
+            original_conf = super().get_conf()
+            hosts_info_arr = self.parse(original_conf.get("hosts"))
+            original_conf.update({"hosts": hosts_info_arr})
+            self.parsed_conf = original_conf
+
+        return self.parsed_conf
+
+    def get_parsed_hosts_names(self ):
+        parsed_hosts = self.get_conf().get("hosts")
+        hosts_names = []
+        for host_info in parsed_hosts:
+            hostname = host_info[1]
+            hosts_names.append(hostname)
+        return hosts_names
+
+    def generate_conf(self, conf_type: GenerateConfType):
+        conf = self.get_conf()
+        make_hosts_string = lambda arr: [" ".join(tple) for tple in arr]
+        if conf_type == StandardConfiguration.GenerateConfType.HostsInfoConfiguration:
+            hosts_info_yaml_data = {
+                "user": conf["user"],
+                "hosts": make_hosts_string(conf["hosts"])
+            }
+            hosts_info_conf = HostsInfoConfiguration()
+            hosts_info_conf.set_conf(hosts_info_yaml_data).save()
+            return hosts_info_conf
+
+        if conf_type == StandardConfiguration.GenerateConfType.AdvancedConfiguration:
+            conf_yaml_data = {
+                "default_password": conf["default_password"],
+                "data_dirs": conf["data_dirs"],
+                "repos": conf["repos"]
+            }
+            conf_tpl_file = GET_CONF_TPL_NAME(CONF_NAME)
+            # todo hostname fetcher
+            advanced_tpl_str_conf = AdvancedConfiguration(conf_tpl_file).get_str_conf()
+            hosts_names = self.get_parsed_hosts_names()
+            topology_manager = TopologyManager(lambda: hosts_names)
+            topology = topology_manager.generate_topology()
+            topology.update(conf_yaml_data)
+
+            merged_conf_str = self.merge_conf(topology, base_conf=advanced_tpl_str_conf, merge_strategy="prepend")
+            advanced_conf = AdvancedConfiguration()
+            advanced_conf.save_with_str(merged_conf_str)
+            return advanced_conf
+
+    def merge_conf(self, yaml_need_merge, base_conf=None, merge_strategy="replace"):
+        current_conf = yaml_need_merge
+        valid_strategies = ["prepend", "replace"]
+        assert merge_strategy in valid_strategies, f"Invalid merge strategy. Supported: {valid_strategies}"
+
+        existing_conf = base_conf or {}
+        if merge_strategy == "prepend":
+            raw_data = base_conf
+            prepend_yaml_str = yaml.dump(current_conf, default_flow_style=None, sort_keys=False)
+            merged_conf = prepend_yaml_str + "\n" + raw_data
+        elif merge_strategy == "replace":
+            # dict
+            existing_conf.update(current_conf)
+            merged_conf = existing_conf
+        else:
+            raise Exception(f"Invalid merge strategy. Supported: {valid_strategies}")
+        return merged_conf
+
+
+class AdvancedConfiguration(BaseConfiguration):
+    def __init__(self, name=CONF_NAME):
+        super().__init__(name)
+
+
+class HostsInfoConfiguration(BaseConfiguration, HostsInfoParser):
+    def __init__(self, name=HOSTS_CONF_NAME):
+        super().__init__(name)
+
+    # def get_parsed_hosts_names(self):
+    #     parsed_hosts = self.get_hosts_info()
+    #     hosts_names = []
+    #     for host_info in parsed_hosts:
+    #         hostname = host_info[1]
+    #         hosts_names.append(hostname)
+    #     return hosts_names
+
+    # def get_hosts_info(self):
+    #     hosts_info_arr = self.parse(self.get_conf().get("hosts"))
+    #     return hosts_info_arr
+
+    def get_user(self):
+        # 默认部署user 为root
+        return self.get("user", "root")
+
+
+class AnsibleHostConfiguration(BaseConfiguration):
+    def __init__(self, name, hosts_info_configuration: HostsInfoConfiguration,
+                 dynamic_variable_generator: DynamicVariableGenerator):
+        self.hosts_info_configuration = hosts_info_configuration
+        self.dynamic_variable_generator = dynamic_variable_generator
+        super().__init__(name)
+
+    def _generate_hosts_content(self, ambari_server_host):
+        parsed_hosts = self.hosts_info_configuration.get_hosts_info()
+        hosts_dict = {hostname: (ip, passwd) for ip, hostname, passwd in parsed_hosts}
+        node_groups = {"ambari-server": [ambari_server_host]}
+        for ip, hostname, passwd in parsed_hosts.items():
+            node_groups.setdefault("hadoop-cluster", []).append(hostname)
+
+        hosts_content = ""
+        for group, hosts in node_groups.items():
+            hosts_content += "[{}]\n".format(group)
+            for host_name in hosts:
+                if host_name not in hosts_dict:
+                    raise InvalidConfigurationException(f"Host '{host_name}' not found in parsed hosts.")
+                ip, passwd = hosts_dict[host_name]
+                hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name, ip, passwd)
+            hosts_content += "\n"
+
+        ansible_user = self.hosts_info_configuration.get_user()
+        hosts_content += "[all:vars]\nansible_user={}\n".format(ansible_user)
+
+        return hosts_content
+
+    def get_rendered_conf(self):
+        rendered_conf_dict = self.dynamic_variable_generator.generate()
+        return rendered_conf_dict
+
+    def generate_ansible_hosts(self):
+        rendered_conf_dict = self.get_rendered_conf()
+        ambari_server_host = rendered_conf_dict.get("ambari_server_host")
+        hosts_content = self._generate_hosts_content(ambari_server_host)
+        self.set_conf(hosts_content)
+
+    def get_conf(self):
+        self.generate_ansible_hosts()
+        return self.conf
+
+    def save(self):
+        self.set_path(os.path.join(ANSIBLE_PRJ_DIR, "inventory")).set_format(FileManager.FileType.RAW)
+        super().save()
+
+
+class AnsibleVarConfiguration(BaseConfiguration):
+    def __init__(self, name, dynamic_variable_generator: DynamicVariableGenerator):
+        self.dynamic_variable_generator = dynamic_variable_generator
+        super().__init__(name)
+
+    def generate_ansible_variables_conf(self):
+        rendered_advanced_conf = self.dynamic_variable_generator.generate()
+        for key in ["host_groups", "group_services"]:
+            rendered_advanced_conf.pop(key, None)
+
+        self.set_conf(rendered_advanced_conf)
+
+    def get_conf(self):
+        self.generate_ansible_variables_conf()
+        return self.conf
+
+    def save(self):
+        self.set_path(os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/group_vars')).set_format(FileManager.FileType.YAML)
+        super().save()
+
+
+class AmbariBluePrintConfiguration(BaseConfiguration):
+    def __init__(self, name, dynamic_variable_generator: DynamicVariableGenerator, service_manager: ServiceManager):
+        self.service_manager = service_manager
+        self.dynamic_variable_generator = dynamic_variable_generator
+        super().__init__(name)
+
+    def get_rendered_advanced_conf(self):
+        rendered_advanced_conf = self.dynamic_variable_generator.generate()
+        return rendered_advanced_conf
+
+    def get_conf_j2template_path(self, service_name):
+        service_key = self.service_manager.get_service_key_from_service(service_name)
+        file_name = f"{service_key}_configuration.json.j2"
+        return os.path.join(CLUSTER_TEMPLATES_DIR, file_name)
+
+    def generate_blueprint_configurations(self):
+        rendered_conf = self.get_rendered_advanced_conf()
+        services_need_install = self.service_manager.get_services_need_install()
+        configurations = []
+        processed_services = []
+
+        for service_name in services_need_install:
+            service_key = self.service_manager.get_service_key_from_service(service_name)
+            if service_key in processed_services:
+                continue
+
+            template_render = TemplateRenderer()
+            tpl_str = FileManager.read_file(self.get_conf_j2template_path(service_name), FileManager.FileType.RAW)
+
+            if not tpl_str:
+                # 有的配置模版为空白
+                continue
+
+            service_confs = template_render.render_template(
+                tpl_str,
+                rendered_conf).decode_result(decoder="json")
+
+            if service_confs:
+                configurations.extend([{k: v} for k, v in service_confs.items() if isinstance(v, dict)])
+            else:
+                logger.error(f"Error in configuration template for service {service_name}")
+
+            processed_services.append(service_key)
+
+        return configurations
+
+    def generate_blueprint_host_groups(self):
+        rendered_conf = self.get_rendered_advanced_conf()
+        host_groups = []
+        services_need_install = self.service_manager.get_services_need_install()
+        all_services_clients = self.service_manager.get_service_clients_need_install(services_need_install)
+
+        for group_name, services in rendered_conf["group_services"].items():
+            group_services = list(set(services + all_services_clients))
+            host_group_components_config = [{'name': service_name} for service_name in group_services]
+
+            host_group = {
+                "name": group_name,
+                "configurations": [],
+                "cardinality": "1",
+                "components": host_group_components_config
+            }
+            host_groups.append(host_group)
+
+        return host_groups
+
+    def generate_ambari_blueprint(self, blueprint_configurations, blueprint_service_host_groups):
+        rendered_conf = self.get_rendered_advanced_conf()
+        security = rendered_conf.get("security")
+        blueprint_security = "KERBEROS" if security.strip().lower() != "none" else "NONE"
+        ambari_repo_url = rendered_conf.get("ambari_repo_url")
+
+        j2_context = {
+            "blueprint_security": blueprint_security,
+            "ambari_blueprint_configurations": json.dumps(blueprint_configurations),
+            "ambari_blueprint_host_groups": json.dumps(blueprint_service_host_groups),
+            "ambari_repo_url": ambari_repo_url,
+        }
+
+        template_renderer = TemplateRenderer()
+
+        blueprint_json = template_renderer.render_template(
+            FileManager.read_file(os.path.join(CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2"),
+                                  FileManager.FileType.RAW),
+            j2_context).decode_result()
+        self.conf = blueprint_json
+
+    def get_conf(self):
+        blueprint_configurations = self.generate_blueprint_configurations()
+        blueprint_service_host_groups = self.generate_blueprint_host_groups()
+        self.generate_ambari_blueprint(blueprint_configurations, blueprint_service_host_groups)
+        return self.conf
+
+    def save(self):
+        self.set_path(BLUEPRINT_FILES_DIR).set_format(FileManager.FileType.JSON)
+        super().save()
+
+
+class AmbariClusterTemplateConfiguration(BaseConfiguration):
+    def __init__(self, name, dynamic_variable_generator: DynamicVariableGenerator):
+        self.dynamic_variable_generator = dynamic_variable_generator
+        super().__init__(name)
+
+    def get_rendered_advanced_conf(self):
+        rendered_advanced_conf = self.dynamic_variable_generator.generate()
+        return rendered_advanced_conf
+
+    def generate_ambari_cluster_template(self):
+        rendered_advanced_conf = self.get_rendered_advanced_conf()
+        security = rendered_advanced_conf["security"]
+        kerberos_admin_principal = f"{rendered_advanced_conf['security_options']['admin_principal']}@{rendered_advanced_conf['security_options']['realm']}"
+        kerberos_admin_password = rendered_advanced_conf["security_options"]["admin_password"]
+        ambari_cluster_template_host_groups = []
+
+        for group_name, group_hosts in rendered_advanced_conf["host_groups"].items():
+            hosts = [{'fqdn': host} for host in group_hosts]
+            ambari_cluster_template_host_groups.append({
+                "name": group_name,
+                "hosts": hosts
+            })
+
+        cluster_template = {
+            "blueprint": rendered_advanced_conf["blueprint_name"],
+            "config_recommendation_strategy": rendered_advanced_conf["ambari_options"][
+                "config_recommendation_strategy"],
+            "default_password": rendered_advanced_conf["default_password"],
+            "host_groups": ambari_cluster_template_host_groups,
+        }
+
+        if security and security == "mit-kdc":
+            cluster_template["credentials"] = [{
+                "alias": "kdc.admin.credential",
+                "principal": kerberos_admin_principal,
+                "key": kerberos_admin_password,
+                "type": "TEMPORARY"
+            }]
+            cluster_template["security"] = {"type": "KERBEROS"}
+        self.conf = cluster_template
+
+    def get_conf(self):
+        self.generate_ambari_cluster_template()
+        return self.conf
+
+    def save(self):
+        self.set_path(BLUEPRINT_FILES_DIR).set_format(FileManager.FileType.JSON)
+        super().save()
+
+
 # Define Validator classes
 class TopologyValidator(Validator):
-    def __init__(self, raw_conf):
+    def __init__(self, conf: AdvancedConfiguration):
         super().__init__()
-        self.host_groups = raw_conf["host_groups"]
-        self.host_group_services = raw_conf["group_services"]
+        self.host_groups = conf.get("host_groups")
+        self.host_group_services = conf.get("group_services")
         self.pattern_rules = self._default_pattern_rules()
 
     def _default_pattern_rules(self):
@@ -288,21 +1008,35 @@ class TopologyValidator(Validator):
         return service_counter
 
 
+class ServiceValidator(Validator):
+    def __init__(self, service_map):
+        super().__init__()
+        self.service_map = service_map
+
+    def validate_service(self, service_name):
+        errors = []
+        if not self.service_map.is_service_supported(service_name):
+            errors.append(f"Service '{service_name}' is not supported.")
+        # Additional service-specific validation can be added here
+        return errors
+
+
 class GroupConsistencyValidator(Validator):
 
-    def __init__(self, raw_conf, hosts_info):
+    def __init__(self, advanced_conf: AdvancedConfiguration, hosts_info_conf: HostsInfoConfiguration):
         super().__init__()
-        self.hosts_info = hosts_info
-        self.host_groups = raw_conf["host_groups"]
-        self.host_group_services = raw_conf["group_services"]
+        self.hosts_info_conf = hosts_info_conf.get_conf()
+        self.host_groups = advanced_conf.get("host_groups")
+        self.host_group_services = advanced_conf.get("group_services")
 
     def validate(self):
-        parsed_hosts, user = self.hosts_info
+        parsed_hosts = self.hosts_info_conf.get("hosts")
         conf_defined_hosts = {}
         host_groups_group_names = []
         host_group_services_group_names = []
 
-        for host_info in parsed_hosts:
+        for host_info_str in parsed_hosts:
+            host_info = host_info_str.split()
             ip = host_info[0]
             hostname = host_info[1]
             passwd = host_info[2]
@@ -336,16 +1070,16 @@ class GroupConsistencyValidator(Validator):
 
 
 class HostsInfoValidator(Validator):
-    def __init__(self, hosts_info):
+    def __init__(self, hosts_info_conf: HostsInfoConfiguration):
         super().__init__()
-        self.hosts_info = hosts_info
+        self.hosts_info_conf = hosts_info_conf.get_conf()
 
     def validate(self):
-        parsed_hosts, user = self.hosts_info
+        parsed_hosts = self.hosts_info_conf.get("hosts")
 
         # Validate IP addresses
         for host in parsed_hosts:
-            ip, hostname, _ = host
+            ip, hostname, _ = host.split()
             if not HostsInfoValidator._is_valid_ip(ip):
                 self.err_messages.append(f"Invalid IP address: {ip}")
 
@@ -362,806 +1096,39 @@ class HostsInfoValidator(Validator):
             return False
 
 
-class FileManager:
-    @staticmethod
-    def read_file(file_path):
-        with open(file_path, 'r') as file:
-            return file.read()
-
-    @staticmethod
-    def write_file(file_path, content):
-        with open(file_path, 'w') as file:
-            file.write(content)
-
-    @staticmethod
-    def read_json(file_path):
-        with open(file_path, 'r') as file:
-            return json.load(file)
-
-    @staticmethod
-    def write_json(file_path, data):
-        with open(file_path, 'w') as file:
-            json.dump(data, file, indent=4)
-
-    @staticmethod
-    def read_yaml(file_path):
-        with open(file_path, 'r') as file:
-            return yaml.safe_load(file)
-
-    @staticmethod
-    def write_yaml(file_path, data):
-        with open(file_path, 'w') as file:
-            yaml.dump(data, file)
-
-
-class TemplateRenderer:
-    def __init__(self):
-        self.rendered_result = None
-
-    def render_template(self, template_str, context):
-        # template_str = FileManager.read_file(self.file_path)
-        if not template_str:
-            return {}
-        template = Template(template_str)
-        logger.debug(f"Rendering config templates, template_str: {template_str}, context:{context}")
-        self.rendered_result = template.render(context)
-        return self
-
-    def decode_result(self, decoder="json"):
-        if not self.rendered_result:
-            raise Exception("render_template first")
-        if decoder == "json":
-            return json.loads(self.rendered_result)
-        elif decoder == "yaml":
-            return yaml.safe_load(self.rendered_result)
-        else:
-            raise ValueError("Unsupported decoder specified")
-
-
-class DynamicVariableGenerator:
-    def __init__(self):
-        self.raw_conf = None
-        self.group_services = None
-        self.hosts_groups = None
-        self.template_renderer = TemplateRenderer()
-
-    def lazy_init(self, raw_conf):
-        self.raw_conf = raw_conf
-        self.group_services = self.raw_conf["group_services"]
-        self.hosts_groups = self.raw_conf["host_groups"]
-
-    def generate(self, raw_conf):
-        self.lazy_init(raw_conf)
-        conf = self.generate_dynamic_j2template_variables()
-        return conf
-
-    def get_kdc_server_host(self):
-        if len(self.raw_conf["security_options"]["external_hostname"].strip()) > 0:
-            return self.raw_conf["security_options"]["external_hostname"]
-        else:
-            ambari_server_host = self.get_ambari_server_host()
-            return ambari_server_host
-
-    def get_ambari_server_host(self):
-        ambari_server_group = None
-        for group_name, services in self.group_services.items():
-            if "AMBARI_SERVER" in services:
-                ambari_server_group = group_name
-                break
-        if ambari_server_group:
-            ambari_server_host = self.hosts_groups[ambari_server_group][0]
-            return ambari_server_host
-        else:
-            raise InvalidConfigurationException
-
-    def generate_hosts_groups_variables(self):
-        group_hosts = {}
-        hosts_groups_variables = {}
-
-        for group_name, hosts in self.hosts_groups.items():
-            group_hosts[group_name] = hosts
-
-        for group_name, group_services in self.group_services.items():
-            if "NAMENODE" in group_services:
-                hosts_groups_variables.setdefault("namenode_hosts", []).extend(group_hosts[group_name])
-            if "ZKFC" in group_services:
-                hosts_groups_variables.setdefault("zkfc_hosts", []).extend(group_hosts[group_name])
-            if "RESOURCEMANAGER" in group_services:
-                hosts_groups_variables.setdefault("resourcemanager_hosts", []).extend(group_hosts[group_name])
-            if "JOURNALNODE" in group_services:
-                hosts_groups_variables.setdefault("journalnode_hosts", []).extend(group_hosts[group_name])
-            if "ZOOKEEPER_SERVER" in group_services:
-                hosts_groups_variables.setdefault("zookeeper_hosts", []).extend(group_hosts[group_name])
-            if "HIVE_SERVER" in group_services or "HIVE_METASTORE" in group_services:
-                hosts_groups_variables.setdefault("hiveserver_hosts", []).extend(group_hosts[group_name])
-            if "KAFKA_BROKER" in group_services:
-                hosts_groups_variables.setdefault("kafka_hosts", []).extend(group_hosts[group_name])
-            if "RANGER_ADMIN" in group_services:
-                hosts_groups_variables.setdefault("rangeradmin_hosts", []).extend(group_hosts[group_name])
-            if "RANGER_KMS_SERVER" in group_services:
-                hosts_groups_variables.setdefault("rangerkms_hosts", []).extend(group_hosts[group_name])
-            if "SOLR_SERVER" in group_services:
-                hosts_groups_variables.setdefault("solr_hosts", []).extend(group_hosts[group_name])
-
-        for k, v in hosts_groups_variables.items():
-            hosts_groups_variables[k] = list(set(v))
-
-        return hosts_groups_variables
-
-    def generate_dynamic_j2template_variables(self):
-        str_conf = yaml.dump(self.raw_conf)
-        # 原始的conf, 存在很懂变量
-        conf_j2_context = self.raw_conf
-
-        # 动态生成一些蓝图的需要用到的namenode_hosts 等变量
-        hosts_groups_variables = self.generate_hosts_groups_variables()
-
-        # 根据用户配置动态生成一些变量
-        extra_vars = {
-            "ntp_server_hostname": self._generate_ntp_server_hostname(),
-            "hadoop_base_dir": self.raw_conf["data_dirs"][0], "kdc_hostname": self.get_kdc_server_host(),
-            "database_hostname": self._generate_database_host(),
-            "ambari_server_host": self.get_ambari_server_host()
-        }
-        conf_j2_context.update(extra_vars)
-        rendered_conf_vars = self.template_renderer.render_template(str_conf, conf_j2_context).decode_result(
-            decoder="yaml")
-
-        rendered_conf_vars.update(hosts_groups_variables)
-        rendered_conf_vars.update(extra_vars)
-        return rendered_conf_vars
-
-    def _generate_ntp_server_hostname(self):
-        if len(self.raw_conf["external_ntp_server_hostname"].strip()) > 0:
-            return self.raw_conf["external_ntp_server_hostname"].strip()
-        else:
-            ambari_server_host = self.get_ambari_server_host()
-            return ambari_server_host
-
-    def _generate_database_host(self):
-        ambari_host = self.get_ambari_server_host()
-        external_database_server_ip = self.raw_conf["database_options"]["external_hostname"]
-        if len(external_database_server_ip.strip()) == 0:
-            database_host = ambari_host
-        else:
-            database_host = self.raw_conf["database_options"]["external_hostname"]
-        return database_host
-
-    def _generate_ambari_repo_url(self):
-        repos = self.raw_conf.get('repos', [])
-        for repo in repos:
-            if repo.get('name') == 'ambari_repo':
-                return repo.get('url')
-        # If Ambari repo URL is not configured, generate one based on the host's IP address
-        ip_address = socket.gethostbyname(socket.gethostname())
-        return f"http://{ip_address}:8080/path/to/ambari/repo"
-
-
-# Define Service-related classes
-class ServiceMap:
-    def __init__(self):
-        self.service_map = {
-            "hbase": {
-                "server": ["HBASE_MASTER", "HBASE_REGIONSERVER"],
-                "clients": ["HBASE_CLIENT"]
-            },
-            "hdfs": {
-                "server": ["NAMENODE", "DATANODE", "SECONDARY_NAMENODE", "JOURNALNODE", "ZKFC"],
-                "clients": ["HDFS_CLIENT", "MAPREDUCE2_CLIENT"]
-            },
-            "yarn": {
-                "server": ["NODEMANAGER", "RESOURCEMANAGER", "HISTORYSERVER", "APP_TIMELINE_SERVER",
-                           "YARN_REGISTRY_DNS",
-                           "TIMELINE_READER"],
-                "clients": ["YARN_CLIENT"]
-            },
-            "hive": {
-                "server": ["HIVE_METASTORE", "WEBHCAT_SERVER", "HIVE_SERVER"],
-                "clients": ["HIVE_CLIENT", "HCAT", "TEZ_CLIENT"]
-            },
-            "zookeeper": {
-                "server": ["ZOOKEEPER_SERVER"],
-                "clients": ["ZOOKEEPER_CLIENT"]
-            },
-            "kafka": {
-                "server": ["KAFKA_BROKER", ],
-                "clients": []
-            },
-            "spark": {
-                "server": ["SPARK_JOBHISTORYSERVER", "SPARK_THRIFTSERVER"],
-                "clients": ["SPARK_CLIENT"]
-            },
-            "flink": {
-                "server": ["FLINK_HISTORYSERVER"],
-                "clients": ["FLINK_CLIENT"]
-            },
-            "ranger": {
-                "server": ["RANGER_ADMIN", "RANGER_TAGSYNC", "RANGER_USERSYNC"],
-                "clients": []
-            },
-            "infra_solr": {
-                "server": ["INFRA_SOLR"],
-                "clients": ["INFRA_SOLR_CLIENT"]
-            },
-            # 不支持solr 了，没人使用
-            # "solr": {
-            #     "server": ["SOLR_SERVER"],
-            #     "clients": []
-            # },
-            "ambari": {
-                "server": ["AMBARI_SERVER"],
-                "clients": []
-            },
-            "ambari_metrics": {
-                "server": ["METRICS_COLLECTOR", "METRICS_GRAFANA"],
-                "clients": ["METRICS_MONITOR"]
-            },
-            "kerberos": {
-                "server": ["KERBEROS_CLIENT"],
-                "clients": ["KERBEROS_CLIENT"]
-            }
-        }
-
-    def is_service_supported(self, service_name):
-        for service_key, info in self.service_map.items():
-            if service_name in info["server"]:
-                return True
-        return False
-
-    def get_services(self, service_name):
-        if self.is_service_supported(service_name):
-            return self.service_map[service_name]
-        else:
-            return None
-
-    def get_services_map(self):
-        return self.service_map
-
-
-class ServiceValidator:
-    def __init__(self, service_map):
-        self.service_map = service_map
-
-    def validate_service(self, service_name):
-        errors = []
-        if not self.service_map.is_service_supported(service_name):
-            errors.append(f"Service '{service_name}' is not supported.")
-        # Additional service-specific validation can be added here
-        return errors
-
-
-class ParserFactory:
-    _parsers = {
-        'hosts_info': HostsInfoParser,
-        'component_topology': ComponentTopologyParser,
-        # Add other parsers as needed
-    }
-
-    @classmethod
-    def get_parser(cls, parser_type, conf_data):
-        parser_class = cls._parsers.get(parser_type)
-        if not parser_class:
-            raise ValueError(f"Unknown parser type: {parser_type}")
-        return parser_class(conf_data)
-
-
-# class ValidatorFactory:
-#     _validators = {
-#         'service': ServiceValidator,
-#         'topology': TopologyValidator,
-#         'group_consistency': GroupConsistencyValidator,
-#         'hosts_info': HostsInfoValidator,
-#         # Add other validators as needed
-#     }
-#
-#     @classmethod
-#     def get_validator(cls, validator_type, conf_data, parsed_data=None):
-#         validator_class = cls._validators.get(validator_type)
-#         if not validator_class:
-#             raise ValueError(f"Unknown validator type: {validator_type}")
-#         return validator_class(conf_data, parsed_data) if parsed_data else validator_class(conf_data)
-
-class ValidatorFactory:
-    _validators = {
-        'service': ServiceValidator,
-        'topology': TopologyValidator,
-        'group_consistency': GroupConsistencyValidator,
-        'hosts_info': HostsInfoValidator,
-        # Add other validators as needed
-    }
-
-    @classmethod
-    def get_validator(cls, validator_type, conf_data, parsed_data=None):
-        if validator_type == 'service':
-            return ServiceValidator(ServiceMap())
-        elif validator_type == 'topology':
-            return TopologyValidator(conf_data)
-        elif validator_type == 'group_consistency':
-            return GroupConsistencyValidator(conf_data, parsed_data)
-        elif validator_type == 'hosts_info':
-            return HostsInfoValidator(parsed_data)
-
-
-# Main ConfUtils class using the above components
-
-class ConfigurationLoader:
-    def __init__(self, conf_dir):
-        self.conf_dir = conf_dir
-
-    def load_conf(self, conf_name):
-        file_path = os.path.join(self.conf_dir, conf_name)
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Configuration file not found: {file_path}")
-
-        with open(file_path, 'r') as f:
-            return yaml.safe_load(f)
-
-
-class ValidationManager:
-    def __init__(self, validators):
-        self.validators = validators
-
-    def validate_all(self):
-        errors = []
-        for validator in self.validators:
-            errors.extend(validator.validate().err_messages)
-        return errors
-
-
-class ConfUtils:
-    def __init__(self, parser_factory, validator_factory, conf_loader):
-        self.parser_factory = parser_factory
-        self.validator_factory = validator_factory
-        self.conf_loader = conf_loader
-        self.dynamic_variable_generator = None
-        self.confs = {}
-        self.conf = {}
-        self.hosts_conf = {}
-        self.parsers = {}
-        self.validators = {}
-
-    def load_all_confs(self):
-        self.confs['HOSTS_CONF'] = self.conf_loader.load_conf(HOSTS_CONF_NAME)
-        self.confs['COMPONENT_TOPOLOGY_CONF'] = self.conf_loader.load_conf(CONF_NAME)
-        self.confs['BASE_CONF'] = self.conf_loader.load_conf(BASE_CONF_NAME)
-        # Load other configurations as needed
-
-    def initialize_parsers(self):
-        self.parsers['hosts_info'] = self.parser_factory.get_parser('hosts_info', self.confs['HOSTS_CONF'])
-        self.parsers['component_topology'] = self.parser_factory.get_parser('component_topology',
-                                                                            self.confs['COMPONENT_TOPOLOGY_CONF'])
-        # Initialize other parsers as needed
-
-    def initialize_validators(self):
-        hosts_info_parsed = self.parsers['hosts_info'].parse()
-        self.validators['topology'] = self.validator_factory.get_validator('topology',
-                                                                           self.confs['COMPONENT_TOPOLOGY_CONF'])
-        self.validators['group_consistency'] = self.validator_factory.get_validator('group_consistency', self.confs[
-            'COMPONENT_TOPOLOGY_CONF'], hosts_info_parsed)
-        self.validators['hosts_info'] = self.validator_factory.get_validator('hosts_info', None, hosts_info_parsed)
-
-    def parse_conf(self):
-        # Parse hosts information
-        hosts_info = self.parsers['hosts_info'].parse()
-        self.hosts_conf = hosts_info
-
-        print(hosts_info)
-        # Parse component topology
-        host_groups, host_group_services = self.parsers['component_topology'].parse()
-        print(host_groups, host_group_services)
-        cf = self.generate_dynamic_variables()
-        self.conf.update(cf)
-        print(cf)
-        # Combine all parts to produce the final configuration
-
-
-    def validate_conf(self):
-        validation_manager = ValidationManager(self.validators.values())
-        errors = validation_manager.validate_all()
-        if errors:
-            error_messages = "\n".join(errors)
-            raise ValueError(f"Configuration validation failed with the following errors:\n{error_messages}")
-
-    def get_conf(self):
-        # Parse and validate the configuration if it hasn't been done yet
-        #if not self.conf:
-        self.parse_conf()
-        self.validate_conf()
-
-        # Return the final configuration data
-        return self.conf
-
-    def generate_dynamic_variables(self):
-        if not self.dynamic_variable_generator:
-            self.dynamic_variable_generator = DynamicVariableGenerator()
-        conf_data = self.conf_loader.load_conf(CONF_NAME)
-        dynamic_variables = self.dynamic_variable_generator.generate(conf_data)
-        return dynamic_variables
-
-    def get_hosts_names(self):
-        hosts_info = self.parsers['hosts_info'].parse()
-        hosts_names = []
-        parsed_hosts, user = hosts_info
-        for host_info in parsed_hosts:
-            hostname = host_info[1]
-            hosts_names.append(hostname)
-        return hosts_names
-
-    def is_ambari_repo_configured(self):
-        repos = self.conf["repos"]
-        if len(repos) > 0:
-            for repo_item in repos:
-                if "ambari_repo" == repo_item["name"]:
-                    return True
-        return False
-
-    def generate_conf(self, yaml_dict, dest_file, source_file=None, method="new"):
-        supported_methods = ["new", "prepend", "replace"]
-        assert method in supported_methods
-        final_yaml_str = ""
-
-        if method == "new":
-            final_yaml_str = yaml.dump(yaml_dict, default_flow_style=None, sort_keys=False)
-        elif method == "prepend":
-            try:
-                with open(source_file, 'r') as file:
-                    existing_data = file.read()
-            except FileNotFoundError:
-                existing_data = ""
-            new_yaml_str = yaml.dump(yaml_dict, default_flow_style=None, sort_keys=False)
-
-            final_yaml_str = new_yaml_str + "\n" + existing_data
-        elif method == "replace":
-            try:
-                with open(source_file, 'r') as file:
-                    existing_data = file.read()
-                    existing_yaml = yaml.safe_load(existing_data)
-            except FileNotFoundError:
-                existing_yaml = {}
-
-            for k, v in yaml_dict.items():
-                existing_yaml[k] = v
-
-            final_yaml_str = yaml.dump(existing_yaml, default_flow_style=None, sort_keys=False)
-
-        with open(dest_file, 'w') as file:
-            file.write(final_yaml_str)
-
-    def generate_deploy_conf(self):
-        yaml_data = self.confs['BASE_CONF']
-        print(yaml_data)
-        conf_yaml_data = {
-            "default_password": yaml_data["default_password"],
-            "data_dirs": yaml_data["data_dirs"],
-            "repos": yaml_data["repos"]
-        }
-
-        hosts_info_yaml_data = {
-            "user": yaml_data["user"],
-            "hosts": yaml_data["hosts"]
-        }
-
-        hosts_info_conf_file = os.path.join(CONF_DIR, HOSTS_CONF_NAME)
-        self.generate_conf(hosts_info_yaml_data, hosts_info_conf_file, method="new")
-
-        conf_fie = os.path.join(CONF_DIR, CONF_NAME)
-        conf_tpl_file = GET_CONF_TPL_NAME(conf_fie)
-        topology_manager = TopologyManager(self.get_hosts_names)
-        topology = topology_manager.generate_topology()
-        topology.update(conf_yaml_data)
-        self.generate_conf(topology, conf_fie, source_file=conf_tpl_file, method="prepend")
-
-
-class ConfigurationHandler:
-    def __init__(self, conf):
-        self.conf = conf
-        self.get_ambari_repo()
-        self.validate()
-
-    def get_ambari_repo(self):
-        ambari_repo = None
-        repos = self.conf["repos"]
-        if len(repos) > 0:
-            for repo_item in repos:
-                if "ambari_repo" == repo_item["name"]:
-                    ambari_repo = repo_item["url"]
-                    break
-        else:
-            raise InvalidConfigurationException("ambari_repo not configured")
-        if not ambari_repo:
-            ambari_repo = repos[0]["url"]
-
-        self.conf.update({"ambari_repo_url": ambari_repo})
-
-    def get(self, key, default=None):
-        try:
-            return self.conf[key]
-        except KeyError:
-            if default is not None:
-                return default
-            raise InvalidConfigurationException(f"Configuration key '{key}' is missing.")
-
-    def validate(self):
-        required_keys = ["group_services", "repos", "host_groups", "security_options", "ambari_options",
-                         "blueprint_name"]
-        for key in required_keys:
-            if key not in self.conf:
-                raise InvalidConfigurationException(f"Required configuration key '{key}' is missing.")
-
-
-class ServiceManager:
-    def __init__(self, config_handler):
-        self.config_handler = config_handler
-
-    def get_service_key_from_service(self, service_name):
-        for service_key, service_info in ServiceMap().get_services_map().items():
-            if service_name in service_info["server"]:
-                return service_key
-        raise InvalidConfigurationException(f"Service '{service_name}' not found in services map.")
-
-    def get_services_need_install(self):
-        group_services = self.config_handler.get("group_services")
-        services = []
-        for group_name, host_components in group_services.items():
-            services.extend(host_components)
-        return list(set(services))
-
-    def get_service_clients_need_install(self, services):
-        clients = []
-        for service_name in services:
-            service_key = self.get_service_key_from_service(service_name)
-            service_info = ServiceMap().get_services(service_key)
-            if service_info and "clients" in service_info:
-                clients.extend(service_info["clients"])
-        return list(set(clients))
-
-
-class FileManager:
-    @staticmethod
-    def read_file(file_path):
-        with open(file_path, 'r') as file:
-            return file.read()
-
-    @staticmethod
-    def write_file(file_path, content):
-        with open(file_path, 'w') as file:
-            file.write(content)
-
-    @staticmethod
-    def read_json(file_path):
-        with open(file_path, 'r') as file:
-            return json.load(file)
-
-    @staticmethod
-    def write_json(file_path, data):
-        with open(file_path, 'w') as file:
-            json.dump(data, file, indent=4)
-
-    @staticmethod
-    def read_yaml(file_path):
-        with open(file_path, 'r') as file:
-            return yaml.safe_load(file)
-
-    @staticmethod
-    def write_yaml(file_path, data):
-        with open(file_path, 'w') as file:
-            yaml.dump(data, file)
-
-
-# Initialize with ConfigurationHandler and ServiceManager instances
-# Methods to generate blueprint configurations and host groups
-class BlueprintGenerator:
-    def __init__(self, config_handler, service_manager):
-        self.config_handler = config_handler
-        self.service_manager = service_manager
-
-    def generate_blueprint_configurations(self):
-        services_need_install = self.service_manager.get_services_need_install()
-        configurations = []
-        processed_services = []
-
-        for service_name in services_need_install:
-            service_key = self.service_manager.get_service_key_from_service(service_name)
-            if service_key in processed_services:
-                continue
-
-            template_render = TemplateRenderer()
-            tpl_str = FileManager.read_file(self.get_conf_j2template_path(service_name))
-            if not tpl_str:
-                # 有的配置模版为空白
-                continue
-
-            service_confs = template_render.render_template(
-                tpl_str,
-                self.config_handler.conf).decode_result(decoder="json")
-
-            if service_confs:
-                configurations.extend([{k: v} for k, v in service_confs.items() if isinstance(v, dict)])
-            else:
-                logger.error(f"Error in configuration template for service {service_name}")
-
-            processed_services.append(service_key)
-
-        return configurations
-
-    def generate_blueprint_host_groups(self):
-        conf = self.config_handler.conf
-        host_groups = []
-        services_need_install = self.service_manager.get_services_need_install()
-        all_services_clients = self.service_manager.get_service_clients_need_install(services_need_install)
-
-        for group_name, services in conf["group_services"].items():
-            group_services = list(set(services + all_services_clients))
-            host_group_components_config = [{'name': service_name} for service_name in group_services]
-
-            host_group = {
-                "name": group_name,
-                "configurations": [],
-                "cardinality": "1",
-                "components": host_group_components_config
-            }
-            host_groups.append(host_group)
-
-        return host_groups
-
-    def get_conf_j2template_path(self, service_name):
-        service_key = self.service_manager.get_service_key_from_service(service_name)
-        file_name = f"{service_key}_configuration.json.j2"
-        return os.path.join(CLUSTER_TEMPLATES_DIR, file_name)
-
-
-# Initialize with BlueprintGenerator, TemplateRenderer, and FileManager instances
-# Methods to generate Ambari blueprint and cluster template
-class AmbariBlueprintBuilder:
-    def __init__(self, blueprint_generator, file_manager):
-        self.blueprint_generator = blueprint_generator
-        self.file_manager = file_manager
-
-    def generate_ambari_blueprint(self, configurations, host_groups):
-        security = self.blueprint_generator.config_handler.get("security")
-        blueprint_security = "KERBEROS" if security.strip().lower() != "none" else "NONE"
-        ambari_repo_url = self.blueprint_generator.config_handler.get("ambari_repo_url")
-
-        j2_context = {
-            "blueprint_security": blueprint_security,
-            "ambari_blueprint_configurations": json.dumps(configurations),
-            "ambari_blueprint_host_groups": json.dumps(host_groups),
-            "ambari_repo_url": ambari_repo_url,
-        }
-
-        template_renderer = TemplateRenderer(
-            # file_path=os.path.join(CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2"),
-            # context=j2_context
-        )
-
-        blueprint_json = template_renderer.render_template(
-            FileManager.read_file(os.path.join(CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2")),
-            j2_context).decode_result()
-
-        self.file_manager.write_json(
-            file_path=os.path.join(BLUEPRINT_FILES_DIR, "blueprint.json"),
-            data=blueprint_json
-        )
-
-    def generate_ambari_cluster_template(self):
-        conf = self.blueprint_generator.config_handler.conf
-        security = conf["security"]
-        kerberos_admin_principal = f"{conf['security_options']['admin_principal']}@{conf['security_options']['realm']}"
-        kerberos_admin_password = conf["security_options"]["admin_password"]
-        ambari_cluster_template_host_groups = []
-
-        for group_name, group_hosts in conf["host_groups"].items():
-            hosts = [{'fqdn': host} for host in group_hosts]
-            ambari_cluster_template_host_groups.append({
-                "name": group_name,
-                "hosts": hosts
-            })
-
-        cluster_template = {
-            "blueprint": conf["blueprint_name"],
-            "config_recommendation_strategy": conf["ambari_options"]["config_recommendation_strategy"],
-            "default_password": conf["default_password"],
-            "host_groups": ambari_cluster_template_host_groups,
-        }
-
-        if security and security == "mit-kdc":
-            cluster_template["credentials"] = [{
-                "alias": "kdc.admin.credential",
-                "principal": kerberos_admin_principal,
-                "key": kerberos_admin_password,
-                "type": "TEMPORARY"
-            }]
-            cluster_template["security"] = {"type": "KERBEROS"}
-
-        self.file_manager.write_json(
-            file_path=os.path.join(BLUEPRINT_FILES_DIR, "cluster_template.json"),
-            data=cluster_template
-        )
-
-
-# Initialize with ConfigurationHandler and FileManager instances
-# Methods to generate Ansible variables file and hosts file
-class AnsibleFileManager:
-    def __init__(self, config_handler, file_manager):
-        self.config_handler = config_handler
-        self.file_manager = file_manager
-
-    def generate_ansible_variables_file(self):
-        variables = copy.deepcopy(self.config_handler.conf)
-        ambari_repo_url = self.config_handler.get("ambari_repo_url")
-        variables["ambari_repo_url"] = ambari_repo_url
-        for key in ["host_groups", "group_services"]:
-            variables.pop(key, None)
-
-        variables_file_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/group_vars/all')
-        self.file_manager.write_yaml(variables_file_path, variables)
-
-    def generate_ansible_hosts(self,hosts_conf):
-        conf = self.config_handler.conf
-        parsed_hosts, user = hosts_conf
-        ambari_server_host = conf["ambari_server_host"]
-        host_groups = conf["host_groups"]
-
-        hosts_content = self._generate_hosts_content(parsed_hosts, user, host_groups, ambari_server_host)
-        ansible_user = user
-
-        hosts_content += "[all:vars]\nansible_user={}\n".format(ansible_user)
-        hosts_path = os.path.join(ANSIBLE_PRJ_DIR, "inventory", "hosts")
-        self.file_manager.write_file(hosts_path, hosts_content)
-
-    def _generate_hosts_content(self, parsed_hosts, user, host_groups, ambari_server_host):
-        hosts_dict = {hostname: (ip, passwd) for ip, hostname, passwd in parsed_hosts}
-        node_groups = {"ambari-server": [ambari_server_host]}
-        for group_name, hosts in host_groups.items():
-            node_groups.setdefault("hadoop-cluster", []).extend(hosts)
-
-        hosts_content = ""
-        for group, hosts in node_groups.items():
-            hosts_content += "[{}]\n".format(group)
-            for host_name in hosts:
-                if host_name not in hosts_dict:
-                    raise InvalidConfigurationException(f"Host '{host_name}' not found in parsed hosts.")
-                ip, passwd = hosts_dict[host_name]
-                hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name, ip, passwd)
-            hosts_content += "\n"
-
-        return hosts_content
-
-
-# Initialize with conf dictionary
-# Compose all above classes and provide a build method to orchestrate the generation process
-class BlueprintUtils:
-    def __init__(self, conf):
-        self.config_handler = ConfigurationHandler(conf)
-        self.service_manager = ServiceManager(self.config_handler)
-        self.file_manager = FileManager()
-        self.blueprint_generator = BlueprintGenerator(self.config_handler, self.service_manager)
-        self.ambari_blueprint_builder = AmbariBlueprintBuilder(self.blueprint_generator, self.file_manager)
-        self.ansible_file_manager = AnsibleFileManager(self.config_handler, self.file_manager)
-
-    def build(self,hosts_conf):
-        blueprint_configurations = self.blueprint_generator.generate_blueprint_configurations()
-        blueprint_service_host_groups = self.blueprint_generator.generate_blueprint_host_groups()
-        self.ambari_blueprint_builder.generate_ambari_blueprint(blueprint_configurations, blueprint_service_host_groups)
-        self.ambari_blueprint_builder.generate_ambari_cluster_template()
-        self.ansible_file_manager.generate_ansible_variables_file()
-        self.ansible_file_manager.generate_ansible_hosts(hosts_conf)
-
-
-# Main execution function
 def main():
-    conf_utils = ConfUtils(ParserFactory, ValidatorFactory, ConfigurationLoader(CONF_DIR))
-    conf_utils.load_all_confs()
-    conf_utils.initialize_parsers()
-    conf_utils.initialize_validators()
-    conf_utils.generate_deploy_conf()
+    # 目标 1.从stand_conf 动态生成复杂conf
+    # 目标 2.解析复杂conf 生成 ambari blueprint 和 ambari cluster_template
+    # 目标 3. 生成ansible hosts 和 variable 文件
+    validators = []
 
-    conf = conf_utils.get_conf()
-    hosts_conf = conf_utils.hosts_conf
-    print(conf)
+    # todo validate
+    sd_conf = StandardConfiguration(BASE_CONF_NAME)
+    hosts_info_conf = sd_conf.generate_conf(StandardConfiguration.GenerateConfType.HostsInfoConfiguration)
+    advanced_conf = sd_conf.generate_conf(StandardConfiguration.GenerateConfType.AdvancedConfiguration)
 
-    blueprint_utils = BlueprintUtils(conf)
-    blueprint_utils.build(hosts_conf)
+    ambari_cluster_template_configuration = AmbariClusterTemplateConfiguration("cluster_template.json",
+                                                                               DynamicVariableGenerator(advanced_conf))
+    ambari_cluster_template_configuration.save()
+
+    ambari_blue_print_configuration = AmbariBluePrintConfiguration("blueprint.json",
+                                                                   DynamicVariableGenerator(advanced_conf),
+                                                                   ServiceManager(advanced_conf))
+    ambari_blue_print_configuration.save()
+
+    validators.append(TopologyValidator(advanced_conf))
+    validators.append(GroupConsistencyValidator(advanced_conf, hosts_info_conf))
+    validators.append(HostsInfoValidator(hosts_info_conf))
+
+    validation_manager = ValidationManager(validators)
+    errors = validation_manager.validate_all()
+    if errors:
+        error_messages = "\n".join(errors)
+        raise ValueError(f"Configuration validation failed with the following errors:\n{error_messages}")
+
+    AnsibleVarConfiguration("all", DynamicVariableGenerator(advanced_conf))
+    AnsibleHostConfiguration("hosts", hosts_info_conf, DynamicVariableGenerator(advanced_conf))
+
     # blueprint_utils.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
 
 
