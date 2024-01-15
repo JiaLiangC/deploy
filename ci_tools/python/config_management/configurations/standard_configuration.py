@@ -1,16 +1,15 @@
-from .base_configuration import BaseConfiguration
-from .advanced_configuration import AdvancedConfiguration
-from .hosts_info_configuration import HostsInfoConfiguration
-from python.config_management.hosts_info_parser import HostsInfoParser
-from python.config_management.topology_manager import TopologyManager
+# from .base_configuration import BaseConfiguration
+# from .advanced_configuration import AdvancedConfiguration
+# from .hosts_info_configuration import HostsInfoConfiguration
+# from python.config_management.hosts_info_parser import HostsInfoParser
+# from python.config_management.topology_manager import TopologyManager
 from python.common.constants import *
-import yaml
-
-# from .base_configuration import *
-# from .hosts_info_configuration import *
-from enum import Enum
-# from .base_configuration import *
-# from .hosts_info_configuration import *
+#
+# # from .base_configuration import *
+# # from .hosts_info_configuration import *
+# from enum import Enum
+# # from .base_configuration import *
+# # from .hosts_info_configuration import *
 from enum import Enum
 
 import yaml
@@ -49,7 +48,7 @@ class StandardConfiguration(BaseConfiguration, HostsInfoParser):
             hosts_names.append(hostname)
         return hosts_names
 
-    def generate_conf(self, conf_type: GenerateConfType):
+    def generate_conf(self, conf_type: GenerateConfType,save=False):
         conf = self.get_conf()
         make_hosts_string = lambda arr: [" ".join(tple) for tple in arr]
         if conf_type == StandardConfiguration.GenerateConfType.HostsInfoConfiguration:
@@ -58,7 +57,9 @@ class StandardConfiguration(BaseConfiguration, HostsInfoParser):
                 "hosts": make_hosts_string(conf["hosts"])
             }
             hosts_info_conf = HostsInfoConfiguration()
-            hosts_info_conf.set_conf(hosts_info_yaml_data).save()
+            hosts_info_conf.set_conf(hosts_info_yaml_data)
+            if save:
+                hosts_info_conf.save()
             return hosts_info_conf
 
         if conf_type == StandardConfiguration.GenerateConfType.AdvancedConfiguration:
@@ -77,8 +78,11 @@ class StandardConfiguration(BaseConfiguration, HostsInfoParser):
 
             merged_conf_str = self.merge_conf(topology, base_conf=advanced_tpl_str_conf, merge_strategy="prepend")
             advanced_conf = AdvancedConfiguration()
-            advanced_conf.save_with_str(merged_conf_str)
+            advanced_conf.set_conf(yaml.safe_load(merged_conf_str))
+            if save:
+                advanced_conf.save_with_str(merged_conf_str)
             return advanced_conf
+
 
     def merge_conf(self, yaml_need_merge, base_conf=None, merge_strategy="replace"):
         current_conf = yaml_need_merge

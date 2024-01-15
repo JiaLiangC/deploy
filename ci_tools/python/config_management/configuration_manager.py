@@ -23,9 +23,11 @@ class ConfigurationManager:
         self.sd_conf = StandardConfiguration(self.base_conf_name)
         self.validators = []
 
-    def generate_confs(self):
-        self.hosts_info_conf = self.sd_conf.generate_conf(StandardConfiguration.GenerateConfType.HostsInfoConfiguration)
-        self.advanced_conf = self.sd_conf.generate_conf(StandardConfiguration.GenerateConfType.AdvancedConfiguration)
+    def generate_confs(self, save=False):
+        self.hosts_info_conf = self.sd_conf.generate_conf(StandardConfiguration.GenerateConfType.HostsInfoConfiguration,
+                                                          save)
+        self.advanced_conf = self.sd_conf.generate_conf(StandardConfiguration.GenerateConfType.AdvancedConfiguration,
+                                                        save)
 
     def save_ambari_configurations(self):
         ambari_cluster_template_conf = AmbariClusterTemplateConfiguration(

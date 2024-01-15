@@ -322,38 +322,8 @@ class DeployClusterTask(BaseTask):
         run_shell_command("service httpd start", shell=True)
 
     def generate_deploy_conf(self):
-        cf_util = ConfUtils()
-        base_conf_file = os.path.join(CONF_DIR, BASE_CONF_NAME)
-        assert os.path.exists(base_conf_file)
-
-        try:
-            with open(base_conf_file, 'r') as file:
-                existing_data = file.read()
-                yaml_data = yaml.safe_load(existing_data)
-        except FileNotFoundError:
-            existing_data = ""
-            yaml_data = {}
-        print(yaml_data)
-        conf_yaml_data = {
-            "default_password": yaml_data["default_password"],
-            "data_dirs": yaml_data["data_dirs"],
-            "repos": yaml_data["repos"]
-        }
-
-        hosts_info_yaml_data = {
-            "user": yaml_data["user"],
-            "hosts": yaml_data["hosts"]
-        }
-
-        hosts_info_conf_file = os.path.join(CONF_DIR, HOSTS_CONF_NAME)
-        cf_util.generate_conf(hosts_info_yaml_data, hosts_info_conf_file, method="new")
-
-        conf_fie = os.path.join(CONF_DIR, CONF_NAME)
-        conf_tpl_file = GET_CONF_TPL_NAME(conf_fie)
-        topology_manager = TopologyManager(cf_util.get_hosts_names)
-        topology = topology_manager.generate_topology()
-        topology.update(conf_yaml_data)
-        cf_util.generate_conf(topology, conf_fie, source_file=conf_tpl_file, method="prepend")
+        conf_manager = ConfigurationManager(BASE_CONF_NAME)
+        conf_manager.generate_confs(save=True)
 
     def run(self):
         logger.info("deploy ")
