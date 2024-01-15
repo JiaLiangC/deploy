@@ -71,7 +71,7 @@ class DynamicVariableGenerator:
         str_conf = self.advanced_conf.get_str_conf()
         # 原始的conf, 存在很懂变量
         # 动态生成一些蓝图的需要用到的namenode_hosts 等变量
-
+        ambari_repo_url = self._generate_ambari_repo_url()
         # 根据用户配置动态生成一些变量
         extra_vars = {
             "ntp_server_hostname": self._generate_ntp_server_hostname(),
@@ -79,7 +79,7 @@ class DynamicVariableGenerator:
             "kdc_hostname": self.get_kdc_server_host(),
             "database_hostname": self._generate_database_host(),
             "ambari_server_host": self.get_ambari_server_host(),
-            "ambari_repo_url": self._generate_ambari_repo_url()
+            "ambari_repo_url": ambari_repo_url
         }
         conf_j2_context = self.advanced_conf.get_conf()
         conf_j2_context.update(extra_vars)
@@ -88,6 +88,8 @@ class DynamicVariableGenerator:
             decoder="yaml")
         rendered_conf_vars.update(hosts_groups_variables)
         rendered_conf_vars.update(extra_vars)
+        if not self.advanced_conf.is_ambari_repo_configured():
+            rendered_conf_vars["repos"].append({"name": "ambari_repo", "url": ambari_repo_url})
         return rendered_conf_vars
 
     def _generate_ntp_server_hostname(self):
@@ -129,3 +131,4 @@ class DynamicVariableGenerator:
                 if "ambari_repo" == repo_item["name"]:
                     return repo_item["url"]
         return ambari_repo_rl
+
