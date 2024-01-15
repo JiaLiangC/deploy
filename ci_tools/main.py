@@ -4,6 +4,7 @@ import shutil
 
 from python.common.basic_logger import get_logger
 from python.common.constants import *
+from python.config_management.configuration_manager import *
 from python.nexus.nexus_client import NexusClient
 from python.nexus.nexus_repo_sync import NexusSynchronizer
 from python.install_utils.install_utils import *
@@ -282,18 +283,13 @@ class DeployClusterTask(BaseTask):
         inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
         log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
 
-        cf_util = ConfUtils()
-        conf = cf_util.get_conf()
-        if not cf_util.is_ambari_repo_configured():
-            logger.info("ambari repo not configured,will upload ambari bigdata rpm to specified nexus host. ")
-            self.set_udh_repo()
-            conf = cf_util.generate_ambari_repo()
+        conf_manager = ConfigurationManager(BASE_CONF_NAME)
+        conf_manager.generate_confs()
+        conf_manager.save_ambari_configurations()
+        conf_manager.setup_validators()
+        conf_manager.validate_configurations()
+        conf_manager.save_ansible_configurations()
 
-        hosts_info = cf_util.get_hosts_info()
-        ambari_server_host = cf_util.get_ambari_server_host()
-        blueprint_utils = BlueprintUtils(conf)
-        blueprint_utils.build()
-        blueprint_utils.generate_ansible_hosts(conf, hosts_info, ambari_server_host)
         env_vars = os.environ.copy()
 
         command = ["python3", f"{PRJ_BIN_DIR}/ansible-playbook", playbook_path, f"--inventory={inventory_path}"]

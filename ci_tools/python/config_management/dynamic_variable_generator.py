@@ -131,7 +131,9 @@ class DynamicVariableGenerator:
         if not self.is_ambari_repo_configured():
             ambari_repo_rl = f"http://{ipaddress}:8881/repository/yum/udh3"
             # todo 在 conf 中生成 {"name": "ambari_repo", "url": ambari_repo_rl}
-            # self.conf["repos"].append({"name": "ambari_repo", "url": ambari_repo_rl})
-            # logger.info(f"generate_ambari_repo {ambari_repo_rl}")
-
+        else:
+            repos = self.advanced_conf.get('repos', [])
+            for repo_item in repos:
+                if "ambari_repo" == repo_item["name"]:
+                    return repo_item["url"]
         return ambari_repo_rl
