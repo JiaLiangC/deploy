@@ -3,6 +3,7 @@
 from python.common.basic_logger import get_logger
 from python.common.constants import *
 from python.config_management.configurations.advanced_configuration import *
+from python.config_management.configurations.hosts_info_configuration import *
 from python.config_management.configurations.ambari_blueprint_configuration import *
 from python.config_management.configurations.ambari_cluster_template_configuration import *
 from python.config_management.configurations.ansible_host_configuration import *
@@ -22,6 +23,23 @@ class ConfigurationManager:
         self.base_conf_name = base_conf_name
         self.sd_conf = StandardConfiguration(self.base_conf_name)
         self.validators = []
+        self.allowed_methods = {'is_ambari_repo_configured'}
+
+
+    def __getattr__(self, name):
+        if name in self.allowed_methods:
+            def method(*args, **kwargs):
+                if self.advanced_conf and hasattr(self.advanced_conf, name):
+                    return getattr(self.advanced_conf, name)(*args, **kwargs)
+                else:
+                    raise AttributeError(f"'{type(self.advanced_conf).__name__}' object has no attribute '{name}'")
+            return method
+        else:
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+    def load_confs(self):
+        self.hosts_info_conf = HostsInfoConfiguration()
+        self.advanced_conf = AdvancedConfiguration()
 
     def generate_confs(self, save=False):
         self.hosts_info_conf = self.sd_conf.generate_conf(StandardConfiguration.GenerateConfType.HostsInfoConfiguration,

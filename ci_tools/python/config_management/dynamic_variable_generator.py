@@ -106,14 +106,6 @@ class DynamicVariableGenerator:
             database_host = self.advanced_conf.get("database_options")["external_hostname"]
         return database_host
 
-    def is_ambari_repo_configured(self):
-        repos = self.advanced_conf.get('repos', [])
-        if len(repos) > 0:
-            for repo_item in repos:
-                if "ambari_repo" == repo_item["name"]:
-                    return True
-        return False
-
     def get_ip_address(self):
         try:
             # 创建一个UDP套接字
@@ -128,7 +120,7 @@ class DynamicVariableGenerator:
 
     def _generate_ambari_repo_url(self):
         ipaddress = self.get_ip_address()
-        if not self.is_ambari_repo_configured():
+        if not self.advanced_conf.is_ambari_repo_configured():
             ambari_repo_rl = f"http://{ipaddress}:8881/repository/yum/udh3"
             # todo 在 conf 中生成 {"name": "ambari_repo", "url": ambari_repo_rl}
         else:

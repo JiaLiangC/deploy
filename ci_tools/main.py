@@ -281,11 +281,13 @@ class DeployClusterTask(BaseTask):
         log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
 
         conf_manager = ConfigurationManager(BASE_CONF_NAME)
-        conf_manager.generate_confs()
+        conf_manager.load_confs()
         conf_manager.save_ambari_configurations()
         conf_manager.setup_validators()
         conf_manager.validate_configurations()
         conf_manager.save_ansible_configurations()
+        if not conf_manager.is_ambari_repo_configured():
+            self.set_udh_repo()
 
         env_vars = os.environ.copy()
 
