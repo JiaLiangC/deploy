@@ -76,7 +76,7 @@ class ConfigurationManager:
 if __name__ == '__main__':
     # Usage
     config_manager = ConfigurationManager(BASE_CONF_NAME)
-    config_manager.generate_confs()
+    config_manager.generate_confs(save=True)
     config_manager.save_ambari_configurations()
     config_manager.setup_validators()
     config_manager.validate_configurations()

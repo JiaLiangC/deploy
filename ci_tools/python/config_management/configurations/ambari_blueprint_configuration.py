@@ -1,7 +1,7 @@
 from python.config_management.dynamic_variable_generator import DynamicVariableGenerator
 from python.config_management.service_manager import *
 from python.config_management.template_renderer import *
-
+from python.config_management.service_map import *
 from .base_configuration import *
 
 
@@ -16,7 +16,7 @@ class AmbariBluePrintConfiguration(BaseConfiguration):
         return rendered_advanced_conf
 
     def get_conf_j2template_path(self, service_name):
-        service_key = self.service_manager.get_service_key_from_service(service_name)
+        service_key = ServiceMap.get_service_key_from_service(service_name)
         file_name = f"{service_key}_configuration.json.j2"
         return os.path.join(CLUSTER_TEMPLATES_DIR, file_name)
 
@@ -27,7 +27,7 @@ class AmbariBluePrintConfiguration(BaseConfiguration):
         processed_services = []
 
         for service_name in services_need_install:
-            service_key = self.service_manager.get_service_key_from_service(service_name)
+            service_key = ServiceMap.get_service_key_from_service(service_name)
             if service_key in processed_services:
                 continue
 

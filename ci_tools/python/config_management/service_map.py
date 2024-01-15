@@ -1,6 +1,33 @@
+from python.exceptions.invalid_configuration_exception import *
+
+
 class ServiceMap:
-    def __init__(self):
-        self.service_map = {
+
+    @staticmethod
+    def get_service_key_from_service(service_name):
+        for service_key, service_info in ServiceMap.get_services_map().items():
+            if service_name in service_info["server"]:
+                return service_key
+        raise InvalidConfigurationException(f"Service '{service_name}' not found in services map.")
+
+    @staticmethod
+    def is_service_supported(service_name):
+        for service_key, info in ServiceMap.get_services_map().items():
+            if service_name in info["server"]:
+                return True
+        return False
+
+    @staticmethod
+    def get_service_info(service_name):
+        key = ServiceMap.get_service_key_from_service(service_name)
+        if ServiceMap.is_service_supported(service_name):
+            return ServiceMap.get_services_map().get(key)
+        else:
+            return None
+
+    @staticmethod
+    def get_services_map():
+        service_map = {
             "hbase": {
                 "server": ["HBASE_MASTER", "HBASE_REGIONSERVER"],
                 "clients": ["HBASE_CLIENT"]
@@ -61,18 +88,4 @@ class ServiceMap:
                 "clients": ["KERBEROS_CLIENT"]
             }
         }
-
-    def is_service_supported(self, service_name):
-        for service_key, info in self.service_map.items():
-            if service_name in info["server"]:
-                return True
-        return False
-
-    def get_services(self, service_name):
-        if self.is_service_supported(service_name):
-            return self.service_map[service_name]
-        else:
-            return None
-
-    def get_services_map(self):
-        return self.service_map
+        return service_map

@@ -42,7 +42,7 @@ class GroupConsistencyValidator(Validator):
                     f"每个被部署组件名只能在同一个组内列出一次,请检查如下组的配置 组: {group_name} , 组件名: {' '.join(list(set(duplicated_services)))}")
 
             for service_name in services:
-                is_supported = ServiceMap().is_service_supported(service_name)
+                is_supported = ServiceMap.is_service_supported(service_name)
                 if not is_supported:
                     self.err_messages.append("{} 选择部署的该组件目前不支持".format(service_name))
 
