@@ -1,14 +1,15 @@
 from enum import Enum
-import yaml
-#from python.common.basic_logger import get_logger
-#logger = get_logger()
+
+
+# from python.common.basic_logger import get_logger
+# logger = get_logger()
 
 class TopologyManager:
     def __init__(self, host_fetcher):
         self.host_fetcher = host_fetcher
         self.host_groups = {}
         self.group_services = {}
-        self.topology={}
+        self.topology = {}
 
     class Policy(Enum):
         THREE_NODE = 1

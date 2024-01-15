@@ -1,0 +1,2 @@
+class ConfigurationLoader:
+    pass
