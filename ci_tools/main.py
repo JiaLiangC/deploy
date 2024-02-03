@@ -106,6 +106,7 @@ class ContainerTask(BaseTask):
             self.conf["bigtop"]["dl_dir"]: {'bind': f'{self.conf["docker"]["volumes"]["bigtop"]}/dl', 'mode': 'rw'},
             # dl /ws/dl
             "/root/.ssh": {'bind': '/root/.ssh', 'mode': 'rw'},
+            "/root/.gradle": {'bind': '/root/.gradle', 'mode': 'rw'},
             PRJDIR: {'bind': self.conf["docker"]["volumes"]["prj"], 'mode': 'rw'},
             PIP_CONF_FILE: {'bind': f'{os.path.expanduser("~/.config/pip/pip.conf")}', 'mode': 'rw'}
         }
@@ -653,6 +654,11 @@ def main():
 if __name__ == '__main__':
     main()
 
+
+#todo generate 和deploy之前都检查配置
+# generate 之后，如果用户改了配置，要重新动态生成文件
+
+# pg10 包，打入udh rpm
 # 打包nexus 的时候，OS 的包传进去，如果要UDH，单独上传。
 # pip3 install -t requests ansible/extras
 # todo 使用设计模式重构 gpt intepreter

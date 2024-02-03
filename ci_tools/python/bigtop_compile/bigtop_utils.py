@@ -185,7 +185,7 @@ class BigtopBuilder(object):
     def get_compile_command(self, component):
         ci_conf = self.get_ci_conf()
         if ci_conf["bigtop"]["use_docker"]:
-            cmd = f". /etc/profile.d/bigtop.sh;./gradlew {component}-clean {component}-pkg"
+            cmd = f". /etc/profile.d/bigtop.sh;./gradlew {component}-clean {component}-pkg -PbuildThreads=2C"
         else:
             cmd = f"./gradlew {component}-clean {component}-pkg"
 
