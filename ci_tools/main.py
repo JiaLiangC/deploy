@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 
 logger = get_logger()
 
-ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "tez", "ambari",
+ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "knox", "celeborn" ,"tez", "ambari",
                   "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils"]
 
 
@@ -131,15 +131,17 @@ class ContainerTask(BaseTask):
 
         prj_dir = self.get_prj_dir()
         logger.info(f"conf_str is {conf_str_quoted}")
+
         py_cmd = f"python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={conf_str_quoted}"
         if container:
             py_cmd = f'source ./venv.sh && {py_cmd}'
         cmd = ['/bin/bash', '-c', py_cmd]
         self.logged_exec_run(container, cmd=cmd, workdir=f'{prj_dir}')
 
-        # if container:
-        #    cmd_install = 'yum clean all && yum install -y python3-devel'
-        #    self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
+        if container:
+        #todo check os type
+            cmd_install = 'yum install -y python3-devel' #add python.h dependency for ambari build
+            self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
 
     def run(self):
         if self.conf["bigtop"]["use_docker"]:
