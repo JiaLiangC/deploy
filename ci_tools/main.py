@@ -22,7 +22,8 @@ from urllib.parse import urlparse
 
 logger = get_logger()
 
-ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "knox", "celeborn" ,"tez", "ambari",
+ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "alluxio",
+                  "knox", "celeborn", "tez", "ambari","dinky",
                   "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils"]
 
 

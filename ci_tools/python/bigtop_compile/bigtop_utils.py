@@ -114,9 +114,9 @@ class BigtopBuilder(object):
 
     def set_web_compile_envirment(self):
         logger.info("set web compile envirment")
-        self.set_npm_proxy()
-        self.set_yarn_registry()
-        self.set_bowerrc_proxy()
+        #self.set_npm_proxy()
+        #self.set_yarn_registry()
+        #self.set_bowerrc_proxy()
 
     def set_npm_proxy(self):
         logger.info("set npm registry")
