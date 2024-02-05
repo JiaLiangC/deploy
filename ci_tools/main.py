@@ -141,8 +141,9 @@ class ContainerTask(BaseTask):
 
         if container:
         #todo check os type
-            cmd_install = 'yum install -y python3-devel' #add python.h dependency for ambari build
-            self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
+            #cmd_install = 'yum install -y python3-devel' #add python.h dependency for ambari build
+            #self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
+            print("only ambari need install python3-devel ")
 
     def run(self):
         if self.conf["bigtop"]["use_docker"]:
