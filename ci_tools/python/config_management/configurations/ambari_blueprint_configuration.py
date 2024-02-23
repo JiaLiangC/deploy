@@ -6,9 +6,10 @@ from .base_configuration import *
 
 
 class AmbariBluePrintConfiguration(BaseConfiguration):
-    def __init__(self, name, dynamic_variable_generator: DynamicVariableGenerator, service_manager: ServiceManager):
+    def __init__(self, name, dynamic_variable_generator: DynamicVariableGenerator, service_manager: ServiceManager, stack_version):
         self.service_manager = service_manager
         self.dynamic_variable_generator = dynamic_variable_generator
+        self.stack_version = stack_version
         super().__init__(name)
 
     def get_rendered_advanced_conf(self):
@@ -90,6 +91,9 @@ class AmbariBluePrintConfiguration(BaseConfiguration):
             FileManager.read_file(os.path.join(CLUSTER_TEMPLATES_DIR, "base_blueprint.json.j2"),
                                   FileManager.FileType.RAW),
             j2_context).decode_result()
+
+        blueprint_json["Blueprints"]["stack_version"]=self.stack_version
+
         self.conf = blueprint_json
 
     def get_conf(self):

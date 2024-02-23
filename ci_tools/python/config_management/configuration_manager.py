@@ -48,12 +48,13 @@ class ConfigurationManager:
                                                         save)
 
     def save_ambari_configurations(self):
+        stack_version = self.sd_conf.get("stack_version","3.2.0")
         ambari_cluster_template_conf = AmbariClusterTemplateConfiguration(
             "cluster_template.json", DynamicVariableGenerator(self.advanced_conf))
         ambari_cluster_template_conf.save()
 
         ambari_blue_print_conf = AmbariBluePrintConfiguration(
-            "blueprint.json", DynamicVariableGenerator(self.advanced_conf), ServiceManager(self.advanced_conf))
+            "blueprint.json", DynamicVariableGenerator(self.advanced_conf), ServiceManager(self.advanced_conf), stack_version)
         ambari_blue_print_conf.save()
 
     def setup_validators(self):
