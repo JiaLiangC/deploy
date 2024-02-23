@@ -42,7 +42,7 @@ class ClusterClear:
             "user_array": [
                 "yarn-ats" "ambari", "ambari-qa", "ams", "flink", "flume", "hadoop", "hbase",
                 "hcat", "hdfs", "hive", "infra-solr", "kafka", "livy", "mapred", "postgres",
-                "ranger", "slider", "spark", "solr", "tez", "yarn", "zookeeper"
+                "ranger", "slider", "spark", "solr", "tez", "yarn", "zookeeper", "knox", "kyuubi", "celeborn", "alluxio"
             ],
 
             "special_paths": [
@@ -67,7 +67,7 @@ class ClusterClear:
             ],
             "packages": [
                 "ambari-agent", self.stack_name + "-*", "ambari-infra", "ambari-server", "ambari-metrics",
-                "nightingale",
+                "nightingale","knox","kyuubi","alluxio","celeborn",
                 "grafana_agent", "victoriametrics", self.stack_name + "-select", "postgresql", "postgresql*-server",
                 "mysql-community-server", "mariadb-server"
             ]
