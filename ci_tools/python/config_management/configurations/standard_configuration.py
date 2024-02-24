@@ -66,7 +66,8 @@ class StandardConfiguration(BaseConfiguration, HostsInfoParser):
             conf_yaml_data = {
                 "default_password": conf["default_password"],
                 "data_dirs": conf["data_dirs"],
-                "repos": conf["repos"]
+                "repos": conf["repos"],
+                "stack_version": conf["stack_version"]
             }
             conf_tpl_file = GET_CONF_TPL_NAME(CONF_NAME)
             # todo hostname fetcher
