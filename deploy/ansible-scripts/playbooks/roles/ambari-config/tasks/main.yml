@@ -49,6 +49,9 @@
 #        creates: "/var/lib/ambari-server/resources/mpacks/solr-ambari-mpack-{{ hdpsearch_version }}"
 #  when: install_hdpsearch is defined and install_hdpsearch
 
+- name: generate version_definitions request body
+  set_fact:
+    ambari_stack: "BIGTOP-{{ stack_version | string }}"
 
 - name: version_definitions
   uri:
@@ -58,7 +61,7 @@
     user: "{{ ambari_options.ambari_admin_user }}"
     password: "{{ ambari_options.ambari_admin_password }}"
     headers: '{"X-Requested-By":"ambari"}'
-    body: "{\"VersionDefinition\":{\"available\":\"BIGTOP-{{ stack_version }}\"}}"
+    body: " {\"VersionDefinition\":{ \"available\":\"{{ ambari_stack }}\"}}" #body 的json 前加了一个空格就好了，否则会报错
     body_format: raw
     status_code: 200,201,202
     timeout: 120
