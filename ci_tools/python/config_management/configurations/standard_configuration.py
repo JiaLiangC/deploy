@@ -73,7 +73,9 @@ class StandardConfiguration(BaseConfiguration, HostsInfoParser):
             # todo hostname fetcher
             advanced_tpl_str_conf = AdvancedConfiguration(conf_tpl_file).get_str_conf()
             hosts_names = self.get_parsed_hosts_names()
-            topology_manager = TopologyManager(lambda: hosts_names)
+
+            components_to_install = self.conf.get("components_to_install")
+            topology_manager = TopologyManager(lambda: hosts_names, components_to_install)
             topology = topology_manager.generate_topology()
             topology.update(conf_yaml_data)
 

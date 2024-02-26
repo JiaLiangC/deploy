@@ -1,4 +1,4 @@
-from .service_map import *
+from python.config_management.service_map import *
 
 
 class ServiceManager:

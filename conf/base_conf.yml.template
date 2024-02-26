@@ -11,3 +11,8 @@ hosts:
   - 10.1.1.10 server0 password0
   - 10.1.1.12 server1 password2
   - 10.1.1.13 server2 password3
+
+
+stack_version: '3.3.0'
+components_to_install: ["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos"]
+#["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos","celeborn","kyuubi","knox","alluxio"]

@@ -26,6 +26,10 @@ class ServiceMap:
             return None
 
     @staticmethod
+    def get_service_info_by_component_name(component_name):
+        return ServiceMap.get_services_map().get(component_name)
+
+    @staticmethod
     def get_services_map():
         service_map = {
             "hbase": {
@@ -86,6 +90,22 @@ class ServiceMap:
             "kerberos": {
                 "server": ["KERBEROS_CLIENT"],
                 "clients": ["KERBEROS_CLIENT"]
+            },
+            "celeborn": {
+                "server": ["CELEBORN_MASTER", "CELEBORN_WORKER"],
+                "clients": []
+            },
+            "kyuubi": {
+                "server": ["KYUUBI_SERVER"],
+                "clients": []
+            },
+            "knox": {
+                "server": ["KNOX_GATEWAY"],
+                "clients": []
+            },
+            "alluxio": {
+                "server": ["ALLUXIO_MASTER", "ALLUXIO_WORKER"],
+                "clients": []
             }
         }
         return service_map
