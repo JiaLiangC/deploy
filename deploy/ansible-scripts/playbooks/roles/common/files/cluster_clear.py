@@ -27,7 +27,7 @@ class ClusterClear:
                 "ambari", self.stack_name, "flink", "grafana", "hadoop", "hbase", "hive",
                 "kafka", "knox", "livy", "phoenix", "pig", "ranger",
                 "spark", "tez", "webhcat", "zookeeper", "solr", "hdfs", "yarn",
-                "ambari-infra-solr"
+                "ambari-infra-solr", "knox", "celeborn", "alluxio", "kyuubi"
             ],
             "bins": [
                 "beeline", "flume-ng", "hadoop", "hbase",
@@ -67,7 +67,7 @@ class ClusterClear:
             ],
             "packages": [
                 "ambari-agent", self.stack_name + "-*", "ambari-infra", "ambari-server", "ambari-metrics",
-                "nightingale","knox","kyuubi","alluxio","celeborn",
+                "nightingale", "knox", "kyuubi", "alluxio", "celeborn",
                 "grafana_agent", "victoriametrics", self.stack_name + "-select", "postgresql", "postgresql*-server",
                 "mysql-community-server", "mariadb-server"
             ]
