@@ -197,6 +197,12 @@ class BigtopBuilder(object):
         compile_command = self.get_compile_command(component)
         logger.info(f"{component} start compile, compile infos will be  write to {component}.log {working_dir}")
         log_path = os.path.join(LOGS_DIR, f"{component}.log")
+        # todo 抽象为编译组件的通用前置依赖
+        if component == "ambari-metrics":
+            process = subprocess.Popen("yum install -y python3-devel", shell=True, stdout=log_file, stderr=subprocess.STDOUT,
+                                       cwd=working_dir)
+            exit_status = process.wait()
+
         with open(log_path, "w") as log_file:
             process = subprocess.Popen(compile_command, shell=True, stdout=log_file, stderr=subprocess.STDOUT,
                                        cwd=working_dir)
