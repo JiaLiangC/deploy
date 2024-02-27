@@ -116,7 +116,7 @@ class BigtopBuilder(object):
         logger.info("set web compile envirment")
         #self.set_npm_proxy()
         #self.set_yarn_registry()
-        #self.set_bowerrc_proxy()
+        self.set_bowerrc_proxy()
 
     def set_npm_proxy(self):
         logger.info("set npm registry")
@@ -198,12 +198,14 @@ class BigtopBuilder(object):
         logger.info(f"{component} start compile, compile infos will be  write to {component}.log {working_dir}")
         log_path = os.path.join(LOGS_DIR, f"{component}.log")
         # todo 抽象为编译组件的通用前置依赖
-        if component == "ambari-metrics":
-            process = subprocess.Popen("yum install -y python3-devel", shell=True, stdout=log_file, stderr=subprocess.STDOUT,
-                                       cwd=working_dir)
-            exit_status = process.wait()
 
         with open(log_path, "w") as log_file:
+            if component == "ambari-metrics":
+                process = subprocess.Popen("yum install -y python3-devel", shell=True, stdout=log_file, stderr=subprocess.STDOUT,
+                                           cwd=working_dir)
+                exit_status = process.wait()
+
+
             process = subprocess.Popen(compile_command, shell=True, stdout=log_file, stderr=subprocess.STDOUT,
                                        cwd=working_dir)
             logger.info(f"compile command is {compile_command}, command submitted, wait for compile finish")
