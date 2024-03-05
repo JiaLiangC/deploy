@@ -71,7 +71,7 @@ class ServiceMap:
                 "clients": []
             },
             "ranger_kms": {
-                "server": ["RANGER_KMS"],
+                "server": ["RANGER_KMS_SERVER"],
                 "clients": []
             },
             "infra_solr": {
