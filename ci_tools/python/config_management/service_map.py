@@ -70,6 +70,10 @@ class ServiceMap:
                 "server": ["RANGER_ADMIN", "RANGER_TAGSYNC", "RANGER_USERSYNC"],
                 "clients": []
             },
+            "ranger_kms": {
+                "server": ["RANGER_KMS"],
+                "clients": []
+            },
             "infra_solr": {
                 "server": ["INFRA_SOLR"],
                 "clients": ["INFRA_SOLR_CLIENT"]
