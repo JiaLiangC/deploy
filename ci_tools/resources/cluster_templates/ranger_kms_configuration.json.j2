@@ -1,0 +1,50 @@
+{
+      "kms-properties" : {
+        "DB_FLAVOR" : "{{ database|replace('mariadb', 'mysql')|upper }}",
+        "KMS_MASTER_KEY_PASSWD" : "{{ ranger_security_options.kms_master_key_password }}",
+        "db_host" : "{{ database_hostname }}",
+        "db_name" : "{{ database_options.rangerkms_db_name }}",
+        "db_user" : "{{ database_options.rangerkms_db_username }}",
+        "db_password" : "{{ database_options.rangerkms_db_password }}"
+      },
+      "dbks-site" : {
+        {% if database == "mysql" or database == "mariadb" -%}
+        "ranger.ks.jpa.jdbc.url": "jdbc:mysql://{{ database_hostname }}:{{ mysql_port }}/{{ database_options.rangerkms_db_name }}",
+        "ranger.ks.jpa.jdbc.driver": "com.mysql.jdbc.Driver"
+        {% endif -%}
+        {% if database == "postgres" -%}
+        "ranger.ks.jpa.jdbc.url": "jdbc:postgresql://{{ database_hostname }}:{{ postgres_port }}/{{ database_options.rangerkms_db_name }}",
+        "ranger.ks.jpa.jdbc.driver": "org.postgresql.Driver"
+        {% endif -%}
+      },
+      "kms-env" : {
+        "kms_log_dir" : "{{ base_log_dir }}/ranger/kms",
+        "create_db_user" : "false"
+      },
+      "kms-site" : {
+        {% if rangerkms_hosts|length > 1 %}
+        "hadoop.kms.cache.enable" : "false",
+        "hadoop.kms.cache.timeout.ms" : "0",
+        "hadoop.kms.current.key.cache.timeout.ms" : "0",
+        "hadoop.kms.authentication.signer.secret.provider" : "zookeeper",
+        "hadoop.kms.authentication.signer.secret.provider.zookeeper.connection.string" : "{% for zk in zookeeper_hosts %}{{ zk }}:2181{% if not loop.last %},{% endif %}{% endfor %}",
+        {% endif %}
+        "hadoop.kms.proxyuser.HTTP.hosts" : "*",
+        "hadoop.kms.proxyuser.HTTP.users" : "*",
+        "hadoop.kms.proxyuser.ranger.groups" : "*",
+        "hadoop.kms.proxyuser.ranger.hosts" : "*",
+        "hadoop.kms.proxyuser.ranger.users" : "*",
+        "hadoop.kms.proxyuser.yarn.groups" : "*",
+        "hadoop.kms.proxyuser.yarn.hosts" : "*",
+        "hadoop.kms.proxyuser.yarn.users" : "*"
+      },
+      "ranger-kms-audit" : {
+        "xasecure.audit.destination.db" : "false",
+        "xasecure.audit.destination.hdfs" : "true",
+        "xasecure.audit.destination.hdfs.dir" : "hdfs://{% if namenode_hosts |length > 1 %}{{ hdfs_ha_name }}{% else %}{{ namenode_hosts |sort|list|first }}:8020{% endif %}/ranger/audit",
+        "xasecure.audit.destination.hdfs.batch.filespool.dir" : "{{ ranger_audit_hdfs_filespool_base_dir }}/kafka/audit/hdfs/spool",
+        "xasecure.audit.destination.solr" : "true",
+        "xasecure.audit.destination.solr.zookeepers" : "{% for zk in zookeeper_hosts %}{{ zk }}:2181{% if not loop.last %},{% endif %}{% endfor %}/infra-solr",
+        "xasecure.audit.destination.solr.batch.filespool.dir" : "{{ ranger_audit_solr_filespool_base_dir }}/hbase/audit/solr/spool"
+      }
+}
