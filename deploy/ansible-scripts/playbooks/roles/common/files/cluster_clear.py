@@ -25,7 +25,7 @@ class ClusterClear:
             ],
             "components": [
                 "ambari", self.stack_name, "flink", "grafana", "hadoop", "hbase", "hive",
-                "kafka", "knox", "livy", "phoenix", "pig", "ranger",
+                "kafka", "knox", "livy", "phoenix", "pig", "ranger", "ranger-kms",
                 "spark", "tez", "webhcat", "zookeeper", "solr", "hdfs", "yarn",
                 "ambari-infra-solr", "knox", "celeborn", "alluxio", "kyuubi"
             ],
@@ -41,7 +41,7 @@ class ClusterClear:
 
             "user_array": [
                 "yarn-ats" "ambari", "ambari-qa", "ams", "flink", "flume", "hadoop", "hbase",
-                "hcat", "hdfs", "hive", "infra-solr", "kafka", "livy", "mapred", "postgres",
+                "hcat", "hdfs", "hive", "infra-solr", "kafka", "livy", "mapred", "postgres", "kms",
                 "ranger", "slider", "spark", "solr", "tez", "yarn", "zookeeper", "knox", "kyuubi", "celeborn", "alluxio"
             ],
 
