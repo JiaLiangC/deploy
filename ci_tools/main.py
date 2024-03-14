@@ -24,7 +24,8 @@ logger = get_logger()
 
 ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "alluxio",
                   "knox", "celeborn", "tez", "ambari",#"dinky",
-                  "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils"]
+                  "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils",
+                  "bigtop-ambari-mpack"]
 
 
 class BaseTask:
@@ -485,7 +486,7 @@ def setup_options():
 
     parser.add_argument('-upload-nexus',
                         action='store_true',
-                        help='upload components to nexus build')
+                        help='upload components rpms to nexus')
 
     parser.add_argument('-upload-os-pkgs',
                         action='store_true',
@@ -497,25 +498,25 @@ def setup_options():
 
     parser.add_argument('-generate-conf',
                         action='store_true',
-                        help='Generate configuration file')
+                        help='generate all configuration files')
 
     parser.add_argument('-clean-components',
                         metavar='clean_components',
                         type=str,
                         default=False,
-                        help='Rebuild Some Packages')
+                        help='clean components that already build')
 
     parser.add_argument('-clean-all',
                         action='store_true',
-                        help='Rebuild all packages')
+                        help='rebuild all packages')
 
     parser.add_argument('-build-all',
                         action='store_true',
-                        help='Rebuild all packages')
+                        help='build all packages')
 
     parser.add_argument('-repo-sync',
                         action='store_true',
-                        help='the repo_sync params,os_name and arch ')
+                        help='sync the os repo from remote mirror to local disk')
 
     parser.add_argument('-pkg-nexus',
                         action='store_true',
@@ -525,7 +526,7 @@ def setup_options():
                         metavar='os_info',
                         type=str,
                         default="",
-                        help='the repo_sync params,os_name and arch ')
+                        help='the release params: os_name,os_version,arch exp:centos,7,x86_64')
 
     parser.add_argument('-stack',
                         metavar='stack',
@@ -537,15 +538,16 @@ def setup_options():
                         metavar='parallel',
                         type=int,
                         default=3,
-                        help='The parallel build parallel threads used in build')
+                        help='The parallel build threads used in build')
 
     parser.add_argument('-release',
                         action='store_true',
-                        help='Rebuild all packages make udh release')
+                        help='make  bigdata platform release')
+
 
     parser.add_argument('-skip-exist',
                         action='store_true',
-                        help='skip udh rpm package if exist')
+                        help='skip copy rpm packages if udh_rpms.tar.gz exist')
 
     # Parse the arguments
     args = parser.parse_args()
