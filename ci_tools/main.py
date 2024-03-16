@@ -19,15 +19,18 @@ import json
 import shlex
 from datetime import datetime
 from urllib.parse import urlparse
+import tempfile
+import shutil
+from pathlib import Path
 
 logger = get_logger()
 
 ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "alluxio",
-                  "knox", "celeborn", "tez", "ambari",#"dinky",
+                  "knox", "celeborn", "tez", "ambari",  # "dinky",
                   "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils",
                   "bigtop-ambari-mpack"]
 
-
+DOCKER_IMAGE_MAP = {"centos7":"bigtop/slaves:trunk-centos-7", "centos8": "bigtop/slaves:trunk-rockylinux-8"}
 class BaseTask:
     def __init__(self):
         self.conf = self.load_conf()
@@ -78,13 +81,13 @@ class BaseTask:
 
 
 class ContainerTask(BaseTask):
-    def __init__(self):
+    def __init__(self,os):
+        self.os=os
         super().__init__()
 
     def create_container(self):
-        image = self.conf["docker"]["image"]
-        # Implementation of create_container method
-        container_name = self.conf["docker"]["build_container_name"]
+        image = DOCKER_IMAGE_MAP.get(self.os)
+        container_name = f"bigtop_{self.os}"
         client = docker.from_env()
 
         try:
@@ -141,9 +144,9 @@ class ContainerTask(BaseTask):
         self.logged_exec_run(container, cmd=cmd, workdir=f'{prj_dir}')
 
         if container:
-        #todo check os type
-            #cmd_install = 'yum install -y python3-devel' #add python.h dependency for ambari build
-            #self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
+            # todo check os type
+            # cmd_install = 'yum install -y python3-devel' #add python.h dependency for ambari build
+            # self.logged_exec_run(container, cmd=['/bin/bash', '-c', cmd_install])
             print("only ambari need install python3-devel ")
 
     def run(self):
@@ -339,13 +342,15 @@ class DeployClusterTask(BaseTask):
 
 
 class UDHReleaseTask(BaseTask):
-    def __init__(self, os_type, os_version, os_arch):
+    def __init__(self, os_type, os_version, os_arch, comps=[], release_tar=""):
         super().__init__()
         self.os_type = os_type
         self.os_version = os_version
         self.os_arch = os_arch
         self.release_prj_dir = ""
         self.pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
+        self.comps = comps
+        self.release_tar = release_tar
         self.initialize()
 
     def initialize(self):
@@ -357,6 +362,13 @@ class UDHReleaseTask(BaseTask):
         os.makedirs(udh_release_output_dir)
         pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, PRJ_BIN_DIR)
         pigz_installer.install()
+
+    def get_compiled_packages(self, comp):
+        pkg_dir = os.path.join(self.conf["bigtop"]["prj_dir"], f"output/{comp}")
+        logger.info(f"package bigdata rpms pkg_dir:{pkg_dir} comp:{comp}")
+        filepaths = glob.glob(os.path.join(pkg_dir, "**", "*.rpm"), recursive=True)
+        non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
+        return non_src_filepaths
 
     def package_bigdata_rpms(self):
         rpm_dir_name = os.path.basename(UDH_RPMS_PATH).split(".")[0]
@@ -371,10 +383,7 @@ class UDHReleaseTask(BaseTask):
             if not os.path.exists(comp_dir):
                 os.makedirs(comp_dir)
 
-            pkg_dir = os.path.join(self.conf["bigtop"]["prj_dir"], f"output/{comp}")
-            logger.info(f"package bigdata rpms pkg_dir:{pkg_dir} comp:{comp}")
-            filepaths = glob.glob(os.path.join(pkg_dir, "**", "*.rpm"), recursive=True)
-            non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
+            non_src_filepaths = self.get_compiled_packages(comp)
 
             for filepath in non_src_filepaths:
                 dest_path = os.path.join(comp_dir, os.path.basename(filepath))
@@ -405,8 +414,69 @@ class UDHReleaseTask(BaseTask):
         else:
             logger.error("package rpm failed, check the log")
 
-    def package(self, skip_exist=False):
+    def incremental_package(self):
+        udh_release_output_dir = self.conf["udh_release_output_dir"]
+        pigz_path = self.pigz_path
+        # 创建临时目录并自动清理
+        temp_dir = os.path.join(udh_release_output_dir,"release_tmp")
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        # with tempfile.TemporaryDirectory(dir=udh_release_output_dir) as temp_dir:
+        os.makedirs(temp_dir)
+        print(f"临时目录已创建在: {temp_dir}")
+        # 1.在 self.release_tar 所在的目录创建一个临时目录，然后把 self.release_tar 压缩包解压到那个临时目录里
+        command = f" tar -I  {pigz_path} -xf  {self.release_tar} -C {temp_dir}"
+        returncode = run_shell_command(command, shell=True)
+        temp_release_prj_dir = os.path.join(temp_dir, "bigdata-deploy")
+        udh_rpms_tar = os.path.join(temp_release_prj_dir, UDH_RPMS_RELATIVE_PATH)
+
+        rpm_dir_name = os.path.basename(UDH_RPMS_PATH).split(".")[0]
+        bigdata_rpm_dir = os.path.join(temp_release_prj_dir, PKG_RELATIVE_PATH, rpm_dir_name)
+        dir_path = Path(bigdata_rpm_dir)
+        udh_rpms_parent_dir = dir_path.parent
+        print(f"父目录路径是: {udh_rpms_parent_dir}")
+        # 2.解压 UDH_RPMS_PATH 中 udh-rpms 压缩包
+        command = f" tar -I  {pigz_path} -xf  {udh_rpms_tar} -C {udh_rpms_parent_dir}"
+        returncode = run_shell_command(command, shell=True)
+
+        # 3.删除  comps 中的rpm
+        for comp in self.comps:
+            comp_dir = os.path.join(bigdata_rpm_dir, comp)
+            if os.path.exists(comp_dir):
+                shutil.rmtree(comp_dir)
+            os.makedirs(comp_dir)
+
+            # 4.从 output 中复制对应的rpm 到 udh-rpms 中
+            non_src_filepaths= self.get_compiled_packages(comp)
+            for filepath in non_src_filepaths:
+                dest_path = os.path.join(comp_dir, os.path.basename(filepath))
+                shutil.copy(filepath, dest_path)
+                logger.info(f"copy from {filepath} to {dest_path}")
+
+        # 5.压缩 udh-rpms
+        dest_tar = f"{bigdata_rpm_dir}.tar.gz"
+        os.chdir(os.path.join(temp_release_prj_dir, PKG_RELATIVE_PATH))
+        command = f"tar cf - {os.path.basename(bigdata_rpm_dir)} | {self.pigz_path} -k -5 -p 16 > {dest_tar}"
+        returncode = run_shell_command(command, shell=True)
+        if returncode == 0:
+            # 6.删除 udh-rpms文件夹
+            shutil.rmtree(bigdata_rpm_dir)
+        else:
+            logger.error("package rpm failed, check the log")
+            # 7.重新压缩release 压缩包
+        # 临时目录将在这个块结束时自动删除
+        os.chdir(temp_dir)
+        time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
+        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
+
+        command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 16 > {udh_release_name}"
+        run_shell_command(command, shell=True)
+
+    def package(self):
         # todo centos7 增加pg10的包 tar cf - nexus | pigz -k -5 -p 8 > nexus.tar.gz
+        if len(self.comps) > 0 and len(self.release_tar) > 0:
+            self.incremental_package()
+            return
 
         udh_release_output_dir = self.conf["udh_release_output_dir"]
         release_prj_dir = self.release_prj_dir
@@ -450,17 +520,18 @@ class UDHReleaseTask(BaseTask):
         if not os.path.exists(os.path.join(udh_release_output_dir, "pigz")):
             shutil.copy(self.pigz_path, os.path.join(udh_release_output_dir, "pigz"))
 
-        if not skip_exist:
+
+        else:
             self.package_bigdata_rpms()
 
-        os.chdir(udh_release_output_dir)
-        time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
-        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
+            os.chdir(udh_release_output_dir)
+            time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
+            udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
 
-        command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 16 > {udh_release_name}"
-        run_shell_command(command, shell=True)
-        logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
-        shutil.rmtree(os.path.basename(release_prj_dir))
+            command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 16 > {udh_release_name}"
+            run_shell_command(command, shell=True)
+            logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
+            shutil.rmtree(os.path.basename(release_prj_dir))
 
 
 class InitializeTask(BaseTask):
@@ -544,10 +615,9 @@ def setup_options():
                         action='store_true',
                         help='make  bigdata platform release')
 
-
-    parser.add_argument('-skip-exist',
-                        action='store_true',
-                        help='skip copy rpm packages if udh_rpms.tar.gz exist')
+    parser.add_argument('-release-tar',
+                        type=str,
+                        help='recreate release tar useing exist release tar when repackage some component')
 
     # Parse the arguments
     args = parser.parse_args()
@@ -575,6 +645,28 @@ def config_check():
     print("placeholder")
 
 
+def build_components(clean_all, clean_components, components_str, stack, parallel,os):
+    clean_logs()
+    # create container for building
+    container_task = ContainerTask(os)
+    container = container_task.run()
+    build_args = {"clean_all": clean_all, "clean_components": clean_components, "components": components_str,
+                  "stack": stack, "max_workers": parallel}
+    build_components_task = BuildComponentsTask(container, build_args)
+    build_components_task.run()
+
+
+def check_os_info(os_info):
+    os_type, os_version, os_arch = os_info.split(",")
+    assert os_arch in SUPPORTED_ARCHS
+    assert os_type in SUPPORTED_OS
+    os = f"{os_type}{os_version}"
+
+def get_fullos(os_info):
+    os_type, os_version, os_arch = os_info.split(",")
+    os = f"{os_type}{os_version}"
+    return  os
+
 def main():
     args = setup_options()
     release = args.release
@@ -591,18 +683,14 @@ def main():
     install_nexus = args.install_nexus
     pkg_nexus = args.pkg_nexus
     upload_os_pkgs = args.upload_os_pkgs
-    skip_exist = args.skip_exist
     generate_conf = args.generate_conf
+    release_tar = args.release_tar
 
     init_task = InitializeTask()
     init_task.run()
 
-    if os_info:
-        os_type, os_version, os_arch = os_info.split(",")
-        assert os_arch in SUPPORTED_ARCHS
-        assert os_type in SUPPORTED_OS
-
     if install_nexus:
+        check_os_info(os_info)
         nexus_task = NexusTask(os_type, os_version, os_arch)
         nexus_task.install_nexus_and_jdk()
 
@@ -610,14 +698,9 @@ def main():
         components_str = ",".join(ALL_COMPONENTS)
 
     if components_str and len(components_str) > 0:
-        clean_logs()
-        # create container for building
-        container_task = ContainerTask()
-        container = container_task.run()
-        build_args = {"clean_all": clean_all, "clean_components": clean_components, "components": components_str,
-                      "stack": stack, "max_workers": parallel}
-        build_components_task = BuildComponentsTask(container, build_args)
-        build_components_task.run()
+        check_os_info(os_info)
+        os = get_fullos(os_info)
+        build_components(clean_all, clean_components, components_str, stack, parallel,os)
 
     if upload_nexus:
         # 如果没通过buid参数指定传哪些包，默认传全部
@@ -645,11 +728,16 @@ def main():
         nexus_task.package_nexus()
 
     if release:
-        skip_exist = True if skip_exist else False
+        check_os_info(os_info)
+        os = get_fullos(os_info)
+        components_arr = []
+        if components_str and len(components_str) > 0:
+            components_arr = components_str.split(",")
+            build_components(clean_all, clean_components, components_str, stack, parallel,os)
 
         os_type, os_version, os_arch = os_info.split(",")
-        udh_release_task = UDHReleaseTask(os_type, os_version, os_arch)
-        udh_release_task.package(skip_exist=skip_exist)
+        udh_release_task = UDHReleaseTask(os_type, os_version, os_arch, components_arr, release_tar)
+        udh_release_task.package()
         logger.info("do release")
 
     if upload_os_pkgs:
@@ -660,8 +748,10 @@ def main():
 if __name__ == '__main__':
     main()
 
+# todo 指定一个路径的release 包，重新打包
 
-#todo generate 和deploy之前都检查配置
+
+# todo generate 和deploy之前都检查配置
 # generate 之后，如果用户改了配置，要重新动态生成文件
 
 # pg10 包，打入udh rpm

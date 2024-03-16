@@ -18,8 +18,6 @@ bigtop:
   use_docker: true
   ci_scripts_module_path: ci_tools/python
 docker:
-  image: bigtop/slaves:trunk-centos-7
-  build_container_name: bigtop
   volumes:
     bigtop: /ws
     prj: /ws1

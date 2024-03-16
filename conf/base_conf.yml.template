@@ -15,4 +15,4 @@ hosts:
 
 stack_version: '3.3.0'
 components_to_install: ["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos"]
-#["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos","celeborn","kyuubi","knox","alluxio"]
+#components_to_install: ["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos","celeborn","kyuubi","knox","alluxio"]
