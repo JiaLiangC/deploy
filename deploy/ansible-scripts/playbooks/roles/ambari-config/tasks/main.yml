@@ -117,7 +117,6 @@
   find:
     paths: "/usr/lib/bigtop-ambari-mpack/"
     patterns: "ambari-mpack*.tar.gz"
-    first_found: true
   register: mpack_files
 
 - name: Install mpack to Ambari server
