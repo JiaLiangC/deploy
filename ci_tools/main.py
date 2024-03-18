@@ -522,10 +522,7 @@ class UDHReleaseTask(BaseTask):
                 logger.info(f"Successfully removed the symlink at {ansible_playbook_link}")
             except OSError as e:
                 logger.error(f"Error: {e.filename} - {e.strerror}.")
-        else:
-            shutil.rmtree(ansible_playbook_link)
-            logger.info(f"Successfully removed the ansible plaobook at {ansible_playbook_link}")
-
+       
         if not os.path.exists(os.path.join(udh_release_output_dir, "pigz")):
             shutil.copy(self.pigz_path, os.path.join(udh_release_output_dir, "pigz"))
 
