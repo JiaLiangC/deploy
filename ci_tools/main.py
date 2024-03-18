@@ -342,7 +342,7 @@ class DeployClusterTask(BaseTask):
 
 
 class UDHReleaseTask(BaseTask):
-    def __init__(self, os_type, os_version, os_arch, comps=[], release_tar=""):
+    def __init__(self, os_type, os_version, os_arch, comps=[], incremental_release_src_tar=""):
         super().__init__()
         self.os_type = os_type
         self.os_version = os_version
@@ -350,7 +350,7 @@ class UDHReleaseTask(BaseTask):
         self.release_prj_dir = ""
         self.pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
         self.comps = comps
-        self.release_tar = release_tar
+        self.incremental_release_src_tar = incremental_release_src_tar
         self.initialize()
 
     def initialize(self):
@@ -425,7 +425,7 @@ class UDHReleaseTask(BaseTask):
         os.makedirs(temp_dir)
         print(f"临时目录已创建在: {temp_dir}")
         # 1.在 self.release_tar 所在的目录创建一个临时目录，然后把 self.release_tar 压缩包解压到那个临时目录里
-        command = f" tar -I  {pigz_path} -xf  {self.release_tar} -C {temp_dir}"
+        command = f" tar -I  {pigz_path} -xf  {self.incremental_release_src_tar} -C {temp_dir}"
         returncode = run_shell_command(command, shell=True)
         temp_release_prj_dir = os.path.join(temp_dir, "bigdata-deploy")
         udh_rpms_tar = os.path.join(temp_release_prj_dir, UDH_RPMS_RELATIVE_PATH)
@@ -547,77 +547,22 @@ def setup_options():
     parser = argparse.ArgumentParser(description='CI Tools.')
 
     # Add the arguments
-    parser.add_argument('-components',
-                        metavar='components',
-                        type=str,
-                        help='The components to be build, donat split')
-    parser.add_argument('-install-nexus',
-                        action='store_true',
-                        help='install nexus ')
-
-    parser.add_argument('-upload-nexus',
-                        action='store_true',
-                        help='upload components rpms to nexus')
-
-    parser.add_argument('-upload-os-pkgs',
-                        action='store_true',
-                        help='upload os pkgs to nexus')
-
-    parser.add_argument('-deploy',
-                        action='store_true',
-                        help='deploy a cluster')
-
-    parser.add_argument('-generate-conf',
-                        action='store_true',
-                        help='generate all configuration files')
-
-    parser.add_argument('-clean-components',
-                        metavar='clean_components',
-                        type=str,
-                        default=False,
-                        help='clean components that already build')
-
-    parser.add_argument('-clean-all',
-                        action='store_true',
-                        help='rebuild all packages')
-
-    parser.add_argument('-build-all',
-                        action='store_true',
-                        help='build all packages')
-
-    parser.add_argument('-repo-sync',
-                        action='store_true',
-                        help='sync the os repo from remote mirror to local disk')
-
-    parser.add_argument('-pkg-nexus',
-                        action='store_true',
-                        help='create the nexus package with os repo')
-
-    parser.add_argument('-os-info',
-                        metavar='os_info',
-                        type=str,
-                        default="",
-                        help='the release params: os_name,os_version,arch exp:centos,7,x86_64')
-
-    parser.add_argument('-stack',
-                        metavar='stack',
-                        type=str,
-                        default="ambari",
-                        help='The stack to be build')
-
-    parser.add_argument('-parallel',
-                        metavar='parallel',
-                        type=int,
-                        default=3,
-                        help='The parallel build threads used in build')
-
-    parser.add_argument('-release',
-                        action='store_true',
-                        help='make  bigdata platform release')
-
-    parser.add_argument('-release-tar',
-                        type=str,
-                        help='recreate release tar useing exist release tar when repackage some component')
+    parser.add_argument('-components', metavar='components', type=str, help='The components to be build, donat split')
+    parser.add_argument('-install-nexus', action='store_true', help='install nexus ')
+    parser.add_argument('-upload-nexus', action='store_true', help='upload components rpms to nexus')
+    parser.add_argument('-upload-os-pkgs', action='store_true', help='upload os pkgs to nexus')
+    parser.add_argument('-deploy', action='store_true', help='deploy a cluster')
+    parser.add_argument('-generate-conf', action='store_true', help='generate all configuration files')
+    parser.add_argument('-clean-components', metavar='clean_components', type=str, default=False, help='clean components that already build')
+    parser.add_argument('-clean-all', action='store_true', help='rebuild all packages')
+    parser.add_argument('-build-all', action='store_true', help='build all packages')
+    parser.add_argument('-repo-sync', action='store_true', help='sync the os repo from remote mirror to local disk')
+    parser.add_argument('-pkg-nexus', action='store_true', help='create the nexus package with os repo')
+    parser.add_argument('-os-info', metavar='os_info', type=str, default="", help='the release params: os_name,os_version,arch exp:centos,7,x86_64')
+    parser.add_argument('-stack', metavar='stack', type=str, default="ambari", help='The stack to be build')
+    parser.add_argument('-parallel', metavar='parallel', type=int, default=3, help='The parallel build threads used in build')
+    parser.add_argument('-release',action='store_true', help='make  bigdata platform release')
+    parser.add_argument('--incremental-release-src',type=str, help='Incrementally update a release.')
 
     # Parse the arguments
     args = parser.parse_args()
@@ -684,7 +629,7 @@ def main():
     pkg_nexus = args.pkg_nexus
     upload_os_pkgs = args.upload_os_pkgs
     generate_conf = args.generate_conf
-    release_tar = args.release_tar
+    incremental_release_src_tar = args.incremental_release_src
 
     init_task = InitializeTask()
     init_task.run()
@@ -736,7 +681,7 @@ def main():
             build_components(clean_all, clean_components, components_str, stack, parallel,os)
 
         os_type, os_version, os_arch = os_info.split(",")
-        udh_release_task = UDHReleaseTask(os_type, os_version, os_arch, components_arr, release_tar)
+        udh_release_task = UDHReleaseTask(os_type, os_version, os_arch, components_arr, incremental_release_src_tar)
         udh_release_task.package()
         logger.info("do release")
 
