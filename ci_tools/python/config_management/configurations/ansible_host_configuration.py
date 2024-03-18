@@ -17,21 +17,28 @@ class AnsibleHostConfiguration(BaseConfiguration):
         parsed_hosts = [p.split() for p in parsed_hosts]
         hosts_dict = {hostname: (ip, passwd) for ip, hostname, passwd in parsed_hosts}
         node_groups = {"ambari-server": [ambari_server_host]}
+        ansible_user = self.hosts_info_configuration.get_user()
+
+
         for host_info in parsed_hosts:
             ip, hostname, passwd = host_info
             node_groups.setdefault("hadoop-cluster", []).append(hostname)
 
         hosts_content = ""
+
         for group, hosts in node_groups.items():
             hosts_content += "[{}]\n".format(group)
             for host_name in hosts:
                 if host_name not in hosts_dict:
                     raise InvalidConfigurationException(f"Host '{host_name}' not found in parsed hosts.")
                 ip, passwd = hosts_dict[host_name]
-                hosts_content += "{} ansible_host={} ansible_ssh_pass={}\n".format(host_name, ip, passwd)
+                if ansible_user=="root":
+                    hosts_content += "{} ansible_host={} ansible_ssh_pass={} \n".format(host_name, ip, passwd)
+                else:
+                    hosts_content += "{} ansible_host={} ansible_ssh_pass={} ansible_sudo_pass={}\n".format(host_name, ip, passwd, passwd)
             hosts_content += "\n"
 
-        ansible_user = self.hosts_info_configuration.get_user()
+
         hosts_content += "[all:vars]\nansible_user={}\n".format(ansible_user)
 
         return hosts_content

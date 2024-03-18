@@ -1,15 +1,15 @@
 ---
 
-- name: create the ambari_run_user group or verify if its present
+- name: create the ambari_agent_run_user group or verify if its present
   group:
-    name: "{{ambari_options.ambari_run_user}}"
+    name: "{{ambari_options.ambari_agent_run_user}}"
     state: present
 
-- name: create user ambari_run_user
+- name: create user ambari_agent_run_user
   user:
-    name: "{{ambari_options.ambari_run_user}}"
+    name: "{{ambari_options.ambari_agent_run_user}}"
     shell: /bin/bash
-    groups: "{{ambari_options.ambari_run_user}}"
+    groups: "{{ambari_options.ambari_agent_run_user}}"
     append: yes
 
 - name: Copy RPM files to remote host
@@ -36,7 +36,7 @@
   replace:
     path: /etc/ambari-agent/conf/ambari-agent.ini
     regexp: "run_as_user=root"
-    replace: "run_as_user={{ambari_options.ambari_run_user}}"
+    replace: "run_as_user={{ambari_options.ambari_agent_run_user}}"
     backup: no
 
 - name: Set the Ambari Server in the agent configuration
