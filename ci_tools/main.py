@@ -313,7 +313,8 @@ class DeployClusterTask(BaseTask):
         if not os.path.exists(UDH_RPMS_PATH) == True:
             raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
         logger.info(f'start  decompress {UDH_RPMS_PATH} ')
-        command = f"tar  -zxf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
+        pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
+        command = f"tar  -I {pigz_path} -xf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
         run_shell_command(command, shell=True)
         rpms_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
 
@@ -464,25 +465,34 @@ class UDHReleaseTask(BaseTask):
         else:
             logger.error("package rpm failed, check the log")
             # 7.重新压缩release 压缩包
-        # 临时目录将在这个块结束时自动删除
-        os.chdir(temp_dir)
-        time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
-        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
 
-        command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 16 > {udh_release_name}"
-        run_shell_command(command, shell=True)
+
+
+        rpm_dir_name = os.path.basename(UDH_RPMS_PATH).split(".")[0]
+        bigdata_rpm_dir = os.path.join(self.release_prj_dir, PKG_RELATIVE_PATH, rpm_dir_name)
+        final_dest_tar = f"{bigdata_rpm_dir}.tar.gz"
+        shutil.move(dest_tar, final_dest_tar)
+
+
+        # # 临时目录将在这个块结束时自动删除
+        # os.chdir(temp_dir)
+        # time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
+        # udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
+        #
+        # command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 16 > {udh_release_name}"
+        # run_shell_command(command, shell=True)
 
     def package(self):
         # todo centos7 增加pg10的包 tar cf - nexus | pigz -k -5 -p 8 > nexus.tar.gz
-        if len(self.comps) > 0 and len(self.release_tar) > 0:
-            self.incremental_package()
-            return
 
         udh_release_output_dir = self.conf["udh_release_output_dir"]
         release_prj_dir = self.release_prj_dir
 
         # 1. Copy project directory into udh_release_output_dir
         logger.info(f"packaging: copy {PRJDIR} to {release_prj_dir}")
+        playbook_link = os.path.join(PRJDIR,"bin","ansible-playbook")
+        if os.path.islink(playbook_link):
+            os.remove(playbook_link)
         shutil.copytree(PRJDIR, release_prj_dir)
         # 2. Change into the copied directory and remove .git
         os.chdir(release_prj_dir)
@@ -505,33 +515,34 @@ class UDHReleaseTask(BaseTask):
             logger.info(f"remove portable_ansible dir {portable_ansible_dir}")
             shutil.rmtree(portable_ansible_dir)
         ansible_playbook_link = os.path.join(release_prj_dir, "bin/ansible-playbook")
-        if os.path.exists(ansible_playbook_link):
-            if os.path.islink(ansible_playbook_link):
-                try:
-                    # 删除软链接
-                    os.unlink(ansible_playbook_link)
-                    logger.info(f"Successfully removed the symlink at {ansible_playbook_link}")
-                except OSError as e:
-                    logger.error(f"Error: {e.filename} - {e.strerror}.")
-            else:
-                shutil.rmtree(ansible_playbook_link)
-                logger.info(f"Successfully removed the ansible plaobook at {ansible_playbook_link}")
+        if os.path.islink(ansible_playbook_link):
+            try:
+                # 删除软链接
+                os.unlink(ansible_playbook_link)
+                logger.info(f"Successfully removed the symlink at {ansible_playbook_link}")
+            except OSError as e:
+                logger.error(f"Error: {e.filename} - {e.strerror}.")
+        else:
+            shutil.rmtree(ansible_playbook_link)
+            logger.info(f"Successfully removed the ansible plaobook at {ansible_playbook_link}")
 
         if not os.path.exists(os.path.join(udh_release_output_dir, "pigz")):
             shutil.copy(self.pigz_path, os.path.join(udh_release_output_dir, "pigz"))
 
 
+        if len(self.comps) > 0 and len(self.incremental_release_src_tar) > 0:
+            self.incremental_package()
         else:
             self.package_bigdata_rpms()
 
-            os.chdir(udh_release_output_dir)
-            time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
-            udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
+        os.chdir(udh_release_output_dir)
+        time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')
+        udh_release_name = f"UDH_RELEASE_{self.os_type}{self.os_version}_{self.os_arch}-{time_dir_name}.tar.gz"
 
-            command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 16 > {udh_release_name}"
-            run_shell_command(command, shell=True)
-            logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
-            shutil.rmtree(os.path.basename(release_prj_dir))
+        command = f"tar cf - {os.path.basename(PRJDIR)} | {self.pigz_path} -k -5 -p 16 > {udh_release_name}"
+        run_shell_command(command, shell=True)
+        logger.info(f"UDH Release packaged success, remove {os.path.basename(release_prj_dir)}")
+        shutil.rmtree(os.path.basename(release_prj_dir))
 
 
 class InitializeTask(BaseTask):
@@ -562,7 +573,7 @@ def setup_options():
     parser.add_argument('-stack', metavar='stack', type=str, default="ambari", help='The stack to be build')
     parser.add_argument('-parallel', metavar='parallel', type=int, default=3, help='The parallel build threads used in build')
     parser.add_argument('-release',action='store_true', help='make  bigdata platform release')
-    parser.add_argument('--incremental-release-src',type=str, help='Incrementally update a release.')
+    parser.add_argument('-incremental-release-src',type=str, help='Incrementally update a release.')
 
     # Parse the arguments
     args = parser.parse_args()

@@ -78,15 +78,15 @@
 - name: create user
   user: name={{ item.user }}
   with_items:
-    - { user: '{{ ambari_options.ambari_agent_run_user }}'
-    - { user: '{{ ambari_options.ambari_server_run_user }}'
+    - { user: '{{ ambari_options.ambari_agent_run_user }}' }
+    - { user: '{{ ambari_options.ambari_server_run_user }}' }
   ignore_errors: True
 
 #给用户配置sudo权限
 - name: Config /etc/sudoers
- shell: "{{ item }}"
- with_items:
-   - "echo '{{ ambari_options.ambari_agent_run_user }} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
+  shell: "{{ item }}"
+  with_items:
+    - "echo '{{ ambari_options.ambari_agent_run_user }} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
 
 # clean /etc/hosts
 - name: clean hosts
