@@ -9,6 +9,8 @@ class AdvancedConfiguration(BaseConfiguration):
 
     def is_ambari_repo_configured(self):
         repos = self.get('repos', [])
+        if not repos:
+            return  False
         if len(repos) > 0:
             for repo_item in repos:
                 if "ambari_repo" == repo_item["name"]:

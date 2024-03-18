@@ -59,9 +59,7 @@ security_options:
 # ambari_server
 ambari_options:
   ambari_agent_run_user: 'ambari'
-  ambari_agent_shell_password: 'ambari'
   ambari_server_run_user: 'ambari'
-  ambari_server_shell_password: 'ambari'
   ambari_admin_user: 'admin'
   ambari_admin_password: '{{ default_password }}'
   ambari_admin_default_password: 'admin'                   # no need to change this (unless the Ambari default changes)

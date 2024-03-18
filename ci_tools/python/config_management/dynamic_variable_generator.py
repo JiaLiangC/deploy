@@ -88,6 +88,8 @@ class DynamicVariableGenerator:
             decoder="yaml")
         rendered_conf_vars.update(hosts_groups_variables)
         rendered_conf_vars.update(extra_vars)
+        if not rendered_conf_vars["repos"]:
+            rendered_conf_vars["repos"] = []
         if not self.advanced_conf.is_ambari_repo_configured():
             rendered_conf_vars["repos"].append({"name": "ambari_repo", "url": ambari_repo_url})
         return rendered_conf_vars
