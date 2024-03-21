@@ -1,19 +1,18 @@
-- name: 确保/opt/目录存在
+- name: ensure /opt/ exist
   file:
     path: /opt/
     state: directory
     mode: '0755'
 
-- name: 从变量指定的位置复制JDK压缩包到目标机器
+- name: copy jdk to opt
   copy:
     src: "{{ trino_jdk_archive }}"
     dest: "/opt/"
     mode: '0644'
   register: copy_result
 
-- name: 解压JDK压缩包到/opt/
+- name: unarchive jdk
   unarchive:
-    src: "/opt/{{ jdk_archive | basename }}"
+    src: "/opt/{{ trino_jdk_archive | basename }}"
     dest: /opt/
     remote_src: yes
-  when: copy_result.changed

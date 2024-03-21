@@ -717,6 +717,10 @@ def main():
 if __name__ == '__main__':
     main()
 
+
+
+#pip3依赖， xmltodict docker
+
 # todo 指定一个路径的release 包，重新打包
 
 
