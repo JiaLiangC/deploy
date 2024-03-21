@@ -89,7 +89,26 @@ class TopologyValidator(Validator):
                                       "desc": "选择部署ambari_metrics时,METRICS_COLLECTOR 必须且只能各部署一台"},
                 "METRICS_GRAFANA": {"min_instances": 1, "max_instances": 1,
                                     "desc": "选择部署ambari_metrics时,METRICS_GRAFANA 必须且只能各部署一台"}
+            },
+            "knox": {
+                "KNOX_GATEWAY": {"min_instances": 1, "max_instances": None,
+                                           "desc": "选择部署 knox 时，knox 必须且只能各部署一台"},
+            },
+            "kyuubi": {
+                "KYUUBI_SERVER": {"min_instances": 1, "max_instances": None,
+                                           "desc": "选择部署kyuubi时，KYUUBI_SERVER 最低要部署一台"},
+            },
+            "celeborn": {
+                "CELEBORN_MASTER": {"min_instances": 1, "max_instances": 3,
+                                           "desc": "选择部署 celeborn 时，CELEBORN_MASTER可以部署一台或者3台作为高可用 和 CELEBORN_WORKER 最低需要部署一台"},
+                "CELEBORN_WORKER": {"min_instances": 1, "max_instances": None},
+            },
+            "trino": {
+                "TRINO_COORDINATOR": {"min_instances": 1, "max_instances": 1,
+                                           "desc": "选择部署trino时，TRINO_COORDINATOR只能部署一台,TRINO_WORKER 最低需要一台"},
+                "TRINO_WORKER": {"min_instances": 1, "max_instances": None},
             }
+
         }
 
     def check_pattern(self, service_rules, service_counter):

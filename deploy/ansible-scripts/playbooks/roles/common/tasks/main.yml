@@ -107,15 +107,9 @@
 #设置ntp
 - include: ntp_setup.yml
 
-#设置系统中 python2 全局的默认编码为utf-8
-- name: modify encoding
-  copy:
-    src: site_customize.py
-    dest: /usr/lib/python2.7/site-packages/
-    owner: root
-    group: root
-    mode: 0755
-  ignore_errors: true
+#trino jdk install
+- include: jdk.yml
+
 
 
 #- name: Prepare the packages compatible

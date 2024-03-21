@@ -110,6 +110,10 @@ class ServiceMap:
             "alluxio": {
                 "server": ["ALLUXIO_MASTER", "ALLUXIO_WORKER"],
                 "clients": []
+            },
+            "trino": {
+                "server": ["TRINO_COORDINATOR", "TRINO_WORKER"],
+                "clients": ["TRINO_CLI"]
             }
         }
         return service_map

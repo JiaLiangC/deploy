@@ -25,7 +25,7 @@ from pathlib import Path
 
 logger = get_logger()
 
-ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "alluxio",
+ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "alluxio", "trino",
                   "knox", "celeborn", "tez", "ambari",  # "dinky",
                   "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils",
                   "bigtop-ambari-mpack"]
@@ -371,6 +371,20 @@ class UDHReleaseTask(BaseTask):
         non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
         return non_src_filepaths
 
+
+    def package_trino_jdk(self):
+        #根据架构 cp jdk 到resource 目录下，在generate的时候，动态生成jdk 文件的位置填充到asible里
+        if self.os_arch == "x86_64":
+            jdk_source = self.conf["jdk17_x86_location"]
+        else:
+            jdk_source = self.conf["jdk17_arm_location"]
+
+        dest_path = os.path.join(self.release_prj_dir, PKG_RELATIVE_PATH, os.path.basename(jdk_source))
+        logger.info(f"trino jdk will copy from  {jdk_source} to {dest_path} ")
+        shutil.copy(jdk_source, dest_path)
+
+
+
     def package_bigdata_rpms(self):
         rpm_dir_name = os.path.basename(UDH_RPMS_PATH).split(".")[0]
         bigdata_rpm_dir = os.path.join(self.release_prj_dir, PKG_RELATIVE_PATH, rpm_dir_name)
@@ -522,7 +536,7 @@ class UDHReleaseTask(BaseTask):
                 logger.info(f"Successfully removed the symlink at {ansible_playbook_link}")
             except OSError as e:
                 logger.error(f"Error: {e.filename} - {e.strerror}.")
-       
+
         if not os.path.exists(os.path.join(udh_release_output_dir, "pigz")):
             shutil.copy(self.pigz_path, os.path.join(udh_release_output_dir, "pigz"))
 
@@ -531,6 +545,8 @@ class UDHReleaseTask(BaseTask):
             self.incremental_package()
         else:
             self.package_bigdata_rpms()
+
+        self.package_trino_jdk()
 
         os.chdir(udh_release_output_dir)
         time_dir_name = datetime.now().isoformat().replace(':', '-').replace('.', '-')

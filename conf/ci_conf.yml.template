@@ -25,3 +25,5 @@ docker:
 centos7_pg_10_dir: /home/jialiang/udh/container_dep/pg10
 udh_release_output_dir: /data/sdv1/UDH/
 udh_nexus_release_output_dir: /data/sdv1/UDH_NEXUS/
+jdk17_x86_location: /OpenJDK17U-jdk_x64_linux_hotspot_17.0.10_7.tar.gz
+jdk17_arm_location: /OpenJDK17U-jdk_s390x_linux_hotspot_17.0.10_7.tar.gz

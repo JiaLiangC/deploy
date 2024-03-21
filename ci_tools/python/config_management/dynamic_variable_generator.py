@@ -1,6 +1,8 @@
 import socket
-
+import os
+import glob
 from python.config_management.template_renderer import *
+from python.common.constants import *
 
 
 class DynamicVariableGenerator:
@@ -79,7 +81,9 @@ class DynamicVariableGenerator:
             "kdc_hostname": self.get_kdc_server_host(),
             "database_hostname": self._generate_database_host(),
             "ambari_server_host": self.get_ambari_server_host(),
-            "ambari_repo_url": ambari_repo_url
+            "ambari_repo_url": ambari_repo_url,
+            "trino_jdk_archive": self._get_trino_jdk_path(),
+            "trino_java_home": self._generate_trino_java_home()
         }
         conf_j2_context = self.advanced_conf.get_conf()
         conf_j2_context.update(extra_vars)
@@ -100,6 +104,49 @@ class DynamicVariableGenerator:
         else:
             ambari_server_host = self.get_ambari_server_host()
             return ambari_server_host
+
+
+    def _generate_trino_java_home(self):
+        default_install_path="/opt"
+        trino_java_home = "/opt/jdk-17.0.10+7"
+        return  trino_java_home
+
+    def _get_trino_jdk_path(self):
+        def recursive_glob(rootdir='.', prefix=None, suffix=None, filter_func=None):
+            """Recursively glob files from rootdir with specific prefix and/or suffix, and apply an optional filter."""
+            files = [
+                os.path.join(looproot, filename)
+                for looproot, _, filenames in os.walk(rootdir)
+                # 对文件名同时根据前缀和后缀进行过滤
+                for filename in filenames if (prefix is None or filename.startswith(prefix)) and (suffix is None or filename.endswith(suffix))
+            ]
+
+            # 如果提供了过滤函数，进一步过滤文件列表
+            if filter_func is not None:
+                files = [file for file in files if filter_func(file)]
+
+            return files
+
+        # 使用示例:
+        # 查找具有特定前缀和后缀的文件
+        # files_with_specific_pref_and_suff = recursive_glob('.', prefix='example', suffix='.txt')
+        # print(files_with_specific_pref_and_suff)
+        #
+        # # 查找具有特定前缀的文件
+        # files_with_specific_prefix = recursive_glob('.', prefix='example')
+        # print(files_with_specific_prefix)
+        #
+        # # 查找具有特定后缀的文件
+        # files_with_specific_suffix = recursive_glob('.', suffix='.txt')
+        # print(files_with_specific_suffix)
+
+        trino_jdk_resource_dir = os.path.join(PRJDIR, PKG_RELATIVE_PATH)
+        print(f"trino_jdk_resource_dir is {trino_jdk_resource_dir}")
+        files = recursive_glob(trino_jdk_resource_dir, "OpenJDK17U")
+        trino_jdk_path = files[0] if len(files)>0 else "/xxx"
+        print(trino_jdk_path)
+        return  trino_jdk_path
+
 
     def _generate_database_host(self):
         ambari_host = self.get_ambari_server_host()
