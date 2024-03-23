@@ -54,11 +54,10 @@ OS_INFO = {
 
 
 class NexusSynchronizer:
-    def __init__(self, os_type, os_version, os_arch, local_dir):
-        assert os_arch in SUPPORTED_ARCHS
-        self.os_type = os_type
-        self.os_version = os_version
-        self.os_arch = os_arch
+    def __init__(self, os_info, local_dir):
+        self.os_type = os_info[0]
+        self.os_version = os_info[1]
+        self.os_arch = os_info[2]
         self.local_dir = local_dir
         self.success_file = os.path.join(OUTPUT_DIR, 'success.json')
         self.failure_file = os.path.join(OUTPUT_DIR, 'failure.json')
@@ -271,21 +270,21 @@ class NexusSynchronizer:
 
 if __name__ == '__main__':
 
-    synchronizer = NexusSynchronizer("centos", "7", "x86_64", "./")
+    synchronizer = NexusSynchronizer(("centos", "7", "x86_64"), "./")
     synchronizer.generate_pkg_meta()
 
-    synchronizer = NexusSynchronizer("centos", "8", "x86_64", "./")
+    synchronizer = NexusSynchronizer(("centos", "8", "x86_64"), "./")
     synchronizer.generate_pkg_meta()
 
 
-    synchronizer = NexusSynchronizer("openeuler", "22", "x86_64", "./")
+    synchronizer = NexusSynchronizer(("openeuler", "22", "x86_64"), "./")
     synchronizer.generate_pkg_meta()
 
-    synchronizer = NexusSynchronizer("kylin", "v10", "aarch64", "./")
+    synchronizer = NexusSynchronizer(("kylin", "v10", "aarch64"), "./")
     synchronizer.generate_pkg_meta()
 
-    synchronizer = NexusSynchronizer("kylin", "v10", "x86_64", "./")
+    synchronizer = NexusSynchronizer(("kylin", "v10", "x86_64"), "./")
     synchronizer.generate_pkg_meta()
 
-    synchronizer = NexusSynchronizer("openeuler", "22", "x86_64", "./")
+    synchronizer = NexusSynchronizer(("openeuler", "22", "x86_64"), "./")
     synchronizer.generate_pkg_meta()
