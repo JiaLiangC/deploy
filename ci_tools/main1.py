@@ -580,7 +580,7 @@ class UDHReleaseManager:
             self.compress_and_cleanup_dir(self.path_manager.incremental_rpm_dir,
                                           self.path_manager.release_project_rpm_tar)
         else:
-            print(f"incremental packaging,no component specified ,will just move {self.path_manager.incremental_rpm_tar} to {self.path_manager.release_project_rpm_tar}")
+            print(f"incremental packaging: no component specified ,will just move {self.path_manager.incremental_rpm_tar} to {self.path_manager.release_project_rpm_tar}")
             shutil.move(self.path_manager.incremental_rpm_tar, self.path_manager.release_project_rpm_tar)
         # 清理临时目录（如果需要）
         FilesystemUtil.delete(self.path_manager.incremental_release_dir)
@@ -596,7 +596,7 @@ class UDHReleaseManager:
         self.executor.execute_command(command, shell=True)
 
         if bool(self.comps):
-            print("incremental packaging,no component specified ,will skip extract")
+            print("incremental packaging: no component specified ,will skip extract")
             rpms_tar = self.path_manager.incremental_rpm_tar
             rpms_tar_parent_dir = self.path_manager.incremental_rpm_parent_dir
             pigz_path = self.path_manager.pigz_path
@@ -720,7 +720,7 @@ class MainApplication:
         self.ci_config = ci_config
         self.nexus_manager = NexusManager(ci_config, self.os_info)
         self.build_manager = None
-        self.deployment_manager = None
+        self.deployment_manager =  DeploymentManager(ci_config)
         self.release_manager = None
 
     def get_os_info_tuple(self):
@@ -730,7 +730,7 @@ class MainApplication:
     def initialize(self):
         FilesystemUtil.create_dir(OUTPUT_DIR, empty_if_exists=True)
 
-    def check_os_info(self, os_info):
+    def check_os_info(self):
         os_type, os_version, os_arch = self.os_info
         assert os_arch in SUPPORTED_ARCHS
         assert os_type in SUPPORTED_OS
@@ -766,13 +766,12 @@ class MainApplication:
 
     def install_nexus_if_needed(self):
         if self.args.install_nexus:
-            os_info = self.os_info
-            self.check_os_info(os_info)
+            self.check_os_info()
             self.nexus_manager.install_and_configure_nexus()
 
     def build_components_if_needed(self):
         if self.args.build_all or self.args.components:
-            self.check_os_info(self.os_info)
+            self.check_os_info()
 
             container_manager = ContainerManager(self.os_info, PathManager(self.ci_config))
             container_manager.create_container()
@@ -790,11 +789,11 @@ class MainApplication:
 
     def sync_repo_if_needed(self):
         if self.args.repo_sync:
+            self.check_os_info()
             self.nexus_manager.sync_os_repositories()
 
     def deploy_cluster_if_needed(self):
         if self.args.deploy:
-            self.deployment_manager = DeploymentManager(self.ci_config)
             self.deployment_manager.deploy_cluster()
 
     def generate_conf_if_needed(self):
@@ -807,7 +806,7 @@ class MainApplication:
 
     def release_if_needed(self):
         if self.args.release:
-            self.check_os_info(self.os_info)
+            self.check_os_info()
             components_str = self.args.components
             components_arr = components_str.split(",") if components_str else []
 
@@ -833,13 +832,6 @@ class MainApplication:
         self.upload_os_packages_if_needed()
 
 
-# Example usage:
-# config_manager = ConfigurationManager('path/to/config.yml')
-# config_manager.load_conf()
-# app = MainApplication(config_manager.config)
-# app.run()
-
-
 def check_config():
     pass
 
@@ -852,30 +844,11 @@ if __name__ == '__main__':
     app = MainApplication(ci_config_manager.config)
     app.run()
 
-# todo 指定一个路径的release 包，重新打包
-
-
-# todo generate 和deploy之前都检查配置
-# generate 之后，如果用户改了配置，要重新动态生成文件
-
+#todo 配置输入检查 component name and params check
 # pip3 install -t requests ansible/extras
-# todo 使用设计模式重构 gpt intepreter
 # tar -I pigz -xf nexus.tar.gz -C /tmp
-# todo 目前同步包等只能在对应的操作系统上
-# 场景开发过程的宿主机编译，容器编译，nexus 安装，组件上传，部署集群，发布 release 包(主要是nexus 包)
-# 客户部署场景的集群部署：1.手动解压大部署包 2.执行source venv.sh 如果选择nexus 就解压安装nexus 到配置目录, 然后自动化部署
-# 目前只能在对应操作系统打发布包
 # todo 容器默认安装python3-devel
-# todo 梳理容器依赖和宿主机依赖
 # todo 程序退出时杀死 ansible 进程
-# todo component name and params check
-
 # docker run -d -it --network host -v ${PWD}:/ws -v /data/sdv1/bigtop_reporoot:/root --workdir /ws --name BIGTOP bigtop/slaves:3.2.0-centos-7
-# {根据os 获取对应的镜像的名字}
-# todo 把容器需要的都丢到一个目录，挂载到容器对应的目录下
 # yum install createrepo
-# todo pg 包上传到centos7
-# todo rpm db broker 处理
-# todo ci_conf files check
-# todo python3 check httpd check for deploy
-# todo createrepo check for others
+# todo rpm db brokern 处理
