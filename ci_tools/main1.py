@@ -75,7 +75,7 @@ class PathManager:
         self.release_project_rpm_dir = self.get_rpm_dir(self.release_project_dir)
         self.incremental_rpm_dir = self.get_rpm_dir(self.incremental_project_dir)
 
-        self.pigz_path = os.path.join(PRJ_BIN_DIR, "bin", "pigz")
+        self.pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
         self.centos7_pg_10_source_dir = self.ci_config["centos7_pg_10_dir"]
         self.compiled_pkg_out_dir = os.path.join(self.ci_config["bigtop"]["prj_dir"], "output")
 
@@ -119,6 +119,7 @@ class FilesystemUtil:
     @staticmethod
     def create_dir(path, empty_if_exists=True):
         """Create a directory. If empty_if_exists is True, empty the dir if it exists."""
+        print("Creating dir:", path)
         if os.path.exists(path) and empty_if_exists:
             FilesystemUtil.empty_dir(path)
         else:
@@ -183,7 +184,6 @@ class ContainerManager:
         self.name = self.get_container_name(os_info)
         self.container = None
 
-
     def get_container_name(self, os_info):
         return f"bigtop_{self.get_fullos(os_info)}"
 
@@ -220,9 +220,9 @@ class ContainerManager:
         py_cmd_with_source_in_container = f'source ./venv.sh && {py_cmd}'
         cmd = ['/bin/bash', '-c', py_cmd_with_source_in_container]
         self.execute_command(cmd, workdir=prj_dir)
-        #cmd_install = 'yum install -y python3-devel'
-        #self.execute_command(['/bin/bash', '-c', cmd_install])
-        #print("only ambari need install python3-devel ")
+        # cmd_install = 'yum install -y python3-devel'
+        # self.execute_command(['/bin/bash', '-c', cmd_install])
+        # print("only ambari need install python3-devel ")
 
     def create_container(self):
         try:
@@ -300,6 +300,8 @@ class CommandExecutor:
     @staticmethod
     def execute_command(command, workdir=None, env_vars=None, shell=False, logfile=None):
         out = logfile or subprocess.PIPE
+        print(f"Executing  command: {command}")
+        env_vars = dict(env_vars) if env_vars else env_vars
         try:
             process = subprocess.Popen(
                 command,
@@ -307,7 +309,7 @@ class CommandExecutor:
                 stderr=out,
                 shell=shell,
                 cwd=workdir,
-                env=dict(env_vars),
+                env=env_vars,
                 universal_newlines=True
             )
 
@@ -329,7 +331,7 @@ class CommandExecutor:
     @staticmethod
     def execute_command_withlog(command, log_file, workdir=None, env_vars=None, shell=False):
         with open(log_file, "w") as log:
-            exit_status = CommandExecutor.execute_command(command, workdir, env_vars, shell, logfile=log_file)
+            exit_status = CommandExecutor.execute_command(command, workdir, env_vars, shell, logfile=log)
             return exit_status
 
     @staticmethod
@@ -574,8 +576,12 @@ class UDHReleaseManager:
         # 更新组件
         self.update_components()
         # 重新打包
-        self.compress_and_cleanup_dir(self.path_manager.incremental_rpm_dir,
-                                      self.path_manager.release_project_rpm_tar)
+        if bool(self.comps):
+            self.compress_and_cleanup_dir(self.path_manager.incremental_rpm_dir,
+                                          self.path_manager.release_project_rpm_tar)
+        else:
+            print(f"incremental packaging,no component specified ,will just move {self.path_manager.incremental_rpm_tar} to {self.path_manager.release_project_rpm_tar}")
+            shutil.move(self.path_manager.incremental_rpm_tar, self.path_manager.release_project_rpm_tar)
         # 清理临时目录（如果需要）
         FilesystemUtil.delete(self.path_manager.incremental_release_dir)
 
@@ -586,14 +592,16 @@ class UDHReleaseManager:
 
     def extract_existing_release(self):
         """解压存量发布包到临时目录"""
-        command = f"tar -I {self.pigz_path} -xf {self.incremental_release_src_tar} -C {self.temp_dir}"
+        command = f"tar -I {self.pigz_path} -xf {self.incremental_release_src_tar} -C {self.path_manager.incremental_release_dir}"
         self.executor.execute_command(command, shell=True)
 
-        rpms_tar = self.path_manager.incremental_rpm_tar
-        rpms_tar_parent_dir = self.path_manager.incremental_rpm_parent_dir
-        pigz_path = self.path_manager.pigz_path
-        command = f"tar -I  {pigz_path} -xf  {rpms_tar} -C {rpms_tar_parent_dir}"
-        self.executor.execute_command(command, shell=True)
+        if bool(self.comps):
+            print("incremental packaging,no component specified ,will skip extract")
+            rpms_tar = self.path_manager.incremental_rpm_tar
+            rpms_tar_parent_dir = self.path_manager.incremental_rpm_parent_dir
+            pigz_path = self.path_manager.pigz_path
+            command = f"tar -I  {pigz_path} -xf  {rpms_tar} -C {rpms_tar_parent_dir}"
+            self.executor.execute_command(command, shell=True)
 
     def update_components(self):
         """更新需要增量更新的组件"""
@@ -607,6 +615,7 @@ class UDHReleaseManager:
         non_src_filepaths = self.get_compiled_packages(comp)
         for filepath in non_src_filepaths:
             dest_path = os.path.join(comp_dir, os.path.basename(filepath))
+            print(f"copy {filepath}  to  {dest_path}")
             shutil.copy(filepath, dest_path)
 
     def compress_and_cleanup_dir(self, source_rpms_dir, dest_rpms_tar):
@@ -618,13 +627,8 @@ class UDHReleaseManager:
 
     def compress_release_directory(self):
         release_name = self.get_release_name()
-        # release_prj_dir = self.path_manager.get_release_prj_dir()
-        # os.chdir(self.path_manager.get_release_output_dir())
         self.compress_and_cleanup_dir(self.path_manager.release_project_dir, release_name)
-        # command = f"tar cf - {os.path.basename(release_prj_dir)} | {self.pigz_path} -k -5 -p 16 > {release_name}"
-        # self.executor.execute_command(command, shell=True)
-        logger.info(f"UDH Release packaged successfully, removing {os.path.basename(self.release_prj_dir)}")
-        # FilesystemUtil.delete_dir(release_prj_dir, ignore_errors=False)
+        logger.info(f"Release packaged successfully, removing {os.path.basename(self.release_prj_dir)}")
 
     def package_bigdata_rpms(self):
         FilesystemUtil.create_dir(self.path_manager.release_project_rpm_dir, empty_if_exists=True)
@@ -679,8 +683,10 @@ class UDHReleaseManager:
         self.cleanup_unnecessary_files()
 
         if self.should_perform_incremental_packaging():
+            print("will perform incremental packaging")
             self.incremental_package()
         else:
+            print("will perform all packaging")
             self.package_bigdata_rpms()
         self.compress_release_directory()
 
@@ -703,8 +709,8 @@ class UDHReleaseManager:
             FilesystemUtil.delete(path)
 
     def should_perform_incremental_packaging(self):
-        # 这个方法根据实际情况来决定是否执行增量打包
-        return len(self.comps) > 0 and len(self.incremental_release_src_tar) > 0
+        # 决定是否执行增量打包
+        return bool(self.incremental_release_src_tar)
 
 
 class MainApplication:
@@ -728,10 +734,9 @@ class MainApplication:
         os_type, os_version, os_arch = self.os_info
         assert os_arch in SUPPORTED_ARCHS
         assert os_type in SUPPORTED_OS
-        os = f"{os_type}{os_version}"
 
     def parse_arguments(self):
-        parser = argparse.ArgumentParser(description='UDH Release Tool.')
+        parser = argparse.ArgumentParser(description='Release Tool.')
 
         # Add the arguments
         parser.add_argument('-components', metavar='components', type=str,
@@ -771,7 +776,6 @@ class MainApplication:
 
             container_manager = ContainerManager(self.os_info, PathManager(self.ci_config))
             container_manager.create_container()
-            container_name = container_manager.get_container_name(self.os_info)
             components_str = self.args.components or ",".join(ALL_COMPONENTS)
 
             self.build_manager = BuildManager(self.ci_config, container_manager)
@@ -804,9 +808,10 @@ class MainApplication:
     def release_if_needed(self):
         if self.args.release:
             self.check_os_info(self.os_info)
-            components_str = self.args.components or ",".join(ALL_COMPONENTS)
+            components_str = self.args.components
             components_arr = components_str.split(",") if components_str else []
 
+            # components_str 不为空将进行增量打包，为空且带了增量打包的源包，则仅仅更新RPM包意外的内容，比如自动化部署项目.
             self.release_manager = UDHReleaseManager(self.os_info, self.ci_config, components_arr,
                                                      self.args.incremental_tar)
             self.release_manager.package()
@@ -853,8 +858,6 @@ if __name__ == '__main__':
 # todo generate 和deploy之前都检查配置
 # generate 之后，如果用户改了配置，要重新动态生成文件
 
-# pg10 包，打入udh rpm
-# 打包nexus 的时候，OS 的包传进去，如果要UDH，单独上传。
 # pip3 install -t requests ansible/extras
 # todo 使用设计模式重构 gpt intepreter
 # tar -I pigz -xf nexus.tar.gz -C /tmp
