@@ -7,6 +7,7 @@ CONF_DIR = os.path.join(PRJDIR, 'conf')
 CONF_NAME = 'conf.yml'
 BASE_CONF_NAME = 'base_conf.yml'
 HOSTS_CONF_NAME = 'hosts_info.yml'
+CI_CONF_NAME = 'ci_conf.yml'
 GET_CONF_TPL_NAME = lambda x: f'{x}.template'
 
 ANSIBLE_PRJ_DIR = os.path.join(PRJDIR, 'deploy/ansible-scripts')
