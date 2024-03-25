@@ -54,8 +54,8 @@ class ContainerManager:
 
         prj_dir = self.path_manager.get_current_prj_dir()
         logger.info(f"conf_str is {conf_str_quoted}")
-
-        py_cmd = f"python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={conf_str_quoted}"
+        build_script = os.path.join(prj_dir, BUILD_SCRIPT_RELATIVE_PATH)
+        py_cmd = f"python3 {build_script} --config={conf_str_quoted}"
         py_cmd_with_source_in_container = f'source ./venv.sh && {py_cmd}'
         cmd = ['/bin/bash', '-c', py_cmd_with_source_in_container]
         self.execute_command(cmd, workdir=prj_dir)

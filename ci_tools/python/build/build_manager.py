@@ -55,8 +55,8 @@ class BuildManager:
 
         build_args_str = json.dumps(build_args)
         build_args_str_quoted = shlex.quote(build_args_str)
-
-        build_cmd = f'python3 {prj_dir}/ci_tools/python/bigtop_compile/bigtop_utils.py --config={build_args_str_quoted}'
+        build_script = os.path.join(prj_dir, BUILD_SCRIPT_RELATIVE_PATH)
+        build_cmd = f'python3 {build_script} --config={build_args_str_quoted}'
         logger.info(f"Start building components with cmd {build_cmd}")
 
         if self.ci_config["bigtop"]["use_docker"]:

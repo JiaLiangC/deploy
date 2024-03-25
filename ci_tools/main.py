@@ -146,8 +146,7 @@ def check_config():
 
 if __name__ == '__main__':
     ci_config_manager = CIConfiguration()
-    ci_config_manager.load_conf()
-    app = MainApplication(ci_config_manager.config)
+    app = MainApplication(ci_config_manager.get_conf())
     app.run()
 
 #todo 配置输入检查 component name and params check

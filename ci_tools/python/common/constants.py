@@ -11,13 +11,15 @@ CI_CONF_NAME = 'ci_conf.yml'
 GET_CONF_TPL_NAME = lambda x: f'{x}.template'
 
 ANSIBLE_PRJ_DIR = os.path.join(PRJDIR, 'deploy/ansible-scripts')
+BUILD_SCRIPT_RELATIVE_PATH = 'ci_tools/build/bigtop_utils.py'
+BUILD_SCRIPT = os.path.join(PRJDIR, BUILD_SCRIPT_RELATIVE_PATH)
 BLUEPRINT_FILES_DIR = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/roles/ambari-blueprint/files/')
 CLUSTER_TEMPLATES_DIR = os.path.join(PRJDIR, "ci_tools/resources/cluster_templates")
 PLUGINS_DIR = os.path.join(PRJDIR, 'ci_tools/python/plugins')
 PLUGINS_FILES_DIR = os.path.join(PRJDIR, "ci_tools/resources/plugin_files")
 OUTPUT_DIR = os.path.join(PRJDIR, "output/")
 LOGS_DIR = os.path.join(PRJDIR, 'logs')
-PIP_CONF_FILE = os.path.join(PRJDIR, 'ci_tools/python/bigtop_compile/templates/pip_conf/pip.conf')
+PIP_CONF_FILE = os.path.join(PRJDIR, 'ci_tools/python/build/templates/pip_conf/pip.conf')
 PKG_RELATIVE_PATH = "ci_tools/resources/pkgs/"
 TAR_FILE_PATH = os.path.join(PRJDIR, PKG_RELATIVE_PATH)
 UDH_RPMS_RELATIVE_PATH =  "ci_tools/resources/pkgs/udh-rpms.tar.gz"
