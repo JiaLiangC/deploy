@@ -13,17 +13,47 @@ import os
 import shutil
 
 logger = get_logger()
+
 class Deployment:
-    def __init__(self, ci_config):
+    def __init__(self, ci_config, deploy_ambari_only=False, prepare_nodes_only=False):
+        self.deploy_ambari_only=deploy_ambari_only
+        self.prepare_nodes_only=prepare_nodes_only
         self.executor = CommandExecutor
         self.ci_config = ci_config
         self.conf_manager = ConfigurationManager(BASE_CONF_NAME)
 
-    def deploy_cluster(self):
-        playbook_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/install_cluster.yml')
-        inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
-        log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
 
+    def all_tasks(self):
+        return  ["prepare_nodes.yml","install_ambari.yml","configure_ambari.yml","apply_blueprint.yml"]
+
+    def generate_deploy_tasks(self):
+        if self.deploy_ambari_only:
+            playbook_tasks = [task for task in self.all_tasks() if task != "apply_blueprint.yml"]
+        elif self.prepare_nodes_only:
+            playbook_tasks = [self.all_tasks()[0]]
+        else:
+            playbook_tasks =self.all_tasks()
+        print(playbook_tasks)
+        return [os.path.join(ANSIBLE_PRJ_DIR, f'playbooks/{task}') for task in playbook_tasks]
+
+    def execute_tasks(self, playbook_tasks):
+        for playbook_path in playbook_tasks:
+            inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
+            log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
+            env_vars = os.environ.copy()
+            command = ["python3", f"{PRJ_BIN_DIR}/ansible-playbook", playbook_path, f"--inventory={inventory_path}"]
+            exit_status = self.executor.execute_command_withlog(command, log_file, workdir=PRJDIR, env_vars=env_vars)
+            # 等待子进程完成
+            logger.info(f"run_playbook {command} exit_status: {exit_status}")
+
+            if exit_status == 0:
+                logger.info("Cluster deployed successfully")
+            else:
+                logger.error(f"Cluster deployment failed: {error}")
+                raise Exception("Cluster deployment failed, check the log")
+
+    def deploy_cluster(self):
+        #playbook_path = os.path.join(ANSIBLE_PRJ_DIR, 'playbooks/install_cluster.yml')
         conf_manager = self.conf_manager
         conf_manager.load_confs()
         conf_manager.save_ambari_configurations()
@@ -33,19 +63,12 @@ class Deployment:
         if not conf_manager.is_ambari_repo_configured():
             self.setup_repo()
 
-        env_vars = os.environ.copy()
+        self.deploy_ambari_only = conf_manager.advanced_conf.get("deploy_ambari_only")
+        self.prepare_nodes_only = conf_manager.advanced_conf.get("prepare_nodes_only")
 
-        command = ["python3", f"{PRJ_BIN_DIR}/ansible-playbook", playbook_path, f"--inventory={inventory_path}"]
+        self.execute_tasks(self.generate_deploy_tasks())
 
-        exit_status = self.executor.execute_command_withlog(command, log_file, workdir=PRJDIR, env_vars=env_vars)
-        # 等待子进程完成
-        logger.info(f"run_playbook {command} exit_status: {exit_status}")
 
-        if exit_status == 0:
-            logger.info("Cluster deployed successfully")
-        else:
-            logger.error(f"Cluster deployment failed: {error}")
-            raise Exception("Cluster deployment failed, check the log")
 
     def generate_deploy_conf(self):
         # Generate deployment configuration

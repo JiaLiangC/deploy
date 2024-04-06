@@ -106,20 +106,20 @@
   retries: 100
   delay: 5
 
-
-- name: Install ambari bigtop mapck
-  package:
-    name: bigtop-ambari-mpack
-    update_cache: yes
-    state: latest
-
-- name: Find ambari-mpack*.tar.gz file
-  find:
-    paths: "/usr/lib/bigtop-ambari-mpack/"
-    patterns: "ambari-mpack*.tar.gz"
-  register: mpack_files
-
-- name: Install mpack to Ambari server
-  shell: ambari-server install-mpack -s --purge --verbose --mpack={{ mpack_files.files.0.path }}
-  when: mpack_files.files | length > 0
-  notify: Restart ambari-server
+#
+#- name: Install ambari bigtop mapck
+#  package:
+#    name: bigtop-ambari-mpack
+#    update_cache: yes
+#    state: latest
+#
+#- name: Find ambari-mpack*.tar.gz file
+#  find:
+#    paths: "/usr/lib/bigtop-ambari-mpack/"
+#    patterns: "ambari-mpack*.tar.gz"
+#  register: mpack_files
+#
+#- name: Install mpack to Ambari server
+#  shell: ambari-server install-mpack -s --purge --verbose --mpack={{ mpack_files.files.0.path }}
+#  when: mpack_files.files | length > 0
+#  notify: Restart ambari-server

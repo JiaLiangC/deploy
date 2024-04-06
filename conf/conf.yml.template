@@ -1,7 +1,8 @@
 
 
 
-install_ambari_only: false
+deploy_ambari_only: false
+prepare_nodes_only: false
 #Should the old YUM repositories be backed up to /etc/yum.repos.d/bak, and then removed, leaving only the repositories configured in this configuration?
 backup_old_repo: yes                      #Don't change this
 
