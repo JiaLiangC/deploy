@@ -89,7 +89,9 @@ class Release:
             shutil.copy(filepath, dest_path)
 
     def compress_and_cleanup_dir(self, source_rpms_dir, dest_rpms_tar):
+        print(f"compress_and_cleanup_dir source:{source_rpms_dir} dest:{dest_rpms_tar}")
         parent_dir = self.path_manager.get_parent_dir(source_rpms_dir)
+        print(f"compress_and_cleanup_dir parent_dir: {parent_dir} ")
         os.chdir(parent_dir)
         command = f"tar cf - {source_rpms_dir} | {self.pigz_path} -k -5 -p 16 > {dest_rpms_tar}"
         self.executor.execute_command(command, shell=True)

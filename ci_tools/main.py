@@ -36,7 +36,8 @@ class MainApplication:
         return tuple(os_info_arr)
 
     def initialize(self):
-        FilesystemUtil.create_dir(OUTPUT_DIR, empty_if_exists=True)
+        pass
+        # FilesystemUtil.create_dir(OUTPUT_DIR, empty_if_exists=True)
 
     def check_os_info(self):
         os_type, os_version, os_arch = self.os_info
