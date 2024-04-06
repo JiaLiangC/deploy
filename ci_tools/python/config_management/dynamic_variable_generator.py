@@ -117,33 +117,22 @@ class DynamicVariableGenerator:
             files = [
                 os.path.join(looproot, filename)
                 for looproot, _, filenames in os.walk(rootdir)
-                # 对文件名同时根据前缀和后缀进行过滤
                 for filename in filenames if (prefix is None or filename.startswith(prefix)) and (suffix is None or filename.endswith(suffix))
             ]
 
-            # 如果提供了过滤函数，进一步过滤文件列表
             if filter_func is not None:
                 files = [file for file in files if filter_func(file)]
 
             return files
 
-        # 使用示例:
-        # 查找具有特定前缀和后缀的文件
-        # files_with_specific_pref_and_suff = recursive_glob('.', prefix='example', suffix='.txt')
-        # print(files_with_specific_pref_and_suff)
-        #
-        # # 查找具有特定前缀的文件
-        # files_with_specific_prefix = recursive_glob('.', prefix='example')
-        # print(files_with_specific_prefix)
-        #
-        # # 查找具有特定后缀的文件
-        # files_with_specific_suffix = recursive_glob('.', suffix='.txt')
-        # print(files_with_specific_suffix)
-
         trino_jdk_resource_dir = os.path.join(PRJDIR, PKG_RELATIVE_PATH)
         print(f"trino_jdk_resource_dir is {trino_jdk_resource_dir}")
         files = recursive_glob(trino_jdk_resource_dir, "OpenJDK17U")
-        trino_jdk_path = files[0] if len(files)>0 else "/xxx"
+        if len(files)>0:
+            trino_jdk_path = files[0]
+        else:
+            print("trino_jdk_path not found ")
+            trino_jdk_path="/"
         print(trino_jdk_path)
         return  trino_jdk_path
 
@@ -159,11 +148,8 @@ class DynamicVariableGenerator:
 
     def get_ip_address(self):
         try:
-            # 创建一个UDP套接字
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            # 连接到一个公共的域名，此处使用Google的域名
             sock.connect(("8.8.8.8", 80))
-            # 获取本地套接字的IP地址
             ip_address = sock.getsockname()[0]
             return ip_address
         except socket.error:
@@ -173,7 +159,6 @@ class DynamicVariableGenerator:
         ipaddress = self.get_ip_address()
         if not self.advanced_conf.is_ambari_repo_configured():
             ambari_repo_rl = f"http://{ipaddress}:8881/repository/yum/udh3"
-            # todo 在 conf 中生成 {"name": "ambari_repo", "url": ambari_repo_rl}
         else:
             repos = self.advanced_conf.get('repos', [])
             for repo_item in repos:

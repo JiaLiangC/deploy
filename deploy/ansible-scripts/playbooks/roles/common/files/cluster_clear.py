@@ -75,18 +75,14 @@ class ClusterClear:
 
         return infos
 
-    # 删除 dirname 下的 包含 target_file_keyword 名的 文件
     def patterns_delete(self, dirname, target_file_keyword):
         if os.path.exists(dirname):
             for item in os.listdir(dirname):
                 item_path = os.path.join(dirname, item)
-                # 检查是否包含基准名称
                 if target_file_keyword in item:
-                    # 删除包含基准名称的文件和目录
-                    print("删除目录或文件 {}".format(item_path))
+                    print("remove file or dir {}".format(item_path))
                     self.safe_delete(item_path)
 
-    # 杀死所有大数据相关进程
     def kill_user_processes(self, username):
         try:
             # uid = int(subprocess.check_output(["id", "-u", username]))
@@ -95,7 +91,6 @@ class ClusterClear:
         except subprocess.CalledProcessError:
             print("User", username, "does not exist.")
 
-    # 删除无规则的路径
     def remove_special_path(self, files_arr):
         for path in files_arr:
             dirname = os.path.dirname(path)
@@ -123,7 +118,7 @@ class ClusterClear:
         special_paths = info["special_paths"]
         bins = info["bins"]
 
-        print("循环关闭所有大数据用及其相关进程")
+        print("close bigdata process")
         p1 = subprocess.Popen(["pgrep", "-f", "ambari|hadoop|grafana"], stdout=subprocess.PIPE)
         output, _ = p1.communicate()
 
@@ -137,11 +132,10 @@ class ClusterClear:
         self.uninstall_packages(packages)
         self.uninstall_packages(components)
 
-        # 调用函数删除不规则的路径
-        print("卸载一些自定义的特殊的安装包{}".format(special_paths))
+        print("uninstall custom package {}".format(special_paths))
         self.remove_special_path(special_paths)
 
-        print("batch_delete 批量删除组件目录{}".format(components))
+        print("batch_delete batch delete dir {}".format(components))
         self.batch_delete(components, "/etc/security/limits.d")
         self.batch_delete(components, "/opt")
         self.batch_delete(components, "/var/lib")
@@ -151,12 +145,12 @@ class ClusterClear:
         self.batch_delete(components, "/var/run")
         self.batch_delete(components, "/hadoop/")
 
-        print("batch_delete 循环删除bin下的相关组件的文件")
+        print("batch_delete dir or file in bin")
         self.batch_delete(bins, "/usr/bin")
 
-        print("删除数据目录 {}".format(self.data_dirs[0]))
+        print("delete data dir {}".format(self.data_dirs[0]))
         for data_dir in self.data_dirs:
-            print("删除数据目录 {}".format(data_dir))
+            print("delete data dir {}".format(data_dir))
             if os.path.exists(data_dir):
                 self.batch_delete(components, data_dir)
 

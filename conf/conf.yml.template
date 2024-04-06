@@ -1,7 +1,7 @@
 
 
 
-
+install_ambari_only: false
 #Should the old YUM repositories be backed up to /etc/yum.repos.d/bak, and then removed, leaving only the repositories configured in this configuration?
 backup_old_repo: yes                      #Don't change this
 
@@ -18,7 +18,7 @@ hdfs_ha_name: 'udh'
 ############################
 ## database configuration ##
 ############################
-#如果使用了外部数据库，需要手动创建对应的ambari 和 hive 还有ranger的用户，数据库
+#If an external database is used, it is necessary to manually create corresponding users for Ambari, Hive, and Ranger in the database.
 database: 'postgres'                                      # can be set to  'postgres', 'mysql'
 postgres_port: 5432
 mysql_port: 3306

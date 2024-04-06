@@ -1,15 +1,22 @@
 ---
-- import_playbook: "prepare_nodes.yml"
-  tags: prepare_nodes
+- name: Execute conditionally based playbooks
+  hosts: all
+  tasks:
+    - name: Conditionally execute prepare_nodes.yml
+      import_playbook: "prepare_nodes.yml"
+      tags: prepare_nodes
 
-- import_playbook: "install_ambari.yml"
-  tags: ambari
+    - name: Conditionally execute install_ambari.yml
+      import_playbook: "install_ambari.yml"
+      tags: ambari
 
-- import_playbook: "configure_ambari.yml"
-  tags: ambari
+    - name: Conditionally execute configure_ambari.yml
+      import_playbook: "configure_ambari.yml"
+      tags: ambari
 
-- import_playbook: "apply_blueprint.yml"
-  tags: blueprint
+    - name: Conditionally execute apply_blueprint.yml
+      import_playbook: "apply_blueprint.yml"
+      tags: blueprint
+      when: install_ambari_only is defined and not install_ambari_only
 
-- import_playbook: "post_install.yml"
-  tags: post_install
+

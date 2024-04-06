@@ -149,7 +149,7 @@ if __name__ == '__main__':
     app = MainApplication(ci_config_manager.get_conf())
     app.run()
 
-#todo 配置输入检查 component name and params check
+# todo 配置输入检查 component name and params check
 # pip3 install -t requests ansible/extras
 # tar -I pigz -xf nexus.tar.gz -C /tmp
 # todo 容器默认安装python3-devel
@@ -157,3 +157,4 @@ if __name__ == '__main__':
 # docker run -d -it --network host -v ${PWD}:/ws -v /data/sdv1/bigtop_reporoot:/root --workdir /ws --name BIGTOP bigtop/slaves:3.2.0-centos-7
 # yum install createrepo
 # todo rpm db brokern 处理
+# todo 安全检测，用户是否配置正确

@@ -3,7 +3,6 @@
 from python.common.basic_logger import get_logger
 from python.common.constants import *
 from python.utils.os_utils import *
-import docker
 from python.common.path_manager import *
 import os
 import json
@@ -15,6 +14,7 @@ logger = get_logger()
 DOCKER_IMAGE_MAP = {"centos7": "bigtop/slaves:trunk-centos-7", "centos8": "bigtop/slaves:trunk-rockylinux-8"}
 
 class ContainerManager:
+    import docker
     def __init__(self, os_info, path_manager: PathManager):
         self.path_manager = path_manager
         self.client = docker.from_env()
