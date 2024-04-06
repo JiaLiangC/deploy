@@ -88,14 +88,19 @@ class Release:
             print(f"copy {filepath}  to  {dest_path}")
             shutil.copy(filepath, dest_path)
 
-    def compress_and_cleanup_dir(self, source_rpms_dir, dest_rpms_tar):
-        print(f"compress_and_cleanup_dir source:{source_rpms_dir} dest:{dest_rpms_tar}")
-        parent_dir = self.path_manager.get_parent_dir(source_rpms_dir)
+    def compress_and_cleanup_dir(self, source_dir, dest_tar):
+        print(f"compress_and_cleanup_dir source:{source_dir} dest:{dest_tar}")
+
+        parent_dir = self.path_manager.get_parent_dir(source_dir)
         print(f"compress_and_cleanup_dir parent_dir: {parent_dir} ")
         os.chdir(parent_dir)
-        command = f"tar cf - {source_rpms_dir} | {self.pigz_path} -k -5 -p 16 > {dest_rpms_tar}"
+
+        source_last_dir = os.path.basename(os.path.normpath(source_dir))
+        dest_last_dir = os.path.basename(os.path.normpath(dest_tar))
+
+        command = f"tar cf - {source_last_dir} | {self.pigz_path} -k -5 -p 16 > {dest_last_dir}"
         self.executor.execute_command(command, shell=True)
-        FilesystemUtil.delete(source_rpms_dir)
+        FilesystemUtil.delete(source_dir)
 
     def compress_release_directory(self):
         release_name = self.get_release_name()
