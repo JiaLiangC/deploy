@@ -150,6 +150,10 @@ if __name__ == '__main__':
     app = MainApplication(ci_config_manager.get_conf())
     app.run()
 
+# sudo apt install apache2
+# sudo systemctl start apache2
+# sudo systemctl enable apache2
+# todo reprepro
 # todo 配置输入检查 component name and params check
 # pip3 install -t requests ansible/extras
 # tar -I pigz -xf nexus.tar.gz -C /tmp
