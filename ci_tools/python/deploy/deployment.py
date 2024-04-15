@@ -74,7 +74,31 @@ class Deployment:
         # Generate deployment configuration
         self.conf_manager.generate_confs(save=True)
 
+
     def setup_repo(self):
+        if get_os_type() == "ubuntu":
+            self.setup_apt_repo()
+        else:
+            self.setup_yum_repo()
+
+    def setup_apt_repo(self):
+        if not os.path.exists(UDH_RPMS_PATH) == True:
+            raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
+        logger.info(f'start  decompress {UDH_RPMS_PATH} ')
+
+        DISTRIBUTION = "ubuntu"
+        CODENAME = "focal"  # Use the appropriate codename for Ubuntu 22
+
+        command = f"tar  -zxvf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
+        self.executor.execute_command(command, shell=True)
+        pkgs_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
+        repodata_dir = os.path.join(rpms_dir, "repodata")
+        if os.path.exists(repodata_dir):
+            shutil.rmtree(repodata_dir)
+        REPO_BASE_DIR = os.path.join(pkgs_dir,"apt")
+        setup_and_process_repository(REPO_BASE_DIR, DISTRIBUTION, CODENAME, pkgs_dir)
+
+    def setup_yum_repo(self):
         if not os.path.exists(UDH_RPMS_PATH) == True:
             raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
         logger.info(f'start  decompress {UDH_RPMS_PATH} ')

@@ -164,6 +164,9 @@ def create_yum_repository(repo_data_dir):
         logger.error(f"An error occurred: {e}", file=sys.stderr)
         return False
 
+
+reprepro
+
 def is_httpd_installed():
     try:
         subprocess.run(["httpd", "-v"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -203,8 +206,6 @@ def get_ip_address():
 
 def sleep_with_logging(total_sleep_time, log_interval, log_message):
     """
-    使程序睡眠一段时间，每隔一定时间记录一条日志。
-
     :param total_sleep_time: 总睡眠时间（秒）
     :param log_interval: 日志打印间隔（秒）
     :param log_message: 要打印的日志消息
@@ -216,4 +217,56 @@ def sleep_with_logging(total_sleep_time, log_interval, log_message):
         logger.info(f"{log_message} - {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
         time.sleep(log_interval)  # 睡眠指定的间隔时间
 
-    logger.info("完成睡眠。")
+    logger.info("sleep finished")
+
+
+
+def add_deb_package_to_repo(repo_base_dir, distribution, package_path):
+    """
+    Adds a .deb package to the APT repository using reprepro.
+    """
+    command = ["reprepro", "-b", repo_base_dir, "includedeb", distribution, package_path]
+    try:
+        subprocess.run(command, check=True, stderr=subprocess.STDOUT)
+        logger.info(f"Successfully added {os.path.basename(package_path)} to repository.")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to add {os.path.basename(package_path)}: {e}")
+
+def process_directory_for_packages(repo_base_dir, distribution, package_directory):
+    """
+    Processes a directory to find .deb packages and adds them to the APT repository.
+    """
+    if not os.path.isdir(package_directory):
+        logger.error("Invalid package directory")
+        return
+
+    # Find all .deb files in the specified directory and its subdirectories.
+    for root, dirs, files in os.walk(package_directory):
+        for file in files:
+            if file.endswith(".deb"):
+                package_path = os.path.join(root, file)
+                logger.info(f"Processing package: {package_path}")
+                add_deb_package_to_repo(repo_base_dir, distribution, package_path)
+
+def setup_and_process_repository(repo_base_dir, distribution, codename, package_directory):
+    """
+    Sets up the APT repository and processes .deb packages within a directory.
+    """
+    # Check and create repo structure if necessary
+    conf_dir = os.path.join(repo_base_dir, 'conf')
+    os.makedirs(conf_dir, exist_ok=True)
+
+    # Configuring the repo if it hasn't been done already
+    distributions_file = os.path.join(conf_dir, 'distributions')
+    if not os.path.exists(distributions_file):
+        with open(distributions_file, 'w') as f:
+            f.write(f'''Codename: {codename}
+Components: main
+Architectures: i386 amd64
+SignWith: yes
+Suite: stable
+''')
+
+    logger.info("Repository configuration complete.")
+    # Process the directory to add .deb packages to the repository
+    process_directory_for_packages(repo_base_dir, distribution, package_directory)

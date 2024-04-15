@@ -22,7 +22,7 @@ LOGS_DIR = os.path.join(PRJDIR, 'logs')
 PIP_CONF_FILE = os.path.join(PRJDIR, 'ci_tools/python/build/templates/pip_conf/pip.conf')
 PKG_RELATIVE_PATH = "ci_tools/resources/pkgs/"
 TAR_FILE_PATH = os.path.join(PRJDIR, PKG_RELATIVE_PATH)
-UDH_RPMS_RELATIVE_PATH =  "ci_tools/resources/pkgs/udh-rpms.tar.gz"
+UDH_RPMS_RELATIVE_PATH = "ci_tools/resources/pkgs/udh-packages.tar.gz"
 UDH_RPMS_PATH = os.path.join(PRJDIR, UDH_RPMS_RELATIVE_PATH)
 PIGZ_SOURC_CODE_PATH = os.path.join(PRJDIR, "ci_tools/resources/pkgs/pigz-source.tar.gz")
 CI_TOOLS_MODULE_PATH = os.path.join(PRJDIR, "ci_tools/python")
@@ -41,3 +41,7 @@ UDH_NEXUS_REPO_PACKAGES_PATH = f"{UDH_NEXUS_REPO_PATH}/Packages"
 UDH_NEXUS_REPO_NAME = "yum"
 HTTPD_TPL_FILE = os.path.join(PRJDIR, "ci_tools/resources/templates/httpd.conf.tpl")
 HTTPD_CONF_FILE = "/etc/httpd/conf/httpd.conf"
+
+DEB_REPO_BASE_DIR = "/var/repos/apt"
+DEB_DISTRIBUTION = "ubuntu"
+DEB_CODENAME = "focal"
