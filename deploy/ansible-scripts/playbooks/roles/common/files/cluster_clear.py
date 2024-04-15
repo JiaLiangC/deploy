@@ -111,7 +111,9 @@ class ClusterClear:
             if package not in package_white_list:
                 print("Removing", package + "...")
                 if self.system_type == DEBIAN_OS:
-                    subprocess.call(["apt-get", "purge", "-y", package + "*"])
+                    command = ['apt-get', 'purge', '-y', package + "*"]
+                    env = {'DEBIAN_FRONTEND': 'noninteractive'}
+                    result = subprocess.call(command, env=dict(os.environ, **env))
                 else:
                     subprocess.call(["yum", "remove", "-y", package + "*"])
 
