@@ -87,7 +87,7 @@ class Deployment:
         logger.info(f'start  decompress {UDH_RPMS_PATH} ')
 
         DISTRIBUTION = "ubuntu"
-        CODENAME = "focal"  # Use the appropriate codename for Ubuntu 22
+        CODENAME = "main"  # Use the appropriate codename for Ubuntu 22
 
         command = f"tar  -zxvf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
         self.executor.execute_command(command, shell=True)
@@ -97,6 +97,15 @@ class Deployment:
             shutil.rmtree(repodata_dir)
         REPO_BASE_DIR = os.path.join(pkgs_dir,"apt")
         setup_and_process_repository(REPO_BASE_DIR, DISTRIBUTION, CODENAME, pkgs_dir)
+
+        if not is_apache2_installed():
+            install_apache2()
+            assert is_apache2_installed() == True
+
+        render_template(APACHE2_TPL_FILE, {"udh_local_repo_path": pkgs_dir}, APACHE2_CONF_FILE)
+
+        run_shell_command("systemctl restart apache2", shell=True)
+
 
     def setup_yum_repo(self):
         if not os.path.exists(UDH_RPMS_PATH) == True:

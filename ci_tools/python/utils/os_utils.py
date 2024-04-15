@@ -165,7 +165,6 @@ def create_yum_repository(repo_data_dir):
         return False
 
 
-reprepro
 
 def is_httpd_installed():
     try:
@@ -175,6 +174,23 @@ def is_httpd_installed():
         return False
     except FileNotFoundError:
         return False
+
+
+
+def is_apache2_installed():
+    try:
+        subprocess.run(["apache2", "-v"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+    except FileNotFoundError:
+        return False
+
+
+def install_apache2():
+    # DEBIAN_FRONTEND=noninteractive apt-get install -y apache2
+    install_command = ["noninteractive", "apt-get", "install", "-y", "apache2"]
+    run_shell_command(install_command)
 
 def install_httpd():
     install_command = ["yum", "install", "httpd", "-y"]

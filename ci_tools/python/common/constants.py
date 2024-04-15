@@ -41,6 +41,8 @@ UDH_NEXUS_REPO_PACKAGES_PATH = f"{UDH_NEXUS_REPO_PATH}/Packages"
 UDH_NEXUS_REPO_NAME = "yum"
 HTTPD_TPL_FILE = os.path.join(PRJDIR, "ci_tools/resources/templates/httpd.conf.tpl")
 HTTPD_CONF_FILE = "/etc/httpd/conf/httpd.conf"
+APACHE2_TPL_FILE = os.path.join(PRJDIR, "ci_tools/resources/templates/apache2.conf.tpl")
+APACHE2_CONF_FILE = "/etc/apache2/sites-enabled/apache2.conf"
 
 DEB_REPO_BASE_DIR = "/var/repos/apt"
 DEB_DISTRIBUTION = "ubuntu"
