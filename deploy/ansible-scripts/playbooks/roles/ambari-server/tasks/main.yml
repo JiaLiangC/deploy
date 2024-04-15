@@ -70,7 +70,6 @@
     - name: Install mysql required packages (for hive embedded)
       package:
         name: "{{ item }}"
-        update_cache: yes
         state: present
       with_items: "{{ mysql_packages | join(',') }}"
 
@@ -103,7 +102,6 @@
     - name: Install "{{ database }}" required packages
       package:
         name: "{{ item }}"
-        update_cache: yes
         state: present
       with_items: "{{ lookup('vars', database + '_packages') | join(',') }}"
 

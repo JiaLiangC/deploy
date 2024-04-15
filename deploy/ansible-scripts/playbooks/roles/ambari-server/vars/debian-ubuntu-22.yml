@@ -1,6 +1,6 @@
 ---
 #yum 安装的话 openjdk_path 和系统有关，会放在这里
-openjdk_path: /usr/lib/jvm/java-1.8.0-openjdk
+openjdk_path: /usr/lib/jvm/java-8-openjdk-amd64
 postgres_packages:
   - postgresql
   - python3-psycopg2
