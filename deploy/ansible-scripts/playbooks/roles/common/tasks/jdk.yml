@@ -1,8 +1,15 @@
+- name: Check if trino_jdk_archive exists
+  stat:
+    path: "{{ trino_jdk_archive }}"
+  register: trino_jdk_archive_stat
+
 - name: ensure /opt/ exist
   file:
     path: /opt/
     state: directory
     mode: '0755'
+  when: trino_jdk_archive_stat.stat.exists
+
 
 - name: copy jdk to opt
   copy:
@@ -10,9 +17,11 @@
     dest: "/opt/"
     mode: '0644'
   register: copy_result
+  when: trino_jdk_archive_stat.stat.exists
 
 - name: unarchive jdk
   unarchive:
     src: "/opt/{{ trino_jdk_archive | basename }}"
     dest: /opt/
     remote_src: yes
+  when: trino_jdk_archive_stat.stat.exists

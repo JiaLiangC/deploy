@@ -1,4 +1,5 @@
 import platform
+import distro
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -20,7 +21,7 @@ def get_os_arch():
 def get_os_type():
     operatingSystem = platform.system().lower()
     if operatingSystem == 'linux':
-        operatingSystem = platform.linux_distribution()[0].lower()
+        operatingSystem = distro.linux_distribution()[0].lower()
 
     # special cases
     if operatingSystem.startswith('ubuntu'):
@@ -243,7 +244,8 @@ def add_deb_package_to_repo(repo_base_dir, distribution, package_path):
     """
     command = ["reprepro", "-b", repo_base_dir, "includedeb", distribution, package_path]
     try:
-        subprocess.run(command, check=True, stderr=subprocess.STDOUT)
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        print(result.stdout)
         logger.info(f"Successfully added {os.path.basename(package_path)} to repository.")
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to add {os.path.basename(package_path)}: {e}")
@@ -279,7 +281,6 @@ def setup_and_process_repository(repo_base_dir, distribution, codename, package_
             f.write(f'''Codename: {codename}
 Components: main
 Architectures: i386 amd64
-SignWith: yes
 Suite: stable
 ''')
 

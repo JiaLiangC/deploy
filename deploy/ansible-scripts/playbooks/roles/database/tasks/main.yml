@@ -20,7 +20,6 @@
 - name: Install "{{ database }}" database packages
   package:
     name: "{{ item }}"
-    update_cache: yes
     state: present
   with_items: "{{ hostvars[inventory_hostname][database + '_packages'] | join(',') }}"
 

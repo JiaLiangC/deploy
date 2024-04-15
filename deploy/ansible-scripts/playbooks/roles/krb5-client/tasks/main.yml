@@ -8,6 +8,7 @@
         - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}.yml"
         - "{{ ansible_os_family|lower }}-{{ ansible_distribution_major_version }}.yml"
         - "{{ ansible_os_family|lower | replace(' ', '_')}}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
         - defaults.yml
       paths:
         - ../krb5-client/vars

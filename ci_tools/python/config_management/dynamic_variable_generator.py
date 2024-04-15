@@ -3,7 +3,7 @@ import os
 import glob
 from python.config_management.template_renderer import *
 from python.common.constants import *
-
+from python.utils.os_utils import *
 
 class DynamicVariableGenerator:
     def __init__(self, advanced_conf):
@@ -158,7 +158,10 @@ class DynamicVariableGenerator:
     def _generate_ambari_repo_url(self):
         ipaddress = self.get_ip_address()
         if not self.advanced_conf.is_ambari_repo_configured():
-            ambari_repo_rl = f"http://{ipaddress}:8881/repository/yum/udh3"
+            if get_os_type() == "ubuntu":
+                ambari_repo_rl = f"http://{ipaddress}:8881/repository/apt/udh3/apt"
+            else:
+                ambari_repo_rl = f"http://{ipaddress}:8881/repository/yum/udh3"
         else:
             repos = self.advanced_conf.get('repos', [])
             for repo_item in repos:

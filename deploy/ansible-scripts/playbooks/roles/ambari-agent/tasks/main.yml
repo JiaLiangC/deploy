@@ -28,9 +28,7 @@
 - name: Install the ambari-agent package
   package:
     name: ambari-agent
-    update_cache: yes
     state: latest
-  notify: Reload systemd
 
 - name: set run_user for Ambari agents
   replace:

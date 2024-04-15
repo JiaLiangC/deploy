@@ -49,7 +49,7 @@ class Deployment:
             if exit_status == 0:
                 logger.info("Cluster deployed successfully")
             else:
-                logger.error(f"Cluster deployment failed: {error}")
+                logger.error(f"Cluster deployment failed")
                 raise Exception("Cluster deployment failed, check the log")
 
     def deploy_cluster(self):
@@ -86,13 +86,13 @@ class Deployment:
             raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
         logger.info(f'start  decompress {UDH_RPMS_PATH} ')
 
-        DISTRIBUTION = "ubuntu"
-        CODENAME = "main"  # Use the appropriate codename for Ubuntu 22
+        DISTRIBUTION = "jammy"
+        CODENAME = "jammy"  # Use the appropriate codename for Ubuntu 22
 
         command = f"tar  -zxvf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
         self.executor.execute_command(command, shell=True)
         pkgs_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
-        repodata_dir = os.path.join(rpms_dir, "repodata")
+        repodata_dir = os.path.join(pkgs_dir, "apt")
         if os.path.exists(repodata_dir):
             shutil.rmtree(repodata_dir)
         REPO_BASE_DIR = os.path.join(pkgs_dir,"apt")

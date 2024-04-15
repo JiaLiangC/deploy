@@ -15,7 +15,6 @@
 - name: Install the ambari-server package
   package:
     name: ambari-server
-    update_cache: yes
     state: latest
   notify: Reload systemd
 

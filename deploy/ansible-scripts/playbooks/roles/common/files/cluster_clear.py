@@ -5,11 +5,13 @@ import shutil
 import subprocess
 import sys
 
+DEBIAN_OS="debian"
 
 class ClusterClear:
     stack_name = "bigtop"
 
-    def __init__(self, stack_name, data_dirs_str):
+    def __init__(self, stack_name, data_dirs_str,system_type):
+        self.system_type = system_type
         self.stack_name = stack_name
         self.stackVersion = "3_2_0"
         self.data_dirs = self.get_data_dirs(data_dirs_str)
@@ -108,7 +110,12 @@ class ClusterClear:
         for package in packages:
             if package not in package_white_list:
                 print("Removing", package + "...")
-                subprocess.call(["yum", "remove", "-y", package + "*"])
+                if self.system_type == DEBIAN_OS:
+                    subprocess.call(["apt-get", "purge", "-y", package + "*"])
+                else:
+                    subprocess.call(["yum", "remove", "-y", package + "*"])
+
+
 
     def clean(self):
         info = self.get_info()
@@ -205,7 +212,8 @@ class ClusterClear:
 def main():
     stack_name = sys.argv[1]
     data_dirs = sys.argv[2]
-    c = ClusterClear(stack_name, data_dirs)
+    system_type = sys.argv[3]
+    c = ClusterClear(stack_name, data_dirs, system_type)
     c.clean()
 
 

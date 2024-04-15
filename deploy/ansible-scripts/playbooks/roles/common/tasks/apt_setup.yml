@@ -1,0 +1,31 @@
+- name: create /etc/apt/sources.list.d/bak directory to backup original repos
+  file:
+    path: '{{ item }}'
+    state: directory
+  with_items:
+    - /etc/apt/sources.list.d/bak
+  when: backup_old_repo
+
+
+
+- name: backup original repos
+  shell: '{{ item }}'
+  with_items:
+    - "mv /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/bak/"
+  ignore_errors: True
+  when: backup_old_repo
+
+- name: Add APT repositories
+  apt_repository:
+    repo: "deb {{ item.url }} jammy main"
+    filename: "{{item.name}}"
+    state: present
+    update_cache: false
+  loop: "{{ repos }}"
+  when: item.url is defined
+
+- name: "Clear APT cache"
+  apt:
+    update_cache: yes
+    cache_valid_time: 0
+  ignore_errors: true
