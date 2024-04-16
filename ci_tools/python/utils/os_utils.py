@@ -266,7 +266,6 @@ def process_directory_for_packages(repo_base_dir, distribution, package_director
                 logger.info(f"Processing package: {package_path}")
                 add_deb_package_to_repo(repo_base_dir, distribution, package_path)
 
-def get_gpg_key():
 
 
 def setup_and_process_repository(repo_base_dir, distribution, codename, package_directory):
@@ -299,15 +298,14 @@ SignWith: {key_id}
     process_directory_for_packages(repo_base_dir, distribution, package_directory)
 
 
-import subprocess
 
 def create_gpg_key_and_get_key_id(gpg_name, gpg_email, key_type="RSA", key_length=4096, expire_date="2y"):
-    # 检查密钥是否已存在
+    # check whether key exist
     cmd_check_key = f"gpg --list-keys | grep {gpg_email}"
     result = subprocess.run(cmd_check_key, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if result.returncode != 0:
-        print("密钥不存在，正在为您创建...")
-        # 创建密钥
+        print("gpg key not exist ，creating...")
+        # generate gpg key
         cmd_create_key = f"gpg --batch --gen-key"
         key_config = (
             f"Key-Type: {key_type}\n"
@@ -321,22 +319,13 @@ def create_gpg_key_and_get_key_id(gpg_name, gpg_email, key_type="RSA", key_lengt
             "%no-protection\n"
             "%commit\n"
         )
-        subprocess.run(cmd_create_key, input=key_config.encode(), check=True)
+        result1 = subprocess.run(cmd_create_key, input=key_config.encode(), check=True, shell=True,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
     else:
-        print("GPG密钥已存在")
+        print("GPG KEY already exist")
 
-    # 确定密钥的ID
+    # get key ID
     cmd_get_key_id = f"gpg --list-keys --with-colons {gpg_email} | grep '^pub' | head -n 1 | cut -d: -f5"
     key_id = subprocess.run(cmd_get_key_id, shell=True, capture_output=True, text=True).stdout.strip()
 
     return key_id
 
-# 示例：使用函数
-# gpg_name = "ABC"
-# gpg_email = "email@example.com"
-# key_type = "RSA"
-# key_length = 4096
-# expire_date = "2y"
-#
-# key_id = create_gpg_key_and_get_key_id(gpg_name, gpg_email, key_type, key_length, expire_date)
-# print(f"GPG密钥ID: {key_id}")
