@@ -18,7 +18,7 @@ mysql_daemon: mysqld
 mysql_root_home: /root
 mysql_root_username: root
 mysql_root_password: root
-mysql_service_name: mysql
+mysql_service_name: mysqld
 
 mysql_packages:
   - mysql-community-server
