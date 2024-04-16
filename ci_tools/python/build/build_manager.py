@@ -18,7 +18,7 @@ import shlex
 logger = get_logger()
 
 ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "alluxio",
-                  "knox", "celeborn", "tez", "ambari",  # "dinky",
+                  "knox", "celeborn", "tez", "ambari","trino",  # "dinky",
                   "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils",
                   "bigtop-ambari-mpack"]
 
