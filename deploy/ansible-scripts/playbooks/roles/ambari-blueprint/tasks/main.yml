@@ -94,10 +94,18 @@
     timeout: 60
     return_content: no
 
+- name: Set repo_name based on ansible_os_family
+  set_fact:
+    repo_name: "{{ 'jammy' if ansible_os_family | lower == 'debian' else 'bigtop' }}"
+
+#- name: Create JSON Template with variable repo_name
+#  set_fact:
+#    json_template: "{{ '{ \"Repositories\": {\"repo_name\": \"' + repo_name + '\", \"base_url\": \"' + ambari_repo_url + '\", \"verify_base_url\": true}}' }}"
+#
 
 - name: Create JSON Template
   set_fact:
-    json_template: '{ "Repositories": {"repo_name": "bigtop", "base_url": "{{ ambari_repo_url }}", "verify_base_url": true}}'
+    json_template: '{ "Repositories": {"repo_name": "{{repo_name}}", "base_url": "{{ ambari_repo_url }}", "verify_base_url": true}}'
 
 
 - name: "Modify the  base_url repository for bigtop stack"
