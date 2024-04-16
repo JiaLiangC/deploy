@@ -47,3 +47,8 @@ APACHE2_CONF_FILE = "/etc/apache2/sites-enabled/apache2.conf"
 DEB_REPO_BASE_DIR = "/var/repos/apt"
 DEB_DISTRIBUTION = "ubuntu"
 DEB_CODENAME = "focal"
+
+ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "alluxio",
+                  "knox", "celeborn", "tez", "ambari","trino",  # "dinky",
+                  "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils",
+                  "bigtop-ambari-mpack"]

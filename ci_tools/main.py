@@ -14,13 +14,6 @@ from python.container.container_manager import *
 from python.release.release import *
 
 logger = get_logger()
-
-ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "flink", "ranger", "kyuubi", "alluxio",
-                  "knox", "celeborn", "tez", "ambari",  # "dinky",
-                  "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils",
-                  "bigtop-ambari-mpack"]
-
-
 class MainApplication:
     def __init__(self, ci_config):
         self.args = self.parse_arguments()
