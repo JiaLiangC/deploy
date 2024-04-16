@@ -34,34 +34,27 @@ class Release:
         return release_name
 
     def incremental_package(self):
-        # 设置临时目录并初始化
         self.setup_temp_dir()
-        # 解压存量发布包到临时目录
         self.extract_existing_release()
-        # 更新组件
         self.update_components()
-        # 重新打包
-        if bool(self.comps):
+        if len(self.comps)>0:
             self.compress_and_cleanup_dir(self.path_manager.incremental_rpm_dir,
                                           self.path_manager.release_project_rpm_tar)
         else:
             print(f"incremental packaging: no component specified ,will just move {self.path_manager.incremental_rpm_tar} to {self.path_manager.release_project_rpm_tar}")
             shutil.move(self.path_manager.incremental_rpm_tar, self.path_manager.release_project_rpm_tar)
-        # 清理临时目录（如果需要）
         FilesystemUtil.delete(self.path_manager.incremental_release_dir)
 
     def setup_temp_dir(self):
-        """初始化临时目录"""
         udh_release_output_dir = self.path_manager.incremental_release_dir
         FilesystemUtil.create_dir(udh_release_output_dir, empty_if_exists=True)
 
     def extract_existing_release(self):
-        """解压存量发布包到临时目录"""
         command = f"tar -I {self.pigz_path} -xf {self.incremental_release_src_tar} -C {self.path_manager.incremental_release_dir}"
         self.executor.execute_command(command, shell=True)
 
         if bool(self.comps):
-            print("incremental packaging: no component specified ,will skip extract")
+            print("extract existing release to tmp ")
             rpms_tar = self.path_manager.incremental_rpm_tar
             rpms_tar_parent_dir = self.path_manager.incremental_rpm_parent_dir
             pigz_path = self.path_manager.pigz_path
@@ -69,7 +62,7 @@ class Release:
             self.executor.execute_command(command, shell=True)
 
     def update_components(self):
-        """更新需要增量更新的组件"""
+        print(f"update components {self.comps}")
         for comp in self.comps:
             self.package_component(self.path_manager.incremental_rpm_dir, comp)
 
