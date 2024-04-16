@@ -72,6 +72,9 @@ class MainApplication:
             self.nexus_manager.install_and_configure_nexus()
 
     def build_components_if_needed(self):
+        if self.args.release:
+            print("do release will skip build")
+            return
         if self.args.build_all or self.args.components:
             self.check_os_info()
 
