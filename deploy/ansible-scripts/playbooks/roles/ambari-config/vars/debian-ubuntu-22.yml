@@ -1,3 +1,4 @@
 ---
 repo_os_family: "ubuntu22"
 baseurl_os_family: "ubuntu22"
+repo_name: "jammy"
