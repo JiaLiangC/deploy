@@ -27,7 +27,6 @@
           "yarn.acl.enable" : "true",
           "yarn.authorization-provider": "org.apache.ranger.authorization.yarn.authorizer.RangerYarnAuthorizer",
           {% endif %}
-                  "hadoop.registry.dns.bind-port": "{{ registry_dns_bind_port | default('53') }}",
           "yarn.client.nodemanager-connect.retry-interval-ms" : "10000",
           "yarn.nodemanager.local-dirs" : "{{ yarn_nodemanager_local_dirs }}",
           "yarn.nodemanager.log-dirs" : "{{ yarn_nodemanager_log_dirs }}",
@@ -37,5 +36,8 @@
       "yarn-hbase-env": {
         "hbase_within_cluster": "true",
         "use_external_hbase": "true"
-      }
+      },
+     "yarn-env": {
+        "registry.dns.bind-port":  "{{ registry_dns_bind_port | default('53') }}"
+     }
 }

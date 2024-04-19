@@ -74,7 +74,7 @@ timezone: Asia/Shanghai
 
 external_ntp_server_hostname: ''                     # if this is empty, ntp server will install and prepare on the ambari-server node
 packages_need_install: []
-registry_dns_bind_port: "53"
+registry_dns_bind_port: "54"
 blueprint_name: 'udh_blueprint'         # the name of the blueprint as it will be stored in Ambari
 
 wait: true                                                 # wait for the cluster to finish installing
