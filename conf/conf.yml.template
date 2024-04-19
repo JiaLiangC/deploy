@@ -1,21 +1,6 @@
 
 
 
-deploy_ambari_only: false
-prepare_nodes_only: false
-#Should the old YUM repositories be backed up to /etc/yum.repos.d/bak, and then removed, leaving only the repositories configured in this configuration?
-backup_old_repo: yes                      #Don't change this
-
-#*******************************************************************************************************************************************
-## Advanced Configurations, Don't change this in most scenarios. If you want to make changes, consult with a professional big data expert.
-#*******************************************************************************************************************************************
-
-###########################
-## cluster configuration ##
-###########################
-cluster_name: 'udh-cluster'
-hdfs_ha_name: 'udh'
-
 ############################
 ## database configuration ##
 ############################

@@ -71,10 +71,8 @@ class DynamicVariableGenerator:
 
     def generate_dynamic_j2template_variables(self):
         str_conf = self.advanced_conf.get_str_conf()
-        # 原始的conf, 存在很懂变量
-        # 动态生成一些蓝图的需要用到的namenode_hosts 等变量
+        #The original configuration contains many variables, dynamically generating some variables needed by blueprints, such as namenode_hosts, based on user configuration.
         ambari_repo_url = self._generate_ambari_repo_url()
-        # 根据用户配置动态生成一些变量
         extra_vars = {
             "ntp_server_hostname": self._generate_ntp_server_hostname(),
             "hadoop_base_dir": self.advanced_conf.get("data_dirs")[0],

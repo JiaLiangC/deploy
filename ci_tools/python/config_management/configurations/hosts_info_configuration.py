@@ -13,6 +13,5 @@ class HostsInfoConfiguration(BaseConfiguration, HostsInfoParser):
         return hosts_info_arr.get("hosts")
 
     def get_user(self):
-        # 默认部署user 为root
         hosts_info_arr = self.get_conf()
         return hosts_info_arr.get("user", "root")

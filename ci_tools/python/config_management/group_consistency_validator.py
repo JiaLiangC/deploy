@@ -29,25 +29,25 @@ class GroupConsistencyValidator(Validator):
         for group_name, group_hosts in self.host_groups.items():
             host_groups_group_names.append(group_name)
             if len(list(set(group_hosts))) != len(group_hosts):
-                self.err_messages.append("每个机器名只能在同一个组内列出一次")
+                self.err_messages.append("Each machine name can only be listed once within the same group.")
             for host_name in group_hosts:
                 if host_name not in conf_defined_hosts:
-                    self.err_messages.append(f"{host_name} 在  conf.yml 定义了，但是没在 hosts.yml 中配置")
+                    self.err_messages.append(f"{host_name} Defined in conf.yml but not configured in hosts.yml.")
 
         for group_name, services in self.host_group_services.items():
             host_group_services_group_names.append(group_name)
             duplicated_services = [sname for sname in services if services.count(sname) >= 2]
             if len(duplicated_services) > 0:
                 self.err_messages.append(
-                    f"每个被部署组件名只能在同一个组内列出一次,请检查如下组的配置 组: {group_name} , 组件名: {' '.join(list(set(duplicated_services)))}")
+                    f"Each deployed component name can only be listed once within the same group. Please check the configuration of the following group: {group_name} , component name: {' '.join(list(set(duplicated_services)))}")
 
             for service_name in services:
                 is_supported = ServiceMap.is_service_supported(service_name)
                 if not is_supported:
-                    self.err_messages.append("{} 选择部署的该组件目前不支持".format(service_name))
+                    self.err_messages.append("{}The selected component for deployment is currently not supported.".format(service_name))
 
         if not (len(host_groups_group_names) == len(host_group_services_group_names) and set(
                 host_groups_group_names) == set(host_group_services_group_names)):
-            self.err_messages.append("host_groups 配置和group_services 中的组名不一致")
+            self.err_messages.append("The host_groups configuration and the group names in group_services are inconsistent.")
 
         return self

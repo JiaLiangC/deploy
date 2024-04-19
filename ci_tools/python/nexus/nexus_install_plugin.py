@@ -69,55 +69,48 @@ class InstallNexusDeployPlugin:
         output, _ = self.run_shell_cmd(command,shell=True)
         is_nexus_installed = int(output.strip())
 
-        # 检查 Nexus 进程是否已安装
         if is_nexus_installed > 0:
-            logger.info("Nexus 进程已安装")
+            logger.info("Nexus process has been installed.")
             return
         else:
-            logger.info("Nexus 进程未安装")
+            logger.info("Nexus process is not installed.")
 
-        # 1. 创建 data_dir 目录
         if not os.path.isdir(data_dir):
             os.mkdir(data_dir)
 
         logger.info("install pigz")
-        # 2. 安装 pigz 工具以加快解压速度
         output, error = self.run_shell_cmd(["rpm", "-ivh", pigz_rpm])
         logger.info(output)
         logger.info(error)
 
 
-        # 3. 显示信息消息
-        logger.info("即将开始安装nexus，该过程预计等待时间小于5分钟")
+        logger.info("Installation of Nexus will begin shortly, expected waiting time is less than 5 minutes.")
 
-        # 4. 解压 Nexus
         nexus_dir = os.path.join(data_dir, "nexus")
         if os.path.isdir(nexus_dir):
-            logger.error("{} 目录已经存在，请先删除".format(nexus_dir))
+            logger.error("{} Directory already exists, please delete it first.".format(nexus_dir))
             exit(1)
 
         nexus_pkg = os.path.join(PLUGINS_FILES_DIR, nexus_package_name)
 
         if os.path.exists(nexus_pkg):
-            logger.info("解压 {} 软件包到 {} 目录".format(nexus_pkg, data_dir))
+            logger.info("Extract the {} package to the {} directory.".format(nexus_pkg, data_dir))
             self.run_shell_cmd(["tar", "-I", "pigz", "-xf", nexus_pkg, "-C", data_dir])
         else:
-            logger.error("请将 {} 放置到 {} 目录下".format(nexus_package_name,PLUGINS_FILES_DIR))
+            logger.error("Please place {} into the {} directory.".format(nexus_package_name,PLUGINS_FILES_DIR))
             exit(1)
 
         self.jdk_install()
         self.setup_nexus_service(data_dir)
         
-        logger.info("nexus 启动中...")
+        logger.info("nexus starting...")
         self.run_shell_cmd(["systemctl", "start", "nexus3"], env={'INSTALL4J_JAVA_HOME': '/usr/local/jdk'})
 
-        # 7. 设置环境变量
         # 300s
         max_wait_time = 300
         max_end_time = time.time() + max_wait_time
         nexus_service_ok = False
 
-        # 通过 /service/rest/v1/status/writable 接口判断 nexus 服务是否可用
         nexus_test_url = "{}/service/rest/v1/status/writable".format(nexus_base_url)
         logger.info(nexus_test_url)
         while time.time() <= max_end_time:
@@ -126,11 +119,11 @@ class InstallNexusDeployPlugin:
                 nexus_service_response_code = str(response.getcode())
                 logger.info(nexus_service_response_code)
                 if nexus_service_response_code == "200":
-                    logger.info("nexus 服务已经可用")
+                    logger.info("Nexus service is now available.")
                     nexus_service_ok = True
                     break
                 else:
-                    logger.info("nexus 正在启动中，服务还不可用，等待3秒后重试...")
+                    logger.info("Nexus is starting up, service is not available yet, wait for 3 seconds before retrying...")
             except urllib.error.HTTPError as e:
                 logger.error('HTTPError = ' + str(e.code))
                 continue
@@ -147,22 +140,22 @@ class InstallNexusDeployPlugin:
             time.sleep(5)
 
         if nexus_service_ok:
-            logger.info("nexus 安装启动完成")
+            logger.info("Nexus installation and startup completed.")
         else:
-            logger.error("nexus 安装启动未完成，请先排除问题再重新安装")
+            logger.error("Nexus installation and startup not completed, please troubleshoot the issues before reinstalling.")
 
     def jdk_install(self):
         logger.info("install jdk for nexus")
         java_home = self.get_java_home()
         jdk_pkg = os.path.join(PLUGINS_FILES_DIR, jdk_package_name)
         if os.path.exists(jdk_pkg):
-            logger.info("解压 {}".format(jdk_package_name))
+            logger.info("decompress {}".format(jdk_package_name))
             self.run_shell_cmd(["unzip", jdk_pkg, "-d", "/usr/local/"])
         else:
-            logger.error("请将 {} 放置到 {} 目录下".format(nexus_package_name, PLUGINS_FILES_DIR))
+            logger.error("plz place  {} into {} ".format(nexus_package_name, PLUGINS_FILES_DIR))
             exit(1)
 
-        # 设置 JAVA_HOME 和 PATH
+        # set JAVA_HOME 和 PATH
         env_lines = [
             '\nexport JAVA_HOME={}'.format(java_home),
             'export PATH=.:$JAVA_HOME/bin:$PATH'
@@ -173,11 +166,8 @@ class InstallNexusDeployPlugin:
 
     def get_ip_address(self):
         try:
-            # 创建一个UDP套接字
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            # 连接到一个公共的域名，此处使用Google的域名
             sock.connect(("8.8.8.8", 80))
-            # 获取本地套接字的IP地址
             ip_address = sock.getsockname()[0]
             return ip_address
         except socket.error:

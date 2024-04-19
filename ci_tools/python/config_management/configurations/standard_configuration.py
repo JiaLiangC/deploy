@@ -63,12 +63,20 @@ class StandardConfiguration(BaseConfiguration, HostsInfoParser):
             return hosts_info_conf
 
         if conf_type == StandardConfiguration.GenerateConfType.AdvancedConfiguration:
-            conf_yaml_data = {
-                "default_password": conf["default_password"],
-                "data_dirs": conf["data_dirs"],
-                "repos": conf["repos"],
-                "stack_version": conf["stack_version"]
-            }
+
+            exclude_key = ["user", "hosts", "components_to_install"]
+            conf_yaml_data_need_append={}
+            for k,v in conf.items():
+                if k not in exclude_key:
+                    conf_yaml_data_need_append[k] = v
+            # conf_yaml_data = {
+            #     "default_password": conf["default_password"],
+            #     "data_dirs": conf["data_dirs"],
+            #     "repos": conf["repos"],
+            #     "stack_version": conf["stack_version"]
+            # }
+
+
             conf_tpl_file = GET_CONF_TPL_NAME(CONF_NAME)
             # todo hostname fetcher
             advanced_tpl_str_conf = AdvancedConfiguration(conf_tpl_file).get_str_conf()
@@ -77,7 +85,7 @@ class StandardConfiguration(BaseConfiguration, HostsInfoParser):
             components_to_install = self.conf.get("components_to_install")
             topology_manager = TopologyManager(lambda: hosts_names, components_to_install)
             topology = topology_manager.generate_topology()
-            topology.update(conf_yaml_data)
+            topology.update(conf_yaml_data_need_append)
 
             merged_conf_str = self.merge_conf(topology, base_conf=advanced_tpl_str_conf, merge_strategy="prepend")
             advanced_conf = AdvancedConfiguration()

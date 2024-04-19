@@ -78,11 +78,10 @@ class ServiceMap:
                 "server": ["INFRA_SOLR"],
                 "clients": ["INFRA_SOLR_CLIENT"]
             },
-            # 不支持solr 了，没人使用
-            # "solr": {
-            #     "server": ["SOLR_SERVER"],
-            #     "clients": []
-            # },
+            "solr": {
+                "server": ["SOLR_SERVER"],
+                "clients": []
+            },
             "ambari": {
                 "server": ["AMBARI_SERVER"],
                 "clients": []
@@ -114,6 +113,10 @@ class ServiceMap:
             "trino": {
                 "server": ["TRINO_COORDINATOR", "TRINO_WORKER"],
                 "clients": ["TRINO_CLI"]
+            },
+            "router": {
+                "server": ["HADOOP_ROUTER"],
+                "clients": []
             }
         }
         return service_map

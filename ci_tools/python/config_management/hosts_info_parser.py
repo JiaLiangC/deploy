@@ -9,10 +9,10 @@ class HostsInfoParser(Parser):
         return hosts
 
     def parse(self, hosts_configurations):
-        # 解析机器通配符，解析类似 ansible的hosts 的配置
-        # 可以解析 node[1-3] 或者 node[1-3]xx 或者 [1-3]node  的通配符的机器名或者ip格式
+        # Parse machine wildcards, similar to parsing ansible hosts configuration.
+        # Can parse wildcard machine names or IP formats like node[1-3], node[1-3]xx, or [1-3]node.
         # hosts_configurations 为 ["10.1.1.15 server4 password4",...]
-        # 输入 hosts_configurations ["10.1.1.[1-3] node[1-3].example.com password4"]，则函数会输出 [("node1.example.com","10.1.1.1","password4"), ("node2.example.com","10.1.1.2","password4"),("node3.example.com","10.1.1.3","password4")]
+        # Given input hosts_configurations ["10.1.1.[1-3] node[1-3].example.com password4"], the function outputs [("node1.example.com","10.1.1.1","password4"), ("node2.example.com","10.1.1.2","password4"), ("node3.example.com","10.1.1.3","password4")].
 
         parsed_configs = []
 

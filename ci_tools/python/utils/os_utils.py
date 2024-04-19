@@ -1,5 +1,5 @@
 import platform
-import distro
+#import distro
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -21,7 +21,7 @@ def get_os_arch():
 def get_os_type():
     operatingSystem = platform.system().lower()
     if operatingSystem == 'linux':
-        operatingSystem = distro.linux_distribution()[0].lower()
+        operatingSystem = platform.linux_distribution()[0].lower()
 
     # special cases
     if operatingSystem.startswith('ubuntu'):
@@ -199,10 +199,10 @@ def install_httpd():
 
 def render_template(template_path, context, output_path):
     """
-    从指定的模板文件渲染内容，并将其写入到输出文件中。
-    :param template_path: 模板文件的路径。
-    :param context: 一个字典，包含渲染模板时要使用的变量。
-    :param output_path: 渲染后内容写入的文件路径。
+    #  Renders content from a specified template file and writes it to an output file.
+    # :param template_path: The path to the template file.
+    # :param context: A dictionary containing variables to be used in rendering the template.
+    # :param output_path: The file path where the rendered content will be written.
     """
     with open(template_path, 'r') as template_file:
         template_content = template_file.read()
@@ -215,24 +215,18 @@ def render_template(template_path, context, output_path):
 
 def get_ip_address():
     try:
-        # 获取主机的 IP 地址
         ip = subprocess.check_output("hostname -I | cut -d' ' -f1", shell=True).decode().strip()
         return ip
     except subprocess.CalledProcessError as e:
-        return "无法获取 IP 地址: " + str(e)
+        return "Unable to obtain IP address.: " + str(e)
 
 def sleep_with_logging(total_sleep_time, log_interval, log_message):
-    """
-    :param total_sleep_time: 总睡眠时间（秒）
-    :param log_interval: 日志打印间隔（秒）
-    :param log_message: 要打印的日志消息
-    """
-    start_time = time.time()  # 开始时间
-    end_time = start_time + total_sleep_time  # 结束时间
+    start_time = time.time()
+    end_time = start_time + total_sleep_time
 
     while time.time() < end_time:
         logger.info(f"{log_message} - {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
-        time.sleep(log_interval)  # 睡眠指定的间隔时间
+        time.sleep(log_interval)
 
     logger.info("sleep finished")
 
@@ -271,6 +265,8 @@ def process_directory_for_packages(repo_base_dir, distribution, package_director
 def setup_and_process_repository(repo_base_dir, distribution, codename, package_directory):
     """
     Sets up the APT repository and processes .deb packages within a directory.
+    gpg --export --armor user@example.com > mypublickey.asc
+
     """
     # Check and create repo structure if necessary
     conf_dir = os.path.join(repo_base_dir, 'conf')

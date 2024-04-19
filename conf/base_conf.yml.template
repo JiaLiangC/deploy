@@ -6,7 +6,7 @@ repos:
   - {name: "os_base_repo", url: "http://server0:8081/repository/centos/7"}
   #- {"name": "ambari_repo", "url": "http://server0:8881/repository/yum/udh3/"}
 
-user: admin
+user: root
 hosts:
   - 10.1.1.10 server0 password0
   - 10.1.1.12 server1 password2
@@ -16,3 +16,11 @@ hosts:
 stack_version: '3.3.0'
 components_to_install: ["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos"]
 #components_to_install: ["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos","celeborn","kyuubi","knox","alluxio"]
+
+backup_old_repo: no
+should_deploy_ambari_mpack: false
+deploy_ambari_only: false
+prepare_nodes_only: false
+
+cluster_name: 'udh-cluster'
+hdfs_ha_name: 'udh'

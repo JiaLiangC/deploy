@@ -36,7 +36,6 @@ class AmbariBluePrintConfiguration(BaseConfiguration):
             tpl_str = FileManager.read_file(self.get_conf_j2template_path(service_name), FileManager.FileType.RAW)
 
             if not tpl_str:
-                # 有的配置模版为空白
                 continue
 
             service_confs = template_render.render_template(

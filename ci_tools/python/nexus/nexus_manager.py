@@ -49,7 +49,7 @@ class NexusManager:
     def upload_os_packages(self):
         pkgs_dirs = self.synchronizer.get_local_pkgs_dirs()
         logger.info(f'start upload {self.os_type + self.os_version + self.os_arch} os pkgs to local nexus repository')
-        # os package 的 reponame 等于 os type 比如 redhat
+        # The reponame of the os package equals the os type, for example, redhat.
         self.nexus_client.repo_create(self.os_type, remove_old=True)
         self.nexus_client.batch_upload_os_pkgs(pkgs_dirs, (self.os_type, self.os_version, self.os_arch))
 

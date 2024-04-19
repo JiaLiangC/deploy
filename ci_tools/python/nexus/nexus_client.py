@@ -110,7 +110,6 @@ class NexusClient:
         return is_success
 
     def batch_upload_os_pkgs(self, source_dirs, os_info, num_threads=10):
-        # 获取所有的 RPM 文件
         for source_dir in source_dirs:
             filepaths = glob.glob(os.path.join(source_dir, "**", "*.rpm"), recursive=True)
             non_src_filepaths = [fp for fp in filepaths if not fp.endswith("src.rpm")]
@@ -130,7 +129,7 @@ class NexusClient:
                     except Exception as e:
                         logger.error(f"Upload resulted in an exception for {filepath}: {e}")
         self.rebuild_index(self.get_os_repo_name(os_info))
-        # 等待nexus 自动刷新构建 repodata
+        # Wait for Nexus to automatically refresh the repodata build.
         sleep_with_logging(15 * 60, 10, "waiting nexus rebuild repodata")
 
     def batch_upload_bigdata_pkgs(self, source_dir, component_dir_name, num_threads=10):
@@ -150,7 +149,7 @@ class NexusClient:
                     logger.info(f"Upload failed for filepath: {filepath} source_dir:{source_dir}")
                     raise Exception("upload bigdata components failed,please check the log and update again")
         self.rebuild_index(UDH_NEXUS_REPO_NAME)
-        # 等待nexus 自动刷新构建 repodata
+        # Wait for Nexus to automatically refresh build repodata.
         sleep_with_logging(15 * 60, 10, "waiting nexus rebuild repodata")
 
     def rebuild_index(self, repo_name):
@@ -250,7 +249,6 @@ class NexusClient:
 
     def change_password(self, new_pwd):
         url = f"{self.get_nexus_url()}/service/rest/v1/security/users/admin/change-password"
-        # 发送 PUT 请求
         headers = {
             'Content-Type': 'text/plain',
         }
@@ -284,7 +282,6 @@ class NexusClient:
         )
         logger.info(f"url: {url} Status code:{response.status_code} Headers:  {response.headers} Body: {response.text}")
 
-        # 检查响应
         if response.status_code == 204:
             logger.info('Script declaration was successful.')
         else:

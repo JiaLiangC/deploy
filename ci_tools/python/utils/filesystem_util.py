@@ -47,12 +47,12 @@ class FilesystemUtil:
         files = [
             os.path.join(looproot, filename)
             for looproot, _, filenames in os.walk(rootdir)
-            # 对文件名同时根据前缀和后缀进行过滤
+            # Filter filenames based on both prefix and suffix.
             for filename in filenames if
             (prefix is None or filename.startswith(prefix)) and (suffix is None or filename.endswith(suffix))
         ]
 
-        # 如果提供了过滤函数，进一步过滤文件列表
+        # If a filter function is provided, further filter the file list.
         if filter_func is not None:
             files = [file for file in files if filter_func(file)]
 

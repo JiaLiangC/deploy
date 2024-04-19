@@ -25,7 +25,7 @@ class BigtopBuilder(object):
     def __init__(self, conf):
         self.conf = conf
         self.success_components = self.load_success_components()
-        # 存储所有子进程的 PID
+        # store all subprocess PID
         self.child_pids = []
         atexit.register(self.kill_child_processes)
 
@@ -36,7 +36,7 @@ class BigtopBuilder(object):
         else:
             return ci_conf["bigtop"]["prj_dir"]
 
-    # bigdata 项目会挂载到容器执行
+    # bigdata prj will be mounted on docker
     def get_prj_dir(self):
         ci_conf = self.get_ci_conf()
         if ci_conf["bigtop"]["use_docker"]:
@@ -54,12 +54,9 @@ class BigtopBuilder(object):
         for filename in os.listdir(source_folder):
             source_file = os.path.join(source_folder, filename)
 
-            # 检查文件是否以 .repo 结尾
             if filename.endswith(".repo") and os.path.isfile(source_file):
-                # 构建目标文件路径
                 target_file = os.path.join(target_folder, filename)
 
-                # 移动文件到目标文件夹
                 shutil.move(source_file, target_file)
                 logger.info(f"Moved file: {source_file} --> {target_file}")
 
@@ -158,7 +155,7 @@ class BigtopBuilder(object):
             try:
                 os.kill(pid, signal.SIGTERM)
             except ProcessLookupError:
-                pass  # 进程已经结束
+                pass
 
     def get_ci_conf(self):
         import yaml
@@ -169,18 +166,17 @@ class BigtopBuilder(object):
             data = yaml.load(f, yaml.SafeLoader)
         return data
 
-    # bigtop git 项目需要clean，不然不会拉取最新代码
     def clean_bigtop_git_prj(self, component):
         # todo bigtop 中定义的git组件version 要优化
         ci_conf = self.get_ci_conf()
         version = "3.1"
         bigtop_dl = ci_conf["bigtop"]["dl_dir"]
-
-        if component.strip() in ["ambari-infra", "ambari-metrics"]:
-            name = f"apache-{component}-{version}.tar.gz"
-            file_path = os.path.join(bigtop_dl, name)
-            if os.path.exists(file_path):
-                os.remove(file_path)
+        #do manual download ,don't clean
+        # if component.strip() in ["ambari-infra", "ambari-metrics"]:
+        #     name = f"apache-{component}-{version}.tar.gz"
+        #     file_path = os.path.join(bigtop_dl, name)
+        #     if os.path.exists(file_path):
+        #         os.remove(file_path)
 
     def get_compile_command(self, component):
         ci_conf = self.get_ci_conf()
@@ -197,13 +193,12 @@ class BigtopBuilder(object):
         compile_command = self.get_compile_command(component)
         logger.info(f"{component} start compile, compile infos will be  write to {component}.log {working_dir}")
         log_path = os.path.join(LOGS_DIR, f"{component}.log")
-        # todo 抽象为编译组件的通用前置依赖
 
         with open(log_path, "w") as log_file:
             if component == "ambari-metrics":
                 process = subprocess.Popen("yum install -y python3-devel", shell=True, stdout=log_file, stderr=subprocess.STDOUT,
                                            cwd=working_dir)
-                exit_status = process.wait()
+                process.wait()
 
 
             process = subprocess.Popen(compile_command, shell=True, stdout=log_file, stderr=subprocess.STDOUT,
@@ -211,7 +206,6 @@ class BigtopBuilder(object):
             logger.info(f"compile command is {compile_command}, command submitted, wait for compile finish")
             self.child_pids.append(process.pid)
 
-            # 等待子进程完成
             exit_status = process.wait()
 
             if exit_status != 0:
@@ -246,7 +240,7 @@ class BigtopBuilder(object):
 
             if "hadoop" in components and "hadoop" not in self.success_components.keys():
                 first_task_future = executor.submit(self.compile_component, "hadoop", bigtop_working_dir)
-                # 使用Future.result()来阻塞直到hadoop 编译任务完成，其他任务编译依赖于hadoop
+                # use Future.result() lock until hadoop finished build，cause other build task depends on hadoop
                 success, component = first_task_future.result()
                 self.clean_after_build(component)
                 if success:
@@ -287,7 +281,6 @@ class BigtopBuilder(object):
         if len(bigtop_dir) < 2:
             raise Exception(f"clean_after_build: get wrong bigtop_dir {bigtop_dir}")
 
-        # todo  启动的时候映射到了容器里的目录也抽出来单独管理
         buid_dir = os.path.join(bigtop_dir, f"build/{component}")
         output = subprocess.check_output(f"rm -rf {buid_dir}", shell=True)
         # shutil.rmtree(buid_dir, ignore_errors=True)

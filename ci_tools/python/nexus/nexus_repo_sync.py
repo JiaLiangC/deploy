@@ -193,7 +193,7 @@ class NexusSynchronizer:
         packages_need_download = {}
         repo_packages_dict = self.get_packages()
 
-        with ProcessPoolExecutor(max_workers=15) as executor:  # 设置并发进程数为10
+        with ProcessPoolExecutor(max_workers=15) as executor:
             for repo_key, repo_packages in repo_packages_dict.items():
                 future_to_pkg = {executor.submit(self.scan_package, pkg_name, pkg_md5, repo_key): pkg_name for pkg_name, pkg_md5 in repo_packages.items()}
                 for future in concurrent.futures.as_completed(future_to_pkg):

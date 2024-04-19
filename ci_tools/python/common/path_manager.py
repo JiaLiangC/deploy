@@ -12,9 +12,7 @@ logger = get_logger()
 
 class PathManager:
     def __init__(self, ci_config):
-        # 各种目录的基目录，所有其他目录都基于此目录
         self.ci_config = ci_config
-        # 初始化所有需要的路径
         self.release_output_dir = self.ci_config["udh_release_output_dir"]
         self.incremental_release_dir = os.path.join(self.release_output_dir, "release_tmp")
 
@@ -41,7 +39,6 @@ class PathManager:
         self.prj_docker_volume_dir = self.ci_config["docker"]["volumes"]["prj"]
 
         self.current_prj_dir = self.get_current_prj_dir()
-        # 根据需要可以继续添加其他路径
 
     def get_current_prj_dir(self):
         if self.ci_config["bigtop"]["use_docker"]:

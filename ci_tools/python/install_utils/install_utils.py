@@ -47,7 +47,6 @@ class Installer:
 
     def download_package(self):
         if not os.path.exists(self.file_url):
-            # todo  增加下载远程包的支持
             logger.info(f"Downloading {self.package_name} package from URL...")
             response = requests.get(self.file_url, stream=True)
             response.raise_for_status()
@@ -84,7 +83,6 @@ class Installer:
         return next(iter(top_level_dirs))
 
     def get_local_path(self):
-        # todo 下载后的文件位置和文件名和本地保持一致
         parsed_url = urlparse(self.file_url)
         local_path = url2pathname(parsed_url.path)
         return local_path
@@ -258,7 +256,6 @@ export PATH=$JAVA_HOME/bin:$PATH
             else:
                 return False
         except subprocess.CalledProcessError:
-            # java 命令未找到，说明 Java 没有安装
             return False
 
     def install(self):
@@ -298,5 +295,4 @@ class PigzInstaller(Installer):
         copy_file(pigz_source_file, pigz_dest_file)
         os.chmod(pigz_dest_file, 0o777)
         os.chdir('../..')
-        # 删除源代码压缩包
         shutil.rmtree(pigz_source_dir)

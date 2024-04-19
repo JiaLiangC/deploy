@@ -43,7 +43,6 @@ class Deployment:
             env_vars = os.environ.copy()
             command = ["python3", f"{PRJ_BIN_DIR}/ansible-playbook", playbook_path, f"--inventory={inventory_path}"]
             exit_status = self.executor.execute_command_withlog(command, log_file, workdir=PRJDIR, env_vars=env_vars)
-            # 等待子进程完成
             logger.info(f"run_playbook {command} exit_status: {exit_status}")
 
             if exit_status == 0:

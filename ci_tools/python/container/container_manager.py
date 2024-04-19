@@ -46,7 +46,7 @@ class ContainerManager:
         }
         return volumes
 
-    # 根据不同的任务在容器内设置不同的环境
+    # Set different environments inside the container based on different tasks.
     def setup_environment(self):
         conf_args = {"prepare_env": True, "local_repo": self.path_manager.bigtop_local_maven_repo_dir}
         conf_str = json.dumps(conf_args)
