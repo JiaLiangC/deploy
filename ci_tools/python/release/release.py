@@ -14,6 +14,8 @@ import shutil
 logger = get_logger()
 
 DOCKER_IMAGE_MAP = {"centos7": "bigtop/slaves:trunk-centos-7", "centos8": "bigtop/slaves:trunk-rockylinux-8"}
+
+
 class Release:
     def __init__(self, os_info, ci_config, comps=None, incremental_release_src_tar=""):
         if comps is None:
@@ -36,13 +38,11 @@ class Release:
     def incremental_package(self):
         self.setup_temp_dir()
         self.extract_existing_release()
-        self.update_components()
-        if len(self.comps)>0:
-            self.compress_and_cleanup_dir(self.path_manager.incremental_rpm_dir,
-                                          self.path_manager.release_project_rpm_tar)
+        if len(self.comps) > 0:
+            self.update_components()
         else:
             print(f"incremental packaging: no component specified ,will just move {self.path_manager.incremental_rpm_tar} to {self.path_manager.release_project_rpm_tar}")
-            shutil.move(self.path_manager.incremental_rpm_tar, self.path_manager.release_project_rpm_tar)
+        shutil.move(self.path_manager.incremental_rpm_dir, self.path_manager.release_project_rpm_dir)
         FilesystemUtil.delete(self.path_manager.incremental_release_dir)
 
     def setup_temp_dir(self):
@@ -100,11 +100,10 @@ class Release:
         self.package_all_components()
         self.handle_special_conditions()
         self.create_yum_repository()
-        self.compress_and_cleanup_dir(self.path_manager.release_project_rpm_dir,
-                                      self.path_manager.release_project_rpm_tar)
+        # self.compress_and_cleanup_dir(self.path_manager.release_project_rpm_dir, self.path_manager.release_project_rpm_tar)
 
     def package_trino_jdk(self):
-        # 根据架构 cp jdk 到resource 目录下，在generate的时候，动态生成jdk 文件的位置填充到ansible里
+        # Based on the architecture, copy JDK to the resource directory. During generation, dynamically generate the JDK file location and fill it into Ansible.
         jdk_source = self.path_manager.get_trino_jdk_source_path(self.os_arch)
         dest_path = os.path.join(self.release_prj_dir, PKG_RELATIVE_PATH, os.path.basename(jdk_source))
         logger.info(f"trino jdk will copy from  {jdk_source} to {dest_path} ")
@@ -116,7 +115,7 @@ class Release:
             self.package_component(rpms_dir, comp)
 
     def get_compiled_packages(self, comp):
-        # 搜索bigtop项目的编译的输出目录，获取编译好的某个组件的rpm包的路径,排除"src.rpm"文件
+        # Search the build output directory of the Bigtop project to find the path of the compiled rpm package for a specific component, excluding "src.rpm" files.
         pkg_dir = os.path.join(self.path_manager.compiled_pkg_out_dir, comp)
         non_src_filepaths = FilesystemUtil.recursive_glob(pkg_dir, suffix='.rpm',
                                                           filter_func=lambda fp: not fp.endswith("src.rpm"))
@@ -137,7 +136,7 @@ class Release:
             FilesystemUtil.copy(filepath, dest_path)
 
     def create_yum_repository(self):
-        # 需要调用特定命令创建YUM仓库 # 确保系统拥有此类操作的工具
+        # Need to execute a specific command to create a YUM repository # Ensure the system has the tools required for such operations.
         res = create_yum_repository(self.path_manager.release_project_rpm_dir)
         if not res:
             raise Exception("Create YUM repository failed, check the log.")
@@ -156,17 +155,16 @@ class Release:
         self.compress_release_directory()
 
     def prepare_release_directory(self):
-        # 根据需要，准备发布目录，如创建或清理
+        # Prepare the release directory as needed, such as creating or cleaning it up.
         release_output_dir = self.path_manager.release_output_dir
         FilesystemUtil.create_dir(release_output_dir, empty_if_exists=True)
 
     def copy_project_to_release_directory(self):
-        # 这里的实现需要根据实际业务逻辑具体处理，以下仅为示例
         shutil.copytree(PRJDIR, self.path_manager.release_project_dir, symlinks=True, ignore=None)
 
     def cleanup_unnecessary_files(self):
         base_dir = self.path_manager.release_project_dir
-        # 清理项目目录中不需要的文件和目录，如.git目录、未使用的配置文件等
+        # Clean up unnecessary files and directories in the project directory, such as .git directory,
         unnecessary_paths = [os.path.join(base_dir, ".git"),
                              os.path.join(base_dir, "bin/portable-ansible"),
                              os.path.join(base_dir, "bin/ansible-playbook")]
@@ -174,5 +172,5 @@ class Release:
             FilesystemUtil.delete(path)
 
     def should_perform_incremental_packaging(self):
-        # 决定是否执行增量打包
+        # Decide whether to perform incremental packaging.
         return bool(self.incremental_release_src_tar)
