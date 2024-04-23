@@ -110,9 +110,6 @@ class Deployment:
         if not os.path.exists(UDH_RPMS_PATH) == True:
             raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
         logger.info(f'start  decompress {UDH_RPMS_PATH} ')
-        pigz_path = os.path.join(PRJ_BIN_DIR, "pigz")
-        command = f"tar  -I {pigz_path} -xf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
-        self.executor.execute_command(command, shell=True)
         rpms_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
         repodata_dir = os.path.join(rpms_dir, "repodata")
         if os.path.exists(repodata_dir):
