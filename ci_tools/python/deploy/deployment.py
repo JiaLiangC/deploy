@@ -81,15 +81,8 @@ class Deployment:
             self.setup_yum_repo()
 
     def setup_apt_repo(self):
-        if not os.path.exists(UDH_RPMS_PATH) == True:
-            raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
-        logger.info(f'start  decompress {UDH_RPMS_PATH} ')
-
         DISTRIBUTION = "jammy"
         CODENAME = "jammy"  # Use the appropriate codename for Ubuntu 22
-
-        command = f"tar  -zxvf {UDH_RPMS_PATH} -C {TAR_FILE_PATH}"
-        self.executor.execute_command(command, shell=True)
         pkgs_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
         repodata_dir = os.path.join(pkgs_dir, "apt")
         if os.path.exists(repodata_dir):
@@ -107,9 +100,6 @@ class Deployment:
 
 
     def setup_yum_repo(self):
-        if not os.path.exists(UDH_RPMS_PATH) == True:
-            raise Exception(f"{os.path.basename(UDH_RPMS_PATH)} not exist, please check")
-        logger.info(f'start  decompress {UDH_RPMS_PATH} ')
         rpms_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
         repodata_dir = os.path.join(rpms_dir, "repodata")
         if os.path.exists(repodata_dir):

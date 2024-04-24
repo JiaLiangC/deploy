@@ -41,7 +41,7 @@ class Release:
         if len(self.comps) > 0:
             self.update_components()
         else:
-            print(f"incremental packaging: no component specified ,will just move {self.path_manager.incremental_rpm_tar} to {self.path_manager.release_project_rpm_tar}")
+            print(f"incremental packaging: no component specified ,will just move {self.path_manager.incremental_rpm_dir} to {self.path_manager.release_project_rpm_dir}")
         shutil.move(self.path_manager.incremental_rpm_dir, self.path_manager.release_project_rpm_dir)
         FilesystemUtil.delete(self.path_manager.incremental_release_dir)
 

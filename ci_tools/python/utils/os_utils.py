@@ -21,6 +21,7 @@ def get_os_arch():
 def get_os_type():
     operatingSystem = platform.system().lower()
     if operatingSystem == 'linux':
+        #todo  platform.linux_distribution 在 python3.9 之后被放弃，会调用失败
         operatingSystem = platform.linux_distribution()[0].lower()
 
     # special cases
