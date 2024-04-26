@@ -17,9 +17,6 @@ import shlex
 
 logger = get_logger()
 
-DOCKER_IMAGE_MAP = {"centos7": "bigtop/slaves:trunk-centos-7", "centos8": "bigtop/slaves:trunk-rockylinux-8"}
-
-
 class BuildManager:
     def __init__(self, ci_config, container_manager: ContainerManager):
         self.container_manager = container_manager

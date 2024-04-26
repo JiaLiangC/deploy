@@ -3,6 +3,7 @@
             "dfs.namenode.checkpoint.dir" : "/hadoop/hdfs/namesecondary",
             "dfs.namenode.name.dir" : "{{ hdfs_dfs_namenode_name_dir }}",
             "dfs.journalnode.edits.dir" : "{{ hdfs_dfs_journalnode_edits_dir }}",
+            {% if namenode_hosts | length > 1 %}
             "dfs.client.failover.proxy.provider.{{ hdfs_ha_name }}" : "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider",
             "dfs.ha.automatic-failover.enabled" : "true",
             "dfs.ha.fencing.methods" : "shell(/bin/true)",
@@ -15,13 +16,17 @@
             "dfs.namenode.rpc-address.{{ hdfs_ha_name }}.nn2" : "{{ namenode_hosts[1] }}:8020",
             "dfs.namenode.shared.edits.dir" : "qjournal://{% for jn in journalnode_hosts %}{{ jn }}:8485{% if not loop.last %};{% endif %}{% endfor %}/{{ hdfs_ha_name }}",
             "dfs.nameservices" : "{{ hdfs_ha_name }}",
+            {% endif %}
             "dfs.namenode.inode.attributes.provider.class" : "org.apache.ranger.authorization.hadoop.RangerHdfsAuthorizer",
             "dfs.datanode.data.dir" : "{{hdfs_dfs_datanode_data_dir}}"
         },
         "core-site": {
             "hadoop.proxyuser.*": "*",
+            {% if namenode_hosts |length > 1 %}
             "fs.defaultFS" : "hdfs://{{ hdfs_ha_name }}",
             "ha.zookeeper.quorum" : "{% for zk in zookeeper_hosts %}{{ zk }}:2181{% if not loop.last %},{% endif %}{% endfor %}",
+            {% endif %}
+
             {% if security|lower != "none"  %}
              "hadoop.security.authentication" : "kerberos",
             {% else %}

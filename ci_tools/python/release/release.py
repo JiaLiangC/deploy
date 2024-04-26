@@ -13,9 +13,6 @@ import shutil
 
 logger = get_logger()
 
-DOCKER_IMAGE_MAP = {"centos7": "bigtop/slaves:trunk-centos-7", "centos8": "bigtop/slaves:trunk-rockylinux-8"}
-
-
 class Release:
     def __init__(self, os_info, ci_config, comps=None, incremental_release_src_tar=""):
         if comps is None:

@@ -11,7 +11,7 @@ import docker
 logger = get_logger()
 
 
-DOCKER_IMAGE_MAP = {"centos7": "bigtop/slaves:trunk-centos-7", "centos8": "bigtop/slaves:trunk-rockylinux-8"}
+
 
 class ContainerManager:
 
@@ -28,7 +28,7 @@ class ContainerManager:
 
     def get_fullos(self, os_info):
         os_type, os_version, os_arch = os_info
-        os = f"{os_type}{os_version}"
+        os = f"{os_type}_{os_version}_{os_arch}"
         return os
 
     def get_volumes(self):

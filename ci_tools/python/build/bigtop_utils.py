@@ -13,6 +13,7 @@ from datetime import datetime
 import argparse
 import sys
 import traceback
+from python.utils.filesystem_util import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SUCCESS_FILE = os.path.join(OUTPUT_DIR, 'success_components.json')
@@ -28,6 +29,7 @@ class BigtopBuilder(object):
         # store all subprocess PID
         self.child_pids = []
         atexit.register(self.kill_child_processes)
+        FilesystemUtil.create_dir(OUTPUT_DIR, empty_if_exists=False)
 
     def get_bigtop_working_dir(self):
         ci_conf = self.get_ci_conf()
@@ -196,6 +198,7 @@ class BigtopBuilder(object):
 
         with open(log_path, "w") as log_file:
             if component == "ambari-metrics":
+                #todo ubuntu 改为python3-dev
                 process = subprocess.Popen("yum install -y python3-devel", shell=True, stdout=log_file, stderr=subprocess.STDOUT,
                                            cwd=working_dir)
                 process.wait()
