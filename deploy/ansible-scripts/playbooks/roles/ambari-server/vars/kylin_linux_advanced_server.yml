@@ -7,11 +7,11 @@ postgres_packages:
 postgres_jdbc_location: /usr/share/java/postgresql-42.2.2.jar
 
 mysql_packages:
-  - MySQL-python
   - mysql-connector-java
+  - python3-PyMySQL
 mysql_jdbc_location: /usr/share/java/mysql-connector-java.jar
 
 mariadb_packages:
-  - MySQL-python
   - mysql-connector-java
+  - python3-PyMySQL
 mariadb_jdbc_location: /usr/share/java/mysql-connector-java.jar

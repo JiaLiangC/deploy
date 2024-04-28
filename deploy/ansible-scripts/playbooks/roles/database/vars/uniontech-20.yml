@@ -22,16 +22,15 @@ mysql_root_username: root
 mysql_root_password: root
 
 mysql_packages:
-  - mysql-connector-java
-  - python3-PyMySQL
+  - mysql-community-server
+  - mysql-community-client
+  - MySQL-python
 
-mysql_jdbc_location: /usr/share/java/mysql-connector-java.jar
 
 
 mariadb_version: 10.2
 mariadb_packages:
-  - python3-PyMySQL
-  - mysql-connector-java
+  - mariadb-server
+  - MySQL-python
 mariadb_service_name: mariadb
 mariadb_config_file: /etc/my.cnf.d/server.cnf
-mariadb_jdbc_location: /usr/share/java/mysql-connector-java.jar
