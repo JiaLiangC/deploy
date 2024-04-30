@@ -24,3 +24,4 @@ prepare_nodes_only: false
 
 cluster_name: 'udh-cluster'
 hdfs_ha_name: 'udh'
+ansible_ssh_port: 22

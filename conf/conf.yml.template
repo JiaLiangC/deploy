@@ -117,5 +117,3 @@ heap_dump_location: /tmp
 stack_major_version: 3
 
 ansible_tmp_dir: /tmp/ansible
-ansible_options:
-  ansible_ssh_port: 22
