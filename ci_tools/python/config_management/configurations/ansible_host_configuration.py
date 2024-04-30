@@ -3,12 +3,14 @@ from python.config_management.dynamic_variable_generator import DynamicVariableG
 
 from .base_configuration import *
 from .hosts_info_configuration import *
+from .standard_configuration import *
 
 
 class AnsibleHostConfiguration(BaseConfiguration):
-    def __init__(self, name, hosts_info_configuration: HostsInfoConfiguration,
+    def __init__(self, name, hosts_info_configuration: HostsInfoConfiguration,stand_conf: StandardConfiguration,
                  dynamic_variable_generator: DynamicVariableGenerator):
         self.hosts_info_configuration = hosts_info_configuration
+        self.stand_conf = stand_conf
         self.dynamic_variable_generator = dynamic_variable_generator
         super().__init__(name)
 
@@ -32,12 +34,14 @@ class AnsibleHostConfiguration(BaseConfiguration):
                 if host_name not in hosts_dict:
                     raise InvalidConfigurationException(f"Host '{host_name}' not found in parsed hosts.")
                 ip, passwd = hosts_dict[host_name]
-                if ansible_user=="root":
-                    hosts_content += "{} ansible_host={} ansible_ssh_pass={} \n".format(host_name, ip, passwd)
+                if ansible_user == "root":
+                    hosts_content += f"{host_name} ansible_host={ip} ansible_ssh_pass={passwd} "
                 else:
-                    hosts_content += "{} ansible_host={} ansible_ssh_pass={} ansible_sudo_pass={}\n".format(host_name, ip, passwd, passwd)
-            hosts_content += "\n"
+                    hosts_content += f"{host_name} ansible_host={ip} ansible_ssh_pass={passwd} ansible_sudo_pass={passwd}"
 
+                if self.stand_conf.get("ansible_ssh_port") and self.stand_conf.get("ansible_ssh_port") != "22":
+                    hosts_content += f" ansible_ssh_port={self.stand_conf.get('ansible_ssh_port')} "
+                hosts_content += "\n"
 
         hosts_content += "[all:vars]\nansible_user={}\n".format(ansible_user)
 

@@ -13,6 +13,7 @@ from python.config_management.group_consistency_validator import *
 from python.config_management.hosts_info_validator import *
 from python.config_management.topology_validator import *
 from python.config_management.validation_manager import *
+from python.config_management.conf_validator import *
 from python.utils.os_utils import *
 
 logger = get_logger()
@@ -42,6 +43,12 @@ class ConfigurationManager:
         self.advanced_conf = AdvancedConfiguration()
 
     def generate_confs(self, save=False):
+        cv = ConfValidator(self.sd_conf)
+        err = cv.validate().err_messages
+        if err:
+            error_messages = "\n".join(err)
+            raise ValueError(f"Configuration validation failed with the following errors:\n{error_messages}")
+
         self.hosts_info_conf = self.sd_conf.generate_conf(StandardConfiguration.GenerateConfType.HostsInfoConfiguration,
                                                           save)
         self.advanced_conf = self.sd_conf.generate_conf(StandardConfiguration.GenerateConfType.AdvancedConfiguration,
@@ -71,7 +78,7 @@ class ConfigurationManager:
 
     def save_ansible_configurations(self):
         AnsibleVarConfiguration("all", DynamicVariableGenerator(self.advanced_conf)).save()
-        AnsibleHostConfiguration("hosts", self.hosts_info_conf, DynamicVariableGenerator(self.advanced_conf)).save()
+        AnsibleHostConfiguration("hosts", self.hosts_info_conf, self.sd_conf, DynamicVariableGenerator(self.advanced_conf)).save()
 
 
 if __name__ == '__main__':

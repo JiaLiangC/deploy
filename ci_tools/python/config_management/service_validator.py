@@ -6,9 +6,6 @@ class ServiceValidator(Validator):
         super().__init__()
         self.service_map = service_map
 
-    def validate_service(self, service_name):
-        errors = []
+    def validate(self, service_name):
         if not self.service_map.is_service_supported(service_name):
-            errors.append(f"Service '{service_name}' is not supported.")
-        # Additional service-specific validation can be added here
-        return errors
+            self.err_messages.append(f"Service '{service_name}' is not supported.")

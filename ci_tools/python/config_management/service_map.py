@@ -18,6 +18,13 @@ class ServiceMap:
         return False
 
     @staticmethod
+    def is_component_supported(component_name):
+        comps = [service_key for service_key, info in ServiceMap.get_services_map().items()]
+        if component_name in comps:
+            return True
+        return False
+
+    @staticmethod
     def get_service_info(service_name):
         key = ServiceMap.get_service_key_from_service(service_name)
         if ServiceMap.is_service_supported(service_name):
