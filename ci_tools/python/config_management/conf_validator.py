@@ -1,4 +1,4 @@
-from validator import *
+from .validator import *
 from python.config_management.service_map import *
 
 class ConfValidator(Validator):
