@@ -10,6 +10,7 @@ from python.executor.command_executor import *
 import os
 from datetime import datetime
 import shutil
+from python.install_utils.install_utils import *
 
 logger = get_logger()
 
@@ -139,6 +140,7 @@ class Release:
             raise Exception("Create YUM repository failed, check the log.")
 
     def package(self):
+        self.install_pigz()
         self.prepare_release_directory()
         self.copy_project_to_release_directory()
         self.cleanup_unnecessary_files()
@@ -164,10 +166,19 @@ class Release:
         # Clean up unnecessary files and directories in the project directory, such as .git directory,
         unnecessary_paths = [os.path.join(base_dir, ".git"),
                              os.path.join(base_dir, "bin/portable-ansible"),
-                             os.path.join(base_dir, "bin/ansible-playbook")]
+                             os.path.join(base_dir, "bin/ansible-playbook"),
+                             os.path.join(base_dir, "conf/base_conf.yml"),
+                             os.path.join(base_dir, "conf/conf.yml"),
+                             os.path.join(base_dir, "conf/hosts_info.yml"),
+                             os.path.join(base_dir, "conf/ci_conf.yml"),
+                             ]
         for path in unnecessary_paths:
             FilesystemUtil.delete(path)
 
     def should_perform_incremental_packaging(self):
         # Decide whether to perform incremental packaging.
         return bool(self.incremental_release_src_tar)
+
+    def install_pigz(self):
+        pigz_installer = PigzInstaller(PIGZ_SOURC_CODE_PATH, PRJ_BIN_DIR)
+        pigz_installer.install()

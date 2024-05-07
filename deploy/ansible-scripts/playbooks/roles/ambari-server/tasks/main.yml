@@ -18,7 +18,10 @@
     state: latest
   notify: Reload systemd
 
-
+- name: Generate the cluster repo
+  set_fact:
+    ambari_repo: "{{ (repos | selectattr('name', 'match', '^ambari_repo') | first).url }}"
+    
 - name: set repo url for ambari
   replace:
     path: /var/lib/ambari-server/resources/stacks/BIGTOP/3.2.0/repos/repoinfo.xml
