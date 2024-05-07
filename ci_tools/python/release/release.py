@@ -170,7 +170,6 @@ class Release:
                              os.path.join(base_dir, "conf/base_conf.yml"),
                              os.path.join(base_dir, "conf/conf.yml"),
                              os.path.join(base_dir, "conf/hosts_info.yml"),
-                             os.path.join(base_dir, "conf/ci_conf.yml"),
                              ]
         for path in unnecessary_paths:
             FilesystemUtil.delete(path)
