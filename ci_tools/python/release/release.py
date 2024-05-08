@@ -89,8 +89,6 @@ class Release:
         FilesystemUtil.create_dir(self.path_manager.release_project_rpm_dir, empty_if_exists=True)
         self.package_all_components()
         self.handle_special_conditions()
-        self.create_yum_repository()
-        # self.compress_and_cleanup_dir(self.path_manager.release_project_rpm_dir, self.path_manager.release_project_rpm_tar)
 
     def package_trino_jdk(self):
         # Based on the architecture, copy JDK to the resource directory. During generation, dynamically generate the JDK file location and fill it into Ansible.
@@ -140,6 +138,7 @@ class Release:
         if self.should_perform_incremental_packaging():
             print("will perform incremental packaging")
             self.incremental_package()
+            self.handle_special_conditions()
         else:
             print("will perform all packaging")
             self.package_bigdata_rpms()
