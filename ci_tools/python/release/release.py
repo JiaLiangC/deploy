@@ -51,14 +51,6 @@ class Release:
         command = f"tar -I {self.pigz_path} -xf {self.incremental_release_src_tar} -C {self.path_manager.incremental_release_dir}"
         self.executor.execute_command(command, shell=True)
 
-        if bool(self.comps):
-            print("extract existing release to tmp ")
-            rpms_tar = self.path_manager.incremental_rpm_tar
-            rpms_tar_parent_dir = self.path_manager.incremental_rpm_parent_dir
-            pigz_path = self.path_manager.pigz_path
-            command = f"tar -I  {pigz_path} -xf  {rpms_tar} -C {rpms_tar_parent_dir}"
-            self.executor.execute_command(command, shell=True)
-
     def update_components(self):
         print(f"update components {self.comps}")
         for comp in self.comps:
