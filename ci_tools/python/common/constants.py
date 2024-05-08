@@ -53,4 +53,4 @@ ALL_COMPONENTS = ["hadoop", "spark", "hive", "hbase", "zookeeper", "kafka", "fli
                   "ambari-infra", "ambari-metrics", "bigtop-select", "bigtop-jsvc", "bigtop-groovy", "bigtop-utils",
                   "bigtop-ambari-mpack"]
 
-DOCKER_IMAGE_MAP = {"centos_7_x86_64": "bigtop/slaves:trunk-centos-7", "centos_8_x86_64": "bigtop/slaves:trunk-rockylinux-8", "centos_8_aarch64": "bigtop/slaves:3.3.0-rockylinux-8-aarch64"}
+DOCKER_IMAGE_MAP = {"centos_7_x86_64": "bigtop/slaves:trunk-centos-7", "centos_8_x86_64": "bigtop/slaves:trunk-rockylinux-8", "centos_8_aarch64": "bigtop/slaves:3.2.1-rockylinux-8-aarch64"}
