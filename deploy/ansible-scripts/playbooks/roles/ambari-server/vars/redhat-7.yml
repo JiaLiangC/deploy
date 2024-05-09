@@ -4,7 +4,7 @@ openjdk_path: /usr/lib/jvm/java-1.8.0-openjdk
 postgres_packages:
   - postgresql
   - python-psycopg2
-postgres_jdbc_location: /usr/share/java/postgresql-42.2.2.jar
+postgres_jdbc_location: /usr/share/java/postgresql-42.7.3.jar
 
 mysql_packages:
   - MySQL-python
