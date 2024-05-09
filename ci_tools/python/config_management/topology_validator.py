@@ -39,7 +39,7 @@ class TopologyValidator(Validator):
                 "RESOURCEMANAGER": {"min_instances": 1, "max_instances": 2,
                                     "desc": "When deploying YARN, the number of RESOURCEMANAGERS must be at least 1 and no more than 2. If 2 RESOURCEMANAGERS are chosen, high availability mode is enabled. The number of NODEMANAGERS must be one or more, and only one HISTORYSERVER can be deployed."},
                 "APP_TIMELINE_SERVER": {"min_instances": 1, "max_instances": 1},
-                "YARN_REGISTRY_DNS": {"min_instances": 1, "max_instances": 1},
+                "YARN_REGISTRY_DNS": {"min_instances": 0, "max_instances": 1},
                 "TIMELINE_READER": {"min_instances": 1, "max_instances": 1},
                 "NODEMANAGER": {"min_instances": 1, "max_instances": None},
                 "HISTORYSERVER": {"min_instances": 1, "max_instances": 1},
