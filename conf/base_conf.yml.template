@@ -3,7 +3,7 @@ default_password: 'B767610qa4Z'                          # a default password fo
 #fill disk dirs
 data_dirs: ["/data/sdv1"]
 repos:
-  - {name: "os_base_repo", url: "http://server0:8081/repository/centos/7"}
+  #- {name: "os_base_repo", url: "http://server0:8081/repository/centos/7"}
   #- {"name": "ambari_repo", "url": "http://server0:8881/repository/yum/udh3/"}
 
 user: root
@@ -17,7 +17,7 @@ stack_version: '3.3.0'
 components_to_install: ["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos"]
 #components_to_install: ["hbase","hdfs","yarn","hive","zookeeper","kafka","spark","flink","ranger","infra_solr","ambari","ambari_metrics","kerberos","celeborn","kyuubi","knox","alluxio"]
 
-backup_old_repo: no
+#backup_old_repo: no
 should_deploy_ambari_mpack: false
 deploy_ambari_only: false
 prepare_nodes_only: false

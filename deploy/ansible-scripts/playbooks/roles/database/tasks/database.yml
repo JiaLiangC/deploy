@@ -1,0 +1,84 @@
+
+
+
+- block:
+    - name: Initiate postgres
+      become: yes
+      shell: "{{ postgres_initdb_command }}"
+      args:
+        creates: "{{ postgres_hba_file }}"
+        warn: false
+
+    - name: Configure postgres to listen on all interfaces
+      lineinfile:
+        path: "{{ postgres_config_file }}"
+        line: "listen_addresses = '*'"
+        regexp: '^#?listen_addresses\s+='
+        state: present
+      notify: Restart postgres
+
+    - name: Set postgres max_connections
+      lineinfile:
+        path: "{{ postgres_config_file }}"
+        line: "max_connections = {{ postgres_max_connections }}"
+        regexp: '^#?max_connections\s+='
+        state: present
+      notify: Restart postgres
+
+    - name: Configure access for the database without ident auth)
+      lineinfile:
+        path: "{{ postgres_hba_file }}"
+        line: "host all all 127.0.0.1/32 md5"
+        regexp: '^host\s+all\s+all\s+127.0.0.1/32\s+ident\s+.*'
+        insertbefore: EOF
+        state: present
+      notify: Restart postgres
+  when: database == "postgres"
+
+- name: Configure mysql
+  include_tasks: mysql-setup.yml
+  when: database == "mysql" or database == "mariadb"
+
+- name: Make sure the "{{ database }}" service is started
+  service:
+    name: "{{ hostvars[inventory_hostname][database + '_service_name'] }}"
+    state: started
+
+- name: Make sure the "{{ database }}" service is enabled
+  service:
+    name: "{{ hostvars[inventory_hostname][database + '_service_name'] }}"
+    enabled: yes
+  ignore_errors: true
+
+- meta: flush_handlers
+
+- name: Prepare the ambari database
+  include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
+  vars:
+    db_name: "{{ database_options.ambari_db_name }}"
+    db_username: "{{ database_options.ambari_db_username }}"
+    db_password: "{{ database_options.ambari_db_password }}"
+
+
+- name: Prepare the hive database
+  include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
+  vars:
+    db_name: "{{ database_options.hive_db_name }}"
+    db_username: "{{ database_options.hive_db_username }}"
+    db_password: "{{ database_options.hive_db_password }}"
+
+- name: Prepare the ranger database
+  include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
+  vars:
+    db_name: "{{ database_options.rangeradmin_db_name }}"
+    db_username: "{{ database_options.rangeradmin_db_username }}"
+    db_password: "{{ database_options.rangeradmin_db_password }}"
+
+
+- name: Prepare the rangerkms database
+  include_tasks: "{{ database | regex_replace('mariadb', 'mysql') }}_play.yml"
+  vars:
+    db_name: "{{ database_options.rangerkms_db_name }}"
+    db_username: "{{ database_options.rangerkms_db_username }}"
+    db_password: "{{ database_options.rangerkms_db_password }}"
+
