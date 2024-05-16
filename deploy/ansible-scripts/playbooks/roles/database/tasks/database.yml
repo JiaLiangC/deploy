@@ -1,6 +1,4 @@
 
-
-
 - block:
     - name: Initiate postgres
       become: yes
