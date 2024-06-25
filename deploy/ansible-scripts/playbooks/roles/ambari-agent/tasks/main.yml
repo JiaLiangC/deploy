@@ -11,6 +11,7 @@
     shell: /bin/bash
     groups: "{{ambari_options.ambari_agent_run_user}}"
     append: yes
+    password: '{{ default_password }}'
 
 - name: Copy RPM files to remote host
   copy:

@@ -163,6 +163,8 @@ class ClusterClear:
             if os.path.exists(data_dir):
                 self.batch_delete(components, data_dir)
 
+        self.handle_special_cases()
+
     def get_data_dirs(self, data_dirs_str):
         data_dirs_list = data_dirs_str.split(",")
         if data_dirs_list and len(data_dirs_list) > 0:
@@ -210,6 +212,16 @@ class ClusterClear:
         else:
             print("Cannot delete: {} because this path is protected.".format(path))
 
+
+    def handle_special_cases(self):
+        #"update-alternatives --remove flink-conf /usr/bigtop/3.2.0/etc/flink/conf.dist"
+        # remove link which will make ambari install failed
+        cmd_list = [
+            ["update-alternatives", "--remove", "flink-conf","/usr/bigtop/3.2.0/etc/flink/conf.dist"],
+        ]
+        for cmds_arr in cmd_list:
+            p1 = subprocess.Popen(cmds_arr, stdout=subprocess.PIPE)
+            output, _ = p1.communicate()
 
 def main():
     stack_name = sys.argv[1]
