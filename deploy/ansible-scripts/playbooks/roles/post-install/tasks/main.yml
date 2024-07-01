@@ -7,3 +7,34 @@
         group: hadoop
         mode: 0440
   when: security != "none" and security_options.http_authentication|default(false) and install_hdp is defined and install_hdp
+
+
+
+- name: copy sqoop to opt
+  copy:
+    src: sqoop-1.4.7.bin__hadoop-2.6.0.tar.gz
+    dest: "/opt/"
+    mode: '0644'
+
+- name: Extracting the Compressed File!
+  unarchive:
+    src: "/opt/sqoop-1.4.7.bin__hadoop-2.6.0.tar.gz"
+    dest: /opt/
+    remote_src: yes
+
+
+
+- name: Ensure SQOOP_HOME is added to PATH
+  vars:
+    path_line: "export PATH=\$PATH:\$SQOOP_HOME/bin"
+  lineinfile:
+    path: /tc/profile
+    line: "{{ path_line }}"
+    create: yes
+    state: present
+    insertafter: EOF
+    regexp: '^export PATH=.*:$SQOOP_HOME/bin$'
+
+
+- name: Run source /etc/profile
+  shell: "source /etc/profile"

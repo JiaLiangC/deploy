@@ -24,7 +24,7 @@ class Deployment:
 
 
     def all_tasks(self):
-        return  ["prepare_nodes.yml","install_ambari.yml","configure_ambari.yml","apply_blueprint.yml"]
+        return  ["prepare_nodes.yml","install_ambari.yml","configure_ambari.yml","apply_blueprint.yml","post_install.yml"]
 
     def generate_deploy_tasks(self):
         if self.deploy_ambari_only:

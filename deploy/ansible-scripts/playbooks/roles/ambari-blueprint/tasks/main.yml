@@ -136,21 +136,26 @@
     return_content: yes
   register: cluster_create_task
 
-- name: Wait for the cluster to be built
-  uri:
-    url: "{{ (cluster_create_task.content|from_json).href }}"
-    force_basic_auth: yes
-    user: "{{ ambari_options.ambari_admin_user }}"
-    password: "{{ ambari_options.ambari_admin_password }}"
-    headers: '{"X-Requested-By":"ambari", "Content-Type":"application/json"}'
-    status_code: 200,201,202
-    return_content: yes
-  register: cluster_check_task
-  until: (((cluster_check_task.content|from_json).Requests.request_status == 'COMPLETED' and (cluster_check_task.content|from_json).Requests.completed_task_count|int > 0) or
-         (cluster_check_task.content|from_json).Requests.request_status == 'FAILED' or
-         (cluster_check_task.content|from_json).Requests.request_status == 'TIMEDOUT' or
-         (cluster_check_task.content|from_json).Requests.request_status == 'ABORTED')
-  retries: "{{ wait_timeout // 10 }}"
-  delay: 10
-  when: wait and cluster_create_task is defined and cluster_create_task
+
+- name: Check Ambari installation progress
+  debug:
+    msg: "Please check the Ambari web UI to get installation progress at: http://{{ ansible_fqdn }}:8080"
+
+#- name: Wait for the cluster to be built
+#  uri:
+#    url: "{{ (cluster_create_task.content|from_json).href }}"
+#    force_basic_auth: yes
+#    user: "{{ ambari_options.ambari_admin_user }}"
+#    password: "{{ ambari_options.ambari_admin_password }}"
+#    headers: '{"X-Requested-By":"ambari", "Content-Type":"application/json"}'
+#    status_code: 200,201,202
+#    return_content: yes
+#  register: cluster_check_task
+#  until: (((cluster_check_task.content|from_json).Requests.request_status == 'COMPLETED' and (cluster_check_task.content|from_json).Requests.completed_task_count|int > 0) or
+#         (cluster_check_task.content|from_json).Requests.request_status == 'FAILED' or
+#         (cluster_check_task.content|from_json).Requests.request_status == 'TIMEDOUT' or
+#         (cluster_check_task.content|from_json).Requests.request_status == 'ABORTED')
+#  retries: "{{ wait_timeout // 10 }}"
+#  delay: 10
+#  when: wait and cluster_create_task is defined and cluster_create_task
 

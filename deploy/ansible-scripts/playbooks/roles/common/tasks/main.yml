@@ -146,7 +146,30 @@
 
 
 
-#- name: Prepare the packages compatible
-#  include_tasks: yum_version_control.yml
-#  with_items: "{{ versioned_packages }}"
-#  when: versioned_packages is defined
+
+- name: populate /etc/profile
+  vars:
+    os_environment:
+      - key: export SQOOP_HOME
+        value: /usr/bigtop/3.3.0/usr/lib/sqoop
+      - key: export HADOOP_HOME
+        value: /usr/bigtop/3.3.0/usr/lib/hadoop
+      - key: export HADOOP_CLASSPATH
+        value: '`hadoop classpath`'
+      - key: export HBASE_HOME
+        value: /usr/bigtop/3.3.0/usr/lib/hbase
+      - key: export HIVE_HOME
+        value: /usr/bigtop/3.3.0/usr/lib/hive
+      - key: export FLINK_HOME
+        value: /usr/bigtop/3.3.0/usr/lib/flink
+      - key: export SPARK_HOME
+        value: /usr/bigtop/3.3.0/usr/lib/spark/
+      - key: export SPARK_HOME
+        value: /usr/bigtop/3.3.0/usr/lib/spark/
+  lineinfile:
+    path: "/etc/profile"
+    state: present
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value}}"
+  with_items: "{{ os_environment }}"
+
