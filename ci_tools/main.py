@@ -12,6 +12,8 @@ from python.utils.filesystem_util import *
 from python.build.build_manager import *
 from python.container.container_manager import *
 from python.release.release import *
+from python.executor.command_executor import *
+
 
 logger = get_logger()
 class MainApplication:
@@ -19,17 +21,19 @@ class MainApplication:
         self.args = self.parse_arguments()
         self.os_info = self.get_os_info_tuple()
         self.ci_config = ci_config
+        self.path_manager = PathManager(ci_config)
         self.nexus_manager = NexusManager(ci_config, self.os_info)
         self.build_manager = None
         self.deployment_manager =  Deployment(ci_config)
         self.release_manager = None
+        self.executor = CommandExecutor
 
     def get_os_info_tuple(self):
         os_info_arr = self.args.os_info.split(",") if self.args.os_info else ["", "", ""]
         return tuple(os_info_arr)
 
     def initialize(self):
-        pass
+        self.check_repo_privileges()
         # FilesystemUtil.create_dir(OUTPUT_DIR, empty_if_exists=True)
 
     def check_os_info(self):
@@ -123,6 +127,34 @@ class MainApplication:
     def upload_os_packages_if_needed(self):
         if self.args.upload_os_pkgs:
             self.nexus_manager.upload_os_packages()
+
+
+    def check_repo_privileges(self):
+        prj_dir = self.path_manager.current_prj_dir
+
+        def get_top_level_directory(path):
+            parts = path.split('/')
+            if len(parts) == 3 and (parts[0]=='' and parts[-1]==''):
+                raise ValueError("deployment script shouldn't be placed in / dir")
+
+            if len(parts) <= 2 and parts[-1]:
+                raise ValueError("deployment script shouldn't be placed in / dir")
+            return '/' + parts[1]
+
+        top_parent_dir = get_top_level_directory(prj_dir)
+        try:
+            env_vars = os.environ.copy()
+            exit_status = self.executor.execute_command_withlog(['chmod', '-R', '755', top_parent_dir], self.log_file,  env_vars=env_vars)
+            if exit_status != 0:
+                logger.error(f"Cluster deployment failed, Failed to change permissions for {top_parent_dir}")
+                raise Exception(f"Failed to change permissions for {top_parent_dir}")
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Failed to change permissions for {top_parent_dir}: {e}")
+
+    def _is_755(self, path):
+        """Helper method to check if a directory has 755 permissions"""
+        mode = os.stat(path).st_mode
+        return (mode & 0o777) == 0o755
 
     def run(self):
         self.initialize()

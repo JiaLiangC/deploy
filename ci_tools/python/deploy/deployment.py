@@ -21,7 +21,7 @@ class Deployment:
         self.executor = CommandExecutor
         self.ci_config = ci_config
         self.conf_manager = ConfigurationManager(BASE_CONF_NAME)
-
+        self.log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
 
     def all_tasks(self):
         return  ["prepare_nodes.yml","install_ambari.yml","configure_ambari.yml","apply_blueprint.yml","post_install.yml"]
@@ -37,14 +37,12 @@ class Deployment:
         return [os.path.join(ANSIBLE_PRJ_DIR, f'playbooks/{task}') for task in playbook_tasks]
 
     def execute_tasks(self, playbook_tasks):
+        inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
+        env_vars = os.environ.copy()
         for playbook_path in playbook_tasks:
-            inventory_path = os.path.join(ANSIBLE_PRJ_DIR, 'inventory/hosts')
-            log_file = os.path.join(LOGS_DIR, "ansible_playbook.log")
-            env_vars = os.environ.copy()
             command = ["python3", f"{PRJ_BIN_DIR}/ansible-playbook", playbook_path, f"--inventory={inventory_path}"]
-            exit_status = self.executor.execute_command_withlog(command, log_file, workdir=PRJDIR, env_vars=env_vars)
+            exit_status = self.executor.execute_command_withlog(command, self.log_file, workdir=PRJDIR, env_vars=env_vars)
             logger.info(f"run_playbook {command} exit_status: {exit_status}")
-
             if exit_status == 0:
                 logger.info("Cluster deployed successfully")
             else:
