@@ -97,7 +97,39 @@ class Deployment:
         run_shell_command("systemctl restart apache2", shell=True)
 
 
+    def check_prj_privileges(self):
+        prj_dir = PRJDIR
+        logger.info(f"check repo prj privileges prj_dir {prj_dir}")
+        def get_top_level_directory(path):
+            print(prj_dir)
+            parts = path.split('/')
+            if len(parts) == 3 and (parts[0]=='' and parts[-1]==''):
+                raise ValueError("deployment script shouldn't be placed in / dir")
+
+            if len(parts) <= 2 and parts[-1]:
+
+                raise ValueError("deployment script shouldn't be placed in / dir")
+            return '/' + parts[1]
+
+        top_parent_dir = get_top_level_directory(prj_dir)
+        try:
+            env_vars = os.environ.copy()
+            exit_status = self.executor.execute_command(['chmod', '-R', '755', top_parent_dir],  env_vars=env_vars)
+            if exit_status != 0:
+                logger.error(f"Cluster deployment failed, Failed to change permissions for {top_parent_dir}")
+                raise Exception(f"Failed to change permissions for {top_parent_dir}")
+        except Exception as e:
+            raise Exception(f"Failed to change permissions for {top_parent_dir}: {e}")
+
+    def _is_755(self, path):
+        """Helper method to check if a directory has 755 permissions"""
+        mode = os.stat(path).st_mode
+        return (mode & 0o777) == 0o755
+
     def setup_yum_repo(self):
+        self.check_prj_privileges()
+
+
         rpms_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
         repodata_dir = os.path.join(rpms_dir, "repodata")
         if os.path.exists(repodata_dir):
