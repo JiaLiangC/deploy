@@ -23,12 +23,24 @@
     remote_src: yes
 
 
+- name: populate /etc/profile
+  vars:
+    os_environment:
+      - key: export SQOOP_HOME
+        value: /opt/sqoop-1.4.7.bin__hadoop-2.6.0
+  lineinfile:
+    path: "/etc/profile"
+    state: present
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value}}"
+  with_items: "{{ os_environment }}"
+
 
 - name: Ensure SQOOP_HOME is added to PATH
   vars:
-    path_line: "export PATH=\$PATH:\$SQOOP_HOME/bin"
+    path_line: "export PATH=$PATH:$SQOOP_HOME/bin"
   lineinfile:
-    path: /tc/profile
+    path: /etc/profile
     line: "{{ path_line }}"
     create: yes
     state: present

@@ -151,7 +151,7 @@
   vars:
     os_environment:
       - key: export SQOOP_HOME
-        value: /usr/bigtop/3.3.0/usr/lib/sqoop
+        value: /opt/sqoop
       - key: export HADOOP_HOME
         value: /usr/bigtop/3.3.0/usr/lib/hadoop
       - key: export HADOOP_CLASSPATH
@@ -164,8 +164,6 @@
         value: /usr/bigtop/3.3.0/usr/lib/flink
       - key: export SPARK_HOME
         value: /usr/bigtop/3.3.0/usr/lib/spark/
-      - key: export SPARK_HOME
-        value: /usr/bigtop/3.3.0/usr/lib/spark/
   lineinfile:
     path: "/etc/profile"
     state: present
@@ -173,3 +171,4 @@
     line: "{{ item.key }}={{ item.value}}"
   with_items: "{{ os_environment }}"
 
+# sqoop import --connect jdbc:postgresql://u4:5432/ambari --username ambari --password B767610qa4Z --table users --target-dir hdfs://u1:8020//xuzx -m 1;
