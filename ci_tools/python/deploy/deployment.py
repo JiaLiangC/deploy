@@ -143,4 +143,5 @@ class Deployment:
         render_template(HTTPD_TPL_FILE, {"udh_local_repo_path": rpms_dir}, HTTPD_CONF_FILE)
 
         run_shell_command("pgrep -f httpd | xargs kill -9", shell=True)
+        logger.info("If an error occurs while executing { pgrep -f httpd | xargs kill -9 }, it can be safely ignored as it is harmless.")
         run_shell_command("service httpd start", shell=True)
