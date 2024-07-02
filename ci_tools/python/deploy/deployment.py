@@ -114,8 +114,8 @@ class Deployment:
         top_parent_dir = get_top_level_directory(prj_dir)
         try:
             env_vars = os.environ.copy()
-            exit_status = self.executor.execute_command(['chmod', '-R', '755', top_parent_dir],  env_vars=env_vars)
-            if exit_status != 0:
+            exit_code, output, error = self.executor.execute_command(['chmod', '-R', '755', top_parent_dir],  env_vars=env_vars)
+            if exit_code != 0:
                 logger.error(f"Cluster deployment failed, Failed to change permissions for {top_parent_dir}")
                 raise Exception(f"Failed to change permissions for {top_parent_dir}")
         except Exception as e:
