@@ -11,6 +11,7 @@ from python.utils.os_utils import *
 from python.executor.command_executor import *
 import os
 import shutil
+from pathlib import Path
 
 logger = get_logger()
 
@@ -97,6 +98,7 @@ class Deployment:
         run_shell_command("systemctl restart apache2", shell=True)
 
 
+
     def check_prj_privileges(self):
         prj_dir = PRJDIR
         logger.info(f"check repo prj privileges prj_dir {prj_dir}")
@@ -107,17 +109,28 @@ class Deployment:
                 raise ValueError("deployment script shouldn't be placed in / dir")
 
             if len(parts) <= 2 and parts[-1]:
-
                 raise ValueError("deployment script shouldn't be placed in / dir")
+
             return '/' + parts[1]
+
+        def get_subpaths(path):
+            p = Path(path)
+            subpaths = [str(p.parents[i]) for i in range(len(p.parents)-1, -1, -1)]
+            subpaths.append(str(p)) # 添加完整路径
+            return subpaths
 
         top_parent_dir = get_top_level_directory(prj_dir)
         try:
             env_vars = os.environ.copy()
-            exit_code, output, error = self.executor.execute_command(['chmod', '-R', '755', top_parent_dir],  env_vars=env_vars)
-            if exit_code != 0:
-                logger.error(f"Cluster deployment failed, Failed to change permissions for {top_parent_dir}")
-                raise Exception(f"Failed to change permissions for {top_parent_dir}")
+            pkgs_dir = os.path.join(TAR_FILE_PATH, os.path.basename(UDH_RPMS_PATH).split(".")[0])
+            subpaths = get_subpaths(pkgs_dir)
+            for subpath in subpaths:
+                if subpath == "/":
+                    pass
+                exit_code, output, error = self.executor.execute_command(['chmod', '755', subpath],  env_vars=env_vars)
+                if exit_code != 0:
+                    logger.error(f"Cluster deployment failed, Failed to change permissions for {top_parent_dir}")
+                    raise Exception(f"Failed to change permissions for {top_parent_dir}")
         except Exception as e:
             raise Exception(f"Failed to change permissions for {top_parent_dir}: {e}")
 
