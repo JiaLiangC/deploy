@@ -134,38 +134,62 @@ def smart_open(file: str, mode: str, *args, **kwargs):
         yield fh
 
 
-def run_shell_command(command, shell=False):
-    try:
-        result = subprocess.run(command, check=True, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                universal_newlines=True)
+def run_shell_command(command, shell=False, retries=0, retry_interval=1):
+    for attempt in range(retries + 1):
+        try:
+            result = subprocess.run(command, check=True, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    universal_newlines=True)
 
-        if result.returncode != 0:
-            logger.error(f"run command: {command} shell:{shell} Output: {result.stdout} Error: {result.stderr}")
-        else:
-            logger.info(f"run command: {command} shell:{shell} Output: {result.stdout}")
-        return result.returncode
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Command '{e.cmd}' failed with return code {e.returncode} Output: {e.output} Error: {e.stderr}")
-        return e.returncode
+            if result.returncode != 0:
+                logger.error(f"run_shell_command: Attempt {attempt + 1}: run command: {command} shell:{shell} Output: {result.stdout} Error: {result.stderr}")
+            else:
+                logger.info(f"run_shell_command: Attempt {attempt + 1}: run command: {command} shell:{shell} Output: {result.stdout}")
+            return result.returncode
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"run_shell_command: Attempt {attempt + 1}: Command '{e.cmd}' failed with return code {e.returncode} Output: {e.output} Error: {e.stderr}")
+
+            if attempt < retries:
+                logger.info(f"run_shell_command: Retrying in {retry_interval} seconds...")
+                time.sleep(retry_interval)
+            else:
+                return e.returncode
+
+    # This line should never be reached, but just in case
+    return -1
 
 
-def create_yum_repository(repo_data_dir):
-    try:
-        repodata_path = os.path.join(repo_data_dir, "repodata")
-        if os.path.exists(repodata_path):
-            shutil.rmtree(repodata_path)
+def create_yum_repository(repo_data_dir, retries=2, retry_interval=1):
+    for attempt in range(retries + 1):
+        try:
+            repodata_path = os.path.join(repo_data_dir, "repodata")
+            if os.path.exists(repodata_path):
+                shutil.rmtree(repodata_path)
 
-        command = f"createrepo -o {repo_data_dir} {repo_data_dir}"
-        returncode = run_shell_command(command.split())
-        if returncode != 0:
-            logger.error(f"Error executing createrepo")
-            return False
-        logger.info(f"Successfully created YUM repository")
-        return True
-    except Exception as e:
-        logger.error(f"An error occurred: {e}", file=sys.stderr)
-        return False
+            command = f"createrepo -o {repo_data_dir} {repo_data_dir}"
+            returncode = run_shell_command(command.split(), retries=0) 
 
+            if returncode != 0:
+                shutil.rmtree(os.path.join(repo_data_dir, ".repodata"), ignore_errors=True)
+                logger.error(f"Attempt {attempt + 1}: Error executing createrepo")
+                if attempt < retries:
+                    logger.info(f"Retrying in {retry_interval} seconds...")
+                    time.sleep(retry_interval)
+                    continue
+                else:
+                    return False
+
+            logger.info(f"Attempt {attempt + 1}: Successfully created YUM repository")
+            return True
+
+        except Exception as e:
+            logger.error(f"Attempt {attempt + 1}: An error occurred: {e}", file=sys.stderr)
+            shutil.rmtree(os.path.join(repo_data_dir, ".repodata"), ignore_errors=True)
+            if attempt < retries:
+                logger.info(f"Retrying in {retry_interval} seconds...")
+                time.sleep(retry_interval)
+            else:
+                return False
 
 
 def is_httpd_installed():
