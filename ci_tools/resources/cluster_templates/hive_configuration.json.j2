@@ -15,7 +15,9 @@
         "javax.jdo.option.ConnectionPassword": "{{ database_options.hive_db_password }}",
         {% endif -%}
         "hive.security.authorization.enabled" : "true",
-        "hive.server2.logging.operation.log.location" : "{{ base_tmp_dir }}/hive/operation_logs"
+        "hive.server2.logging.operation.log.location" : "{{ base_tmp_dir }}/hive/operation_logs",
+        "hive.tez.container.size": "512",
+        "hive.heapsize": "512",
     },
     "hiveserver2-site" : {
         "hive.security.authorization.enabled" : "true",
@@ -44,6 +46,8 @@
             "hive_user" : "hive",
             "hive_log_dir" : "{{ base_log_dir }}/hive",
             "hcat_log_dir" : "{{ base_log_dir }}/webhcat",
-            "heap_dump_location" : "{{ heap_dump_location }}"
+            "heap_dump_location" : "{{ heap_dump_location }}",
+            "hive.metastore.heapsize": "512",
+            "hive.heapsize": "512",
     }
 }

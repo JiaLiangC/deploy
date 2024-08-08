@@ -11,5 +11,9 @@
         {% endif %}
         "hbase.tmp.dir" : "{{ base_tmp_dir }}/hbase-${user.name}",
         "hbase.client.retries.number" : "35"
+    },
+    "hbase-env":{
+        "hbase_regionserver_heapsize": "512",
+        "hbase_master_heapsize": "512",
     }
 }
