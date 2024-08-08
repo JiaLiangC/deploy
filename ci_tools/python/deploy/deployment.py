@@ -157,4 +157,8 @@ class Deployment:
 
         run_shell_command("pgrep -f httpd | xargs kill -9", shell=True)
         logger.info("If an error occurs while executing { pgrep -f httpd | xargs kill -9 }, it can be safely ignored as it is harmless.")
-        run_shell_command("service httpd start", shell=True)
+        cmd = "service httpd start"
+        if get_os_type() == "rocky":
+            cmd = "systemctl start httpd"
+        run_shell_command(cmd, shell=True)
+

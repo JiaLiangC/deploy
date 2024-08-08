@@ -34,7 +34,7 @@ def get_os_type():
     elif operatingSystem.startswith('centos linux'):
         operatingSystem = 'redhat'
     elif operatingSystem.startswith('rocky linux'):
-        operatingSystem = 'redhat'
+        operatingSystem = 'rocky'
     elif operatingSystem.startswith('uos'):
         operatingSystem = 'uos'
     elif operatingSystem.startswith('anolis'):
