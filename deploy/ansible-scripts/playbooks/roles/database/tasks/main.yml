@@ -18,16 +18,12 @@
   when: database == "mariadb" and ((ansible_os_family|lower == "suse" and ansible_distribution_major_version|int == 11) or ansible_os_family|lower == "debian")
 
 
-- name: systemctl unmask systemd-logind.service
-  shell: "systemctl unmask systemd-logind.service"
-
-
-
 - name: Install "{{ database }}" database packages
   package:
     name: "{{ item }}"
     state: present
   with_items: "{{ hostvars[inventory_hostname][database + '_packages'] | join(',') }}"
+
 
 - name: Include database setup
   include_tasks: database.yml

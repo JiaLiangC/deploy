@@ -1,8 +1,6 @@
 ---
 - name: Restart postgres
-  service:
-    name: "{{ postgres_service_name }}"
-    state: restarted
+  shell: su - postgres -c "pg_ctl restart -D {{postgres_data_directory}}"
 
 - name: Restart mysql
   service:

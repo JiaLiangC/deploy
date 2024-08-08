@@ -154,8 +154,8 @@
         value: /opt/sqoop
       - key: export HADOOP_HOME
         value: /usr/bigtop/3.3.0/usr/lib/hadoop
-      - key: export HADOOP_CLASSPATH
-        value: '`hadoop classpath`'
+#      - key: export HADOOP_CLASSPATH
+#        value: '`hadoop classpath`'
       - key: export HBASE_HOME
         value: /usr/bigtop/3.3.0/usr/lib/hbase
       - key: export HIVE_HOME

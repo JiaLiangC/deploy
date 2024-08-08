@@ -10,12 +10,12 @@ packages:
 #  - openssl-devel           # openssl-devel recommended for Ranger KMS | too manly conflict with installed packages
   - libtirpc-devel          # libtirpc required by HDP 2.6+
   - python3-libselinux       # libselinux-python required by Ansible
-  - sysstat
-  - tcpdump
-  - dstat
-  - net-tools
-  - expect
-  - psmisc
+#   - sysstat
+#   - tcpdump
+#   - dstat
+#   - net-tools
+#   - expect
+#   - psmisc
   - java-1.8.0-openjdk-devel
   - python3-devel
   - python3-libs
