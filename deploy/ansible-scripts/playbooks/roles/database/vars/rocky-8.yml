@@ -4,7 +4,6 @@ postgres_major_version: 10
 postgres_packages:
   - postgresql-server
   - postgresql-libs
-  - postgresql-contrib
   - postgresql
 
 
