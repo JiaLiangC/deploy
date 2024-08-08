@@ -1,0 +1,29 @@
+---
+packages:
+  - openssh-clients         # scp required by Ambari
+  - curl                    # curl required by Ambari
+  - unzip                   # unzip required by Ambari
+  - tar                     # tar required by Ambari
+  - wget                    # wget required by Ambari
+  - openssl                 # openssl required by Ambari
+  - chrony                  # ntp required by Hadoop
+#  - openssl-devel           # openssl-devel recommended for Ranger KMS | too manly conflict with installed packages
+  - libtirpc-devel          # libtirpc required by HDP 2.6+
+  - python3-libselinux       # libselinux-python required by Ansible
+  - sysstat
+  - tcpdump
+  - dstat
+  - net-tools
+  - expect
+  - psmisc
+  - java-1.8.0-openjdk-devel
+  - python3-devel
+  - python3-libs
+  - python3-distro
+
+py3_modules:
+  - distro
+
+chrony_path: /etc/
+chrony_service: chronyd
+ntp_service: ntpd

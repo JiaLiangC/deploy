@@ -110,40 +110,40 @@
 # 给所有主机linux 进行必要配置，关闭防火墙，透明大页，SElinux ,设置swap, nproc, vm，创建用户等
 - include: node_setup.yml
 
-- name: distribute cluster_clear script
-  copy:
-    src: cluster_clear.py
-    dest: "{{ ansible_tmp_dir }}"
-
-
-#cluster_clear 依赖 psmisc , 需要先安装
-- name: Execute cluster clear script
-  become: yes
-  become_user: root
-  become_method: sudo
-  shell: 'python3 {{ansible_tmp_dir}}/cluster_clear.py bigtop {{ data_dirs | join(",") }} {{ ansible_os_family|lower }}'
-  register: script_result
-  ignore_errors: yes
-
-- name: Print stdout and fail the task if script failed
-  ansible.builtin.fail:
-    msg: "Script execution failed: {{ script_result.stdout }}"
-  when: script_result.rc != 0
+#- name: distribute cluster_clear script
+#  copy:
+#    src: cluster_clear.py
+#    dest: "{{ ansible_tmp_dir }}"
+#
+#
+##cluster_clear 依赖 psmisc , 需要先安装
+#- name: Execute cluster clear script
+#  become: yes
+#  become_user: root
+#  become_method: sudo
+#  shell: 'python3 {{ansible_tmp_dir}}/cluster_clear.py bigtop {{ data_dirs | join(",") }} {{ ansible_os_family|lower }}'
+#  register: script_result
+#  ignore_errors: yes
+#
+#- name: Print stdout and fail the task if script failed
+#  ansible.builtin.fail:
+#    msg: "Script execution failed: {{ script_result.stdout }}"
+#  when: script_result.rc != 0
 
 #- name: Print result to log
 #  ansible.builtin.shell: 'echo "{{ script_result.stdout }}" | tee -a /tmp/cluster_clear.log'
 #  when: script_result.rc == 0
 
 #设置ntp
-- name: Include yum_setup
-  include_tasks: ntp_setup.yml
-  when: ansible_os_family | lower != "debian"
+#- name: Include yum_setup
+#  include_tasks: ntp_setup.yml
+#  when: ansible_os_family | lower != "debian"
 
 #trino jdk install
-- name: Include yum_setup
-  include_tasks: jdk.yml
-  when: ansible_os_family | lower != "debian"
-
+#- name: Include yum_setup
+#  include_tasks: jdk.yml
+#  when: ansible_os_family | lower != "debian"
+#
 
 
 

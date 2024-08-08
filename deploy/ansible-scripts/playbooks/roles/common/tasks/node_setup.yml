@@ -1,69 +1,69 @@
 ---
 #设置swap
-- name: Set swappiness to "{{ swappiness }}"
-  sysctl:
-    name: vm.swappiness
-    value: "{{ swappiness }}"
-    state: present
-    reload: yes
-    ignoreerrors: yes
-
-#防火墙关闭
-- block:
-    - name: Stop the firewall service
-      service:
-        name: "{{ firewall_service_name }}"
-        state: stopped
-      ignore_errors: true
-
-    - name: Disable the firewall service
-      service:
-        name: "{{ firewall_service_name }}"
-        enabled: no
-      ignore_errors: true
-  when: disable_firewall and firewall_service_name is defined
-
-#关闭 selinux
-- name: Disable selinux
-  selinux:
-    state: disabled
-  when: ansible_os_family|lower == "redhat" and  ansible_distribution_major_version|int == 7
-#todo 关闭欧拉selinux 需要单独处理
-
-#关闭透明大页
-- name: Disable Transparent Huge Pages until the next reboot
-  shell: |
-    echo never > /sys/kernel/mm/transparent_hugepage/enabled
-    echo never > /sys/kernel/mm/transparent_hugepage/defrag
-    echo "echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled" >> /etc/rc.local
-    echo "echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag" >> /etc/rc.local
-  args:
-    removes: /sys/kernel/mm/transparent_hugepage/enabled
+# - name: Set swappiness to "{{ swappiness }}"
+#   sysctl:
+#     name: vm.swappiness
+#     value: "{{ swappiness }}"
+#     state: present
+#     reload: yes
+#     ignoreerrors: yes
+#
+# #防火墙关闭
+# - block:
+#     - name: Stop the firewall service
+#       service:
+#         name: "{{ firewall_service_name }}"
+#         state: stopped
+#       ignore_errors: true
+#
+#     - name: Disable the firewall service
+#       service:
+#         name: "{{ firewall_service_name }}"
+#         enabled: no
+#       ignore_errors: true
+#   when: disable_firewall and firewall_service_name is defined
+#
+# #关闭 selinux
+# - name: Disable selinux
+#   selinux:
+#     state: disabled
+#   when: ansible_os_family|lower == "redhat" and  ansible_distribution_major_version|int == 7
+# #todo 关闭欧拉selinux 需要单独处理
+#
+# #关闭透明大页
+# - name: Disable Transparent Huge Pages until the next reboot
+#   shell: |
+#     echo never > /sys/kernel/mm/transparent_hugepage/enabled
+#     echo never > /sys/kernel/mm/transparent_hugepage/defrag
+#     echo "echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled" >> /etc/rc.local
+#     echo "echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag" >> /etc/rc.local
+#   args:
+#     removes: /sys/kernel/mm/transparent_hugepage/enabled
 
 #设置时区
 - name: Set timezone to "{{ timezone }}"
   timezone:
     name: "{{ timezone }}"
 
-#设置 linux 内核参数
-- name: Configure tuned (RHEL/CentOS 7)
-  include_tasks: tuned.yml
-  when: ansible_os_family|lower == "redhat" and ansible_distribution_major_version|int == 7
-
-#关闭snoopy 审计功能，影响性能和数据安全
-- name: check snoopy
-  shell: 'cat /etc/ld.so.preload | grep -E "/(lib)?snoopy.so" | wc -l'
-  register: check_snoopy_result
-
-- name: stop snoopy if running
-  shell: 'sh /usr/local/sbin/snoopy-disable'
-  when: check_snoopy_result.stdout == '1'
-  ignore_errors: True
-
-#修改内存映射的最大值，满足大数据应用大量的内存映射
-- name: virtual memory
-  shell: '/usr/sbin/sysctl -w vm.max_map_count=262144 && echo "vm.max_map_count=262144" >> /etc/sysctl.conf && /usr/sbin/sysctl -p'
-  ignore_errors: yes
+# #设置 linux 内核参数
+# - name: Configure tuned (RHEL/CentOS 7)
+#   include_tasks: tuned.yml
+#   when: ansible_os_family|lower == "redhat" and ansible_distribution_major_version|int == 7
+#
+# #关闭snoopy 审计功能，影响性能和数据安全
+# - name: check snoopy
+#   shell: 'cat /etc/ld.so.preload | grep -E "/(lib)?snoopy.so" | wc -l'
+#   register: check_snoopy_result
+#
+# - name: stop snoopy if running
+#   shell: 'sh /usr/local/sbin/snoopy-disable'
+#   when: check_snoopy_result.stdout == '1'
+#   ignore_errors: True
+#
+# #修改内存映射的最大值，满足大数据应用大量的内存映射
+# - name: virtual memory
+#   shell: '/usr/sbin/sysctl -w vm.max_map_count=262144 && echo "vm.max_map_count=262144" >> /etc/sysctl.conf && /usr/sbin/sysctl -p'
+#   ignore_errors: yes
 
 
 # 配置打开文件数限制
@@ -88,18 +88,18 @@
   with_items:
     - "echo '{{ ambari_options.ambari_agent_run_user }} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
 
-# clean /etc/hosts
-- name: clean hosts
-  shell: "sed -i '3,$d' /etc/hosts"
-
-# 配置hosts主机映射
-- name: init /etc/hosts
-  lineinfile:
-    path: /etc/hosts
-    regexp: '.*{{ item }}$'
-    line: "{{ hostvars[item].ansible_host }} {{item}}"
-  when: hostvars[item].ansible_host is defined
-  with_items: "{{ groups['hadoop-cluster'] }}"
+# # clean /etc/hosts
+# - name: clean hosts
+#   shell: "sed -i '3,$d' /etc/hosts"
+#
+# # 配置hosts主机映射
+# - name: init /etc/hosts
+#   lineinfile:
+#     path: /etc/hosts
+#     regexp: '.*{{ item }}$'
+#     line: "{{ hostvars[item].ansible_host }} {{item}}"
+#   when: hostvars[item].ansible_host is defined
+#   with_items: "{{ groups['hadoop-cluster'] }}"
 
 
 # todo 使用外部Kdc 需要创建host 映射
