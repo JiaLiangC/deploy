@@ -9,21 +9,28 @@ from datetime import datetime
 import random
 import shutil
 import logging
-from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+
+PRJDIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
+CONF_DIR = os.path.join(PRJDIR, 'conf')
+CONF_NAME = "docker_deploy_config.yaml"
+
 
 class BigTopClusterManager:
   def __init__(self):
     self.prog = os.path.basename(sys.argv[0])
-    self.provision_id_file = '.provision_id'
-    self.config_file = 'config.yaml'
+    self.provision_id_file = os.path.join(PRJDIR, '.provision_id')
+    self.config_file = os.path.join(CONF_DIR, CONF_NAME)
+    self.hosts_file = os.path.join(CONF_DIR, 'hosts')
     self.docker_compose_cmd = 'docker-compose'
     self.error_prefix = '.error_msg_'
+    self.base_conf = "base_conf.yml"
     self.setup_logging()
     self.load_config()
     self.docker_compose_env = {}
     self.head_node = None
-    # can't mount prj in /
+    # note: can't mount prj in root dir /
     self.prj_mount_dir = "/deploy/deploy-home"
 
   def setup_logging(self):
@@ -118,7 +125,7 @@ class BigTopClusterManager:
       logging.error(f"Cluster already exists! Run ./{self.prog} -d to destroy the cluster or delete {self.provision_id_file} file and containers manually.")
       sys.exit(1)
     self.provision_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_r{random.randint(1000, 9999)}"
-    self.create_or_touch_file('./config/hosts')
+    self.create_or_touch_file(self.hosts_file)
 
     self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} up -d --scale bigtop={num_instances} --no-recreate", shell=True, env_vars=self.docker_compose_env)
     with open(self.provision_id_file, 'w') as f:
@@ -174,14 +181,13 @@ class BigTopClusterManager:
     logging.info("Generating configuration file...")
     dest_dir = self.prj_mount_dir
     conf_dir = f"{self.prj_mount_dir}/conf"
-    filename = "base_conf.yml"
 
     hosts = self._get_hosts_config()
     config_content = self._generate_config_content(hosts)
 
-    self.run_command(f"docker exec {self.head_node} bash -c \"echo '{config_content}' > {conf_dir}/{filename}\"", shell=True)
+    self.run_command(f"docker exec {self.head_node} bash -c \"echo '{config_content}' > {conf_dir}/{self.base_conf}\"", shell=True)
     self.run_command(f"docker exec {self.head_node} bash -c '{self.prj_mount_dir}/provisioner/utils/install_cluster.sh {dest_dir}'", shell=True)
-    logging.info(f"Configuration file has been generated at {conf_dir}/{filename}")
+    logging.info(f"Configuration file has been generated at {conf_dir}/{self.base_conf}")
 
   def _get_hosts_config(self):
     hosts = ""
