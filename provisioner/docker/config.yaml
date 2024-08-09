@@ -14,10 +14,11 @@
 # limitations under the License.
 
 docker:
-    memory_limit: "4g"
+    memory_limit: "8g"
     image: "bigtop/puppet:trunk-centos-7"
 
 repo: "http://repos.bigtop.apache.org/releases/3.2.1/centos/7/$basearch"
 distro: centos
-components: [hdfs, yarn, mapreduce]
 enable_local_repo: false
+port_start: 8081
+port_end: 8088
