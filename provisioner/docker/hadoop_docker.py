@@ -33,6 +33,7 @@ class BigTopClusterManager:
     # note: can't mount prj in root dir /
     self.prj_mount_dir = "/deploy/deploy-home"
     self.bigdata_pkgs_dir = os.path.join(self.prj_mount_dir,"ci_tools/resources/pkgs/udh-packages")
+    self.enable_local_repo = False
 
   def setup_logging(self):
     logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
@@ -47,7 +48,6 @@ class BigTopClusterManager:
     self.distro = self._get_yaml_config('distro')
     self.port_end = self._get_yaml_config('port_end')
     self.nodes = []
-    self.enable_local_repo = False
     self.components = self._get_yaml_config('components')
     logging.info("Configuration loaded successfully.")
 
@@ -308,7 +308,7 @@ ansible_ssh_port: 22"""
     logging.info("Initializing configuration...")
     repo = args.repo or self.repo
     memory_limit = args.memory or self.memory_limit
-
+    self.enable_local_repo = args.enable_local_repo
     self.docker_compose_env = {
       'DOCKER_IMAGE': self.image_name,
       'MEM_LIMIT': memory_limit,
