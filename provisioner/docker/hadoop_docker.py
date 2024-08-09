@@ -165,6 +165,8 @@ class BigTopClusterManager:
       for node in self.nodes
     ]
     self.parallel_execute(self.run_command, commands, env_vars=self.docker_compose_env, shell=True)
+    if self.enable_local_repo:
+      self.run_command(f"docker exec {self.head_node} bash -c \"createrepo -o {self.bigdata_pkgs_dir} {self.bigdata_pkgs_dir}\"", shell=True)
     logging.info("Bootstrap completed.")
 
   def parallel_execute(self, task, params, **kwargs):
