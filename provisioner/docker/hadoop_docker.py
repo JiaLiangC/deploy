@@ -262,7 +262,7 @@ ansible_ssh_port: 22"""
       self.run_command(f"docker network rm {self.provision_id}_default",env_vars=self.docker_compose_env, shell=True)
 
   def _remove_files(self):
-    for file in ['./config', self.provision_id_file] + [f for f in os.listdir('.') if f.startswith(self.error_prefix)]:
+    for file in [self.hosts_file, self.provision_id_file] + [f for f in os.listdir('.') if f.startswith(self.error_prefix)]:
       if os.path.isdir(file):
         shutil.rmtree(file, ignore_errors=True)
       elif os.path.exists(file):
