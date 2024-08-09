@@ -60,7 +60,7 @@ python3 provisioner/docker/hadoop_docker.py -d -dcp
 5) Get into the first container (the master)
 
 ```
-python3 provisioner/docker/hadoop_docker.py --exec 1 bash
+python3 provisioner/docker/hadoop_docker.py --exec 1 /bin/bash
 ```
 
 6) Execute a command on the second container

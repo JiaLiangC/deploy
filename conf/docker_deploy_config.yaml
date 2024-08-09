@@ -22,4 +22,4 @@ distro: centos
 enable_local_repo: false
 port_start: 8081
 port_end: 8088
-components: ['zookeeper','ambari','hdfs','ambari_metrics']
+components: ['zookeeper','ambari','hdfs','yarn','ambari_metrics']
