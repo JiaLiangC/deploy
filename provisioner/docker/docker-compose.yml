@@ -21,7 +21,7 @@ services:
         privileged: true
         mem_limit: ${MEM_LIMIT}
         volumes:
-        - ../../:/deploy-home
+        - ../../:${PRJ_MOUNT_DIR}
         - ./config/hosts:/etc/hosts
         - /sys/fs/cgroup:/sys/fs/cgroup:ro
         ports:

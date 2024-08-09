@@ -10,49 +10,54 @@ import random
 import shutil
 import logging
 from functools import wraps
-
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class BigTopClusterManager:
   def __init__(self):
     self.prog = os.path.basename(sys.argv[0])
     self.provision_id_file = '.provision_id'
-    self.yaml_conf = 'config.yaml'
+    self.config_file = 'config.yaml'
     self.docker_compose_cmd = 'docker-compose'
     self.error_prefix = '.error_msg_'
-    self.repo = None
-    self.provision_id = None
-    self.nodes = []
-    self.image_name = None
-    self.memory_limit = None
-    self.port_start = None
-    self.port_end = None
-    self.distro = None
-    self.enable_local_repo = False
     self.setup_logging()
     self.load_config()
-    self.docker_compose_env={}
-    self.head_node=None
+    self.docker_compose_env = {}
+    self.head_node = None
+    # can't mount prj in /
+    self.prj_mount_dir = "/deploy/deploy-home"
 
   def setup_logging(self):
     logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
   def load_config(self):
+    logging.info("Loading configuration...")
+    self.provision_id = self._load_provision_id()
+    self.image_name = self._get_yaml_config('docker', 'image')
+    self.memory_limit = self._get_yaml_config('docker', 'memory_limit')
+    self.port_start = self._get_yaml_config('port_start')
+    self.repo = self._get_yaml_config('repo')
+    self.distro = self._get_yaml_config('distro')
+    self.port_end = self._get_yaml_config('port_end')
+    self.nodes = []
+    self.enable_local_repo = False
+    logging.info("Configuration loaded successfully.")
+
+  def _load_provision_id(self):
     if os.path.exists(self.provision_id_file):
       with open(self.provision_id_file, 'r') as f:
-        self.provision_id = f.read().strip()
+        return f.read().strip()
+    return None
 
-    self.image_name = self.get_yaml_config('docker', 'image')
-    self.memory_limit = self.get_yaml_config('docker', 'memory_limit')
-    self.port_start = self.get_yaml_config( 'port_start')
-    self.repo = self.get_yaml_config( 'repo')
-    self.distro = self.get_yaml_config( 'distro')
-    #todo 根据create 的数量动态生port end
-    self.port_end = self.get_yaml_config( 'port_end')
+  def _get_yaml_config(self, key, subkey=None):
+    with open(self.config_file, 'r') as file:
+      data = yaml.safe_load(file)
+    if subkey:
+      return data[key][subkey]
+    return data[key]
 
-  def run_command(self, command, workdir=None, env_vars=None, shell=False, logfile=None,ignore_errors=False):
+  def run_command(self, command, workdir=None, env_vars=None, shell=False, logfile=None, ignore_errors=False):
+    logging.info(f"Executing command: {command}")
     out = logfile or subprocess.PIPE
-    print(f"Executing  command: {command}")
     env_vars = dict(env_vars) if env_vars else os.environ.copy()
     try:
       process = subprocess.Popen(
@@ -81,32 +86,22 @@ class BigTopClusterManager:
     except Exception as e:
       logging.error(f"Exception occurred while executing command: {e}")
       if not ignore_errors:
-        raise Exception()
+        raise
       return -1, "", str(e)
 
-
-  def get_result(self,subprocess_res):
-    if "\n" in subprocess_res:
-      resource = [node for node in subprocess_res.split("\n") if node.strip()]
-      return resource
-    else:
-      return [subprocess_res]
-
-  def get_yaml_config(self, key, subkey=None):
-    with open(self.yaml_conf, 'r') as file:
-      data = yaml.safe_load(file)
-    if subkey:
-      return data[key][subkey]
-    return data[key]
+  def get_result(self, subprocess_res):
+    return [node.strip() for node in subprocess_res.split("\n") if node.strip()]
 
   def get_nodes(self):
+    logging.info("Retrieving node information...")
     if self.provision_id:
       exit_code, output, error = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} ps -q", shell=True)
       self.nodes = self.get_result(output)
-      self.head_node = self.nodes[0]
-      logging.info(f"nodes are {self.nodes}")
+      self.head_node = self.nodes[0] if self.nodes else None
+      logging.info(f"Nodes retrieved: {self.nodes}")
 
   def create_or_touch_file(self, file_path):
+    logging.info(f"Creating or touching file: {file_path}")
     directory = os.path.dirname(file_path)
     if directory and not os.path.exists(directory):
       os.makedirs(directory)
@@ -117,45 +112,48 @@ class BigTopClusterManager:
       logging.error(f"Error creating or touching file: {e}")
 
   def create(self, num_instances):
+    logging.info(f"Creating cluster with {num_instances} instances...")
     if os.path.exists(self.provision_id_file):
       logging.error(f"Cluster already exists! Run ./{self.prog} -d to destroy the cluster or delete {self.provision_id_file} file and containers manually.")
       sys.exit(1)
     self.provision_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_r{random.randint(1000, 9999)}"
     self.create_or_touch_file('./config/hosts')
 
-    exit_code, output, error = self.run_command('uname -m', shell=True)
-    # if output != 'x86_64':
-    #   self.image_name = f"{self.image_name}-{running_arch}"
-    exit_code, output, error = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} up -d --scale bigtop={num_instances} --no-recreate", shell=True, env_vars=self.docker_compose_env)
+    self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} up -d --scale bigtop={num_instances} --no-recreate", shell=True, env_vars=self.docker_compose_env)
     with open(self.provision_id_file, 'w') as f:
       f.write(self.provision_id)
 
     self.get_nodes()
     self.configure_cluster()
+    logging.info("Cluster creation completed.")
 
   def configure_cluster(self):
-    exit_code, output, error = self.run_command(f"docker inspect --format {{{{.Config.Hostname}}}}.{{{{.Config.Domainname}}}} {self.nodes[0]}", shell=True)
-
+    logging.info("Configuring cluster...")
     self.generate_hosts()
     self.bootstrap(self.distro, self.enable_local_repo)
     self.generate_config_file()
+    logging.info("Cluster configuration completed.")
 
   def generate_hosts(self):
+    logging.info("Generating hosts file...")
     for node in self.nodes:
       exit_code, output, error = self.run_command(f"docker inspect --format '{{{{range.NetworkSettings.Networks}}}}{{{{.IPAddress}}}}{{{{end}}}} {{{{.Config.Hostname}}}}.{{{{.Config.Domainname}}}} {{{{.Config.Hostname}}}}' {node}", shell=True)
       entry = self.get_result(output)[0]
       self.run_command(f"docker exec {self.head_node} bash -c \"echo {entry} >> /etc/hosts\"", shell=True)
     self.run_command(f"docker exec {self.head_node} bash -c \"echo '127.0.0.1 localhost' >> /etc/hosts\"", shell=True)
-
+    logging.info("Hosts file generated successfully.")
 
   def bootstrap(self, distro, enable_local_repo):
+    logging.info(f"Bootstrapping nodes with distro: {distro}, enable_local_repo: {enable_local_repo}")
     commands = [
-      f"docker exec {node} bash -c '/deploy-home/provisioner/utils/setup-env-{distro}.sh {enable_local_repo}'"
+      f"docker exec {node} bash -c '{self.prj_mount_dir}/provisioner/utils/setup-env-{distro}.sh {enable_local_repo}'"
       for node in self.nodes
     ]
     self.parallel_execute(self.run_command, commands, shell=True)
+    logging.info("Bootstrap completed.")
 
   def parallel_execute(self, task, params, **kwargs):
+    logging.info(f"Executing {len(params)} tasks in parallel...")
     with ThreadPoolExecutor(max_workers=20) as executor:
       futures = {executor.submit(task, param, **kwargs): param for param in params}
 
@@ -164,28 +162,36 @@ class BigTopClusterManager:
         try:
           result = future.result()
           if result:
-            logging.info(f"Command executed successfully: {param}")
+            logging.info(f"Task executed successfully: {param}")
           else:
-            logging.warning(f"Command execution failed: {param}")
+            logging.warning(f"Task execution failed: {param}")
         except Exception as e:
-          logging.error(f"Command execution resulted in an exception: {param}. Error: {e}")
-
+          logging.error(f"Task execution resulted in an exception: {param}. Error: {e}")
+    logging.info("Parallel execution completed.")
 
   def generate_config_file(self):
-    dest_dir = "/deploy-home/"
-    conf_dir = "/deploy-home/conf"
+    logging.info("Generating configuration file...")
+    dest_dir = self.prj_mount_dir
+    conf_dir = f"{self.prj_mount_dir}/conf"
     filename = "base_conf.yml"
 
+    hosts = self._get_hosts_config()
+    config_content = self._generate_config_content(hosts)
+
+    self.run_command(f"docker exec {self.head_node} bash -c \"echo '{config_content}' > {conf_dir}/{filename}\"", shell=True)
+    self.run_command(f"docker exec {self.head_node} bash -c '{self.prj_mount_dir}/provisioner/utils/install_cluster.sh {dest_dir}'", shell=True)
+    logging.info(f"Configuration file has been generated at {conf_dir}/{filename}")
+
+  def _get_hosts_config(self):
     hosts = ""
     for node in self.nodes:
       exit_code, output, error = self.run_command(f"docker inspect --format '{{{{range.NetworkSettings.Networks}}}}{{{{.IPAddress}}}}{{{{end}}}} {{{{.Config.Hostname}}}}.{{{{.Config.Domainname}}}}' {node}", shell=True)
       ip_hostname = self.get_result(output)[0]
       hosts += f"  - {ip_hostname} B767610qa4Z\n"
-      print(hosts)
+    return hosts
 
-    logging.info(f"Configuration file has been generated at {conf_dir}/{filename} {hosts}")
-
-    config_content = f"""default_password: 'B767610qa4Z'
+  def _generate_config_content(self, hosts):
+    return f"""default_password: 'B767610qa4Z'
 stack_version: '3.3.0'
 data_dirs: ['/data/sdv1']
 repos:
@@ -204,38 +210,50 @@ cluster_name: 'cluster'
 hdfs_ha_name: 'c1'
 ansible_ssh_port: 22"""
 
-    self.run_command(f"docker exec {self.head_node} bash -c \"echo '{config_content}' > {conf_dir}/{filename}\"", shell=True)
-    self.run_command(f"docker exec {self.head_node} bash -c '/deploy-home/provisioner/utils/install_cluster.sh {dest_dir}'", shell=True)
-
   def destroy(self):
+    logging.info("Destroying cluster...")
     if not self.provision_id:
       logging.info("No cluster exists!")
-    else:
-      self.get_nodes()
-      if len(self.nodes) > 0:
-        self.run_command(f"docker exec {self.nodes[0]} bash -c 'umount /etc/hosts; rm -f /etc/hosts'", shell=True)
-        network_id = self.run_command(f"docker network ls --quiet --filter name={self.provision_id}_default", shell=True)
+      return
 
-        if self.provision_id:
-          exit_code, output, error =  self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} stop", shell=True)
-          if exit_code !=0:
-            raise Exception("run command failed")
-          exit_code, output, error  = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} rm -f", shell=True)
-          if exit_code !=0:
-            raise Exception("run command failed")
-        if network_id:
-          self.run_command(f"docker network rm {self.provision_id}_default", shell=True)
+    self.get_nodes()
+    if not self.nodes:
+      self._remove_provision_id_file()
+      return
 
-        for file in ['./config', self.provision_id_file] + [f for f in os.listdir('.') if f.startswith(self.error_prefix)]:
-          if os.path.isdir(file):
-            shutil.rmtree(file, ignore_errors=True)
-          else:
-            if os.path.exists(file):
-              os.remove(file)
-      else:
-        os.remove(self.provision_id_file)
+    self._cleanup_head_node()
+    self._stop_and_remove_containers()
+    self._remove_network()
+    self._remove_files()
+    logging.info("Cluster destroyed successfully.")
+
+  def _cleanup_head_node(self):
+    if self.nodes:
+      self.run_command(f"docker exec {self.nodes[0]} bash -c 'umount /etc/hosts; rm -f /etc/hosts'", shell=True)
+
+  def _stop_and_remove_containers(self):
+    if self.provision_id:
+      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} stop", shell=True)
+      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} rm -f", shell=True)
+
+  def _remove_network(self):
+    network_id = self.run_command(f"docker network ls --quiet --filter name={self.provision_id}_default", shell=True)
+    if network_id:
+      self.run_command(f"docker network rm {self.provision_id}_default", shell=True)
+
+  def _remove_files(self):
+    for file in ['./config', self.provision_id_file] + [f for f in os.listdir('.') if f.startswith(self.error_prefix)]:
+      if os.path.isdir(file):
+        shutil.rmtree(file, ignore_errors=True)
+      elif os.path.exists(file):
+        os.remove(file)
+
+  def _remove_provision_id_file(self):
+    if os.path.exists(self.provision_id_file):
+      os.remove(self.provision_id_file)
 
   def execute(self, target, *args):
+    logging.info(f"Executing command on target: {target}")
     if target.isdigit():
       self.get_nodes()
       node = self.nodes[int(target) - 1]
@@ -244,36 +262,34 @@ ansible_ssh_port: 22"""
     self.run_command(f"docker exec -ti {node} {' '.join(args)}", shell=True)
 
   def env_check(self):
-    logging.info("Environment check...")
-    logging.info("Check docker:")
+    logging.info("Performing environment check...")
+    logging.info("Checking docker:")
     self.run_command("docker -v", shell=True)
-    logging.info("Check docker-compose:")
+    logging.info("Checking docker-compose:")
     self.run_command(f"{self.docker_compose_cmd} -v", shell=True)
 
   def list_cluster(self):
+    logging.info("Listing cluster status...")
     try:
       msg = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} ps", shell=True)
     except subprocess.CalledProcessError:
       msg = "Cluster hasn't been created yet."
     logging.info(msg)
 
-
   def initialize_config(self, args):
-    repo = self.repo
-    if args.memory:
-      self.memory_limit = args.memory
-    if args.repo:
-      repo = args.repo
+    logging.info("Initializing configuration...")
+    repo = args.repo or self.repo
+    memory_limit = args.memory or self.memory_limit
 
     self.docker_compose_env = {
       'DOCKER_IMAGE': self.image_name,
-      'MEM_LIMIT': self.memory_limit,
+      'MEM_LIMIT': memory_limit,
       'HOST_PORT': str(self.port_start),
-      'HOST_PORT_END': str(self.port_end)
+      'HOST_PORT_END': str(self.port_end),
+      'PRJ_MOUNT_DIR': str(self.prj_mount_dir)
     }
 
     logging.info(f"Initialized configuration: {self.docker_compose_env}")
-
 
 def main():
   manager = BigTopClusterManager()
@@ -292,15 +308,15 @@ def main():
 
   args = parser.parse_args()
 
-  print(f"aa-------------{args}")
+  logging.info(f"Parsed arguments: {args}")
 
   manager.initialize_config(args)
 
   if args.docker_compose_plugin:
-      manager.docker_compose_cmd = "docker compose"
+    manager.docker_compose_cmd = "docker compose"
 
   if args.conf:
-    manager.yaml_conf = args.conf
+    manager.config_file = args.conf
 
   if args.docker_compose_yml:
     manager.docker_compose_cmd += f" -f {args.docker_compose_yml}"
@@ -320,3 +336,4 @@ def main():
 
 if __name__ == "__main__":
   main()
+
