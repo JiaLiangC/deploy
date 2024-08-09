@@ -29,6 +29,7 @@ service docker start
 ## USAGE
 
 Remember to place all your compiled RPMs in the following directory before executing the script: ci_tools/resources/pkgs/udh-packages/
+if you are in windows plz use .\setup_ansible.ps1 instead of source venv.sh 
 
 1) Set up the environment
 ```
