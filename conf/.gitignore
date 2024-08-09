@@ -1,1 +1,3 @@
-*.yml
+base_conf.yml
+conf.yml
+hosts_info.yml

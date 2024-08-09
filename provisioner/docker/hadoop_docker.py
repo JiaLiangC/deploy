@@ -32,6 +32,7 @@ class BigTopClusterManager:
     self.docker_compose_dir = os.path.join(PRJDIR, 'provisioner/docker')
     # note: can't mount prj in root dir /
     self.prj_mount_dir = "/deploy/deploy-home"
+    self.bigdata_pkgs_dir = os.path.join(self.prj_mount_dir,"ci_tools/resources/pkgs/udh-packages")
 
   def setup_logging(self):
     logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
@@ -163,7 +164,7 @@ class BigTopClusterManager:
       f"docker exec {node} bash -c '{self.prj_mount_dir}/provisioner/utils/setup-env-{distro}.sh {enable_local_repo}'"
       for node in self.nodes
     ]
-    self.parallel_execute(self.run_command, commands, shell=True)
+    self.parallel_execute(self.run_command, commands, env_vars=self.docker_compose_env, shell=True)
     logging.info("Bootstrap completed.")
 
   def parallel_execute(self, task, params, **kwargs):
@@ -213,6 +214,7 @@ class BigTopClusterManager:
 stack_version: '3.3.0'
 data_dirs: ['/data/sdv1']
 repos:
+  - {{"name": "ambari_repo", "url": "file://{self.bigdata_pkgs_dir}"}}
 
 user: root
 hosts:
@@ -310,7 +312,8 @@ ansible_ssh_port: 22"""
       'MEM_LIMIT': memory_limit,
       'HOST_PORT': str(self.port_start),
       'HOST_PORT_END': str(self.port_end),
-      'PRJ_MOUNT_DIR': str(self.prj_mount_dir)
+      'PRJ_MOUNT_DIR': str(self.prj_mount_dir),
+      'PKGS_DIR': str(self.bigdata_pkgs_dir)
     }
 
     logging.info(f"Initialized configuration: {self.docker_compose_env}")

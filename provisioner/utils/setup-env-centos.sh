@@ -96,9 +96,9 @@ if [ $enable_local_repo == "true" ]; then
     esac
 
     if [ "${ID}" = "openEuler" ];then
-        sudo dnf config-manager --add-repo file:///bigtop-home/output
+        sudo dnf config-manager --add-repo file://${PKGS_DIR}
     else
-        sudo yum-config-manager --add-repo file:///bigtop-home/output
+        sudo yum-config-manager --add-repo file://${PKGS_DIR}
     fi
 
     sudo echo "gpgcheck=0" >> /etc/yum.repos.d/bigtop-home_output.repo
