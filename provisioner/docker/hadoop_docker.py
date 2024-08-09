@@ -11,7 +11,6 @@ import shutil
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-
 PRJDIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
 CONF_DIR = os.path.join(PRJDIR, 'conf')
 CONF_NAME = "docker_deploy_config.yaml"
@@ -30,6 +29,7 @@ class BigTopClusterManager:
     self.load_config()
     self.docker_compose_env = {}
     self.head_node = None
+    self.docker_compose_dir = os.path.join(PRJDIR, 'provisioner/docker')
     # note: can't mount prj in root dir /
     self.prj_mount_dir = "/deploy/deploy-home"
 
@@ -103,7 +103,8 @@ class BigTopClusterManager:
   def get_nodes(self):
     logging.info("Retrieving node information...")
     if self.provision_id:
-      exit_code, output, error = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} ps -q", shell=True)
+      exit_code, output, error = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} ps -q",
+                                                  workdir=self.docker_compose_dir, shell=True)
       self.nodes = self.get_result(output)
       self.head_node = self.nodes[0] if self.nodes else None
       logging.info(f"Nodes retrieved: {self.nodes}")
@@ -122,12 +123,15 @@ class BigTopClusterManager:
   def create(self, num_instances):
     logging.info(f"Creating cluster with {num_instances} instances...")
     if os.path.exists(self.provision_id_file):
-      logging.error(f"Cluster already exists! Run ./{self.prog} -d to destroy the cluster or delete {self.provision_id_file} file and containers manually.")
+      logging.error(
+        f"Cluster already exists! Run ./{self.prog} -d to destroy the cluster or delete {self.provision_id_file} file and containers manually.")
       sys.exit(1)
     self.provision_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_r{random.randint(1000, 9999)}"
     self.create_or_touch_file(self.hosts_file)
 
-    self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} up -d --scale bigtop={num_instances} --no-recreate", shell=True, env_vars=self.docker_compose_env)
+    self.run_command(
+      f"{self.docker_compose_cmd} -p {self.provision_id} up -d --scale bigtop={num_instances} --no-recreate",
+      workdir=self.docker_compose_dir, shell=True, env_vars=self.docker_compose_env)
     with open(self.provision_id_file, 'w') as f:
       f.write(self.provision_id)
 
@@ -145,7 +149,9 @@ class BigTopClusterManager:
   def generate_hosts(self):
     logging.info("Generating hosts file...")
     for node in self.nodes:
-      exit_code, output, error = self.run_command(f"docker inspect --format '{{{{range.NetworkSettings.Networks}}}}{{{{.IPAddress}}}}{{{{end}}}} {{{{.Config.Hostname}}}}.{{{{.Config.Domainname}}}} {{{{.Config.Hostname}}}}' {node}", shell=True)
+      exit_code, output, error = self.run_command(
+        f"docker inspect --format '{{{{range.NetworkSettings.Networks}}}}{{{{.IPAddress}}}}{{{{end}}}} {{{{.Config.Hostname}}}}.{{{{.Config.Domainname}}}} {{{{.Config.Hostname}}}}' {node}",
+        shell=True)
       entry = self.get_result(output)[0]
       self.run_command(f"docker exec {self.head_node} bash -c \"echo {entry} >> /etc/hosts\"", shell=True)
     self.run_command(f"docker exec {self.head_node} bash -c \"echo '127.0.0.1 localhost' >> /etc/hosts\"", shell=True)
@@ -185,14 +191,19 @@ class BigTopClusterManager:
     hosts = self._get_hosts_config()
     config_content = self._generate_config_content(hosts)
 
-    self.run_command(f"docker exec {self.head_node} bash -c \"echo '{config_content}' > {conf_dir}/{self.base_conf}\"", shell=True)
-    self.run_command(f"docker exec {self.head_node} bash -c '{self.prj_mount_dir}/provisioner/utils/install_cluster.sh {dest_dir}'", shell=True)
+    self.run_command(f"docker exec {self.head_node} bash -c \"echo '{config_content}' > {conf_dir}/{self.base_conf}\"",
+                     shell=True)
+    self.run_command(
+      f"docker exec {self.head_node} bash -c '{self.prj_mount_dir}/provisioner/utils/install_cluster.sh {dest_dir}'",
+      shell=True)
     logging.info(f"Configuration file has been generated at {conf_dir}/{self.base_conf}")
 
   def _get_hosts_config(self):
     hosts = ""
     for node in self.nodes:
-      exit_code, output, error = self.run_command(f"docker inspect --format '{{{{range.NetworkSettings.Networks}}}}{{{{.IPAddress}}}}{{{{end}}}} {{{{.Config.Hostname}}}}.{{{{.Config.Domainname}}}}' {node}", shell=True)
+      exit_code, output, error = self.run_command(
+        f"docker inspect --format '{{{{range.NetworkSettings.Networks}}}}{{{{.IPAddress}}}}{{{{end}}}} {{{{.Config.Hostname}}}}.{{{{.Config.Domainname}}}}' {node}",
+        shell=True)
       ip_hostname = self.get_result(output)[0]
       hosts += f"  - {ip_hostname} B767610qa4Z\n"
     return hosts
@@ -240,8 +251,10 @@ ansible_ssh_port: 22"""
 
   def _stop_and_remove_containers(self):
     if self.provision_id:
-      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} stop", shell=True)
-      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} rm -f", shell=True)
+      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} stop", workdir=self.docker_compose_dir,
+                       shell=True)
+      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} rm -f", workdir=self.docker_compose_dir,
+                       shell=True)
 
   def _remove_network(self):
     network_id = self.run_command(f"docker network ls --quiet --filter name={self.provision_id}_default", shell=True)
@@ -273,12 +286,13 @@ ansible_ssh_port: 22"""
     logging.info("Checking docker:")
     self.run_command("docker -v", shell=True)
     logging.info("Checking docker-compose:")
-    self.run_command(f"{self.docker_compose_cmd} -v", shell=True)
+    self.run_command(f"{self.docker_compose_cmd} -v", workdir=self.docker_compose_dir, shell=True)
 
   def list_cluster(self):
     logging.info("Listing cluster status...")
     try:
-      msg = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} ps", shell=True)
+      msg = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} ps", workdir=self.docker_compose_dir,
+                             shell=True)
     except subprocess.CalledProcessError:
       msg = "Cluster hasn't been created yet."
     logging.info(msg)
@@ -298,18 +312,22 @@ ansible_ssh_port: 22"""
 
     logging.info(f"Initialized configuration: {self.docker_compose_env}")
 
+
 def main():
   manager = BigTopClusterManager()
 
   parser = argparse.ArgumentParser(description="Manage Docker based Bigtop Hadoop cluster")
   parser.add_argument("-C", "--conf", help="Use alternate file for config.yaml")
   parser.add_argument("-F", "--docker-compose-yml", help="Use alternate file for docker-compose.yml")
-  parser.add_argument("-c", "--create", type=int, metavar="NUM_INSTANCES", help="Create a Docker based Bigtop Hadoop cluster")
+  parser.add_argument("-c", "--create", type=int, metavar="NUM_INSTANCES",
+                      help="Create a Docker based Bigtop Hadoop cluster")
   parser.add_argument("-d", "--destroy", action="store_true", help="Destroy the cluster")
-  parser.add_argument("-dcp", "--docker-compose-plugin", action="store_true", help="Execute docker compose plugin command 'docker compose'")
+  parser.add_argument("-dcp", "--docker-compose-plugin", action="store_true",
+                      help="Execute docker compose plugin command 'docker compose'")
   parser.add_argument("-e", "--exec", nargs='+', help="Execute command on a specific instance")
   parser.add_argument("-l", "--list", action="store_true", help="List out container status for the cluster")
-  parser.add_argument("-L", "--enable-local-repo", action="store_true", help="Whether to use repo created at local file system")
+  parser.add_argument("-L", "--enable-local-repo", action="store_true",
+                      help="Whether to use repo created at local file system")
   parser.add_argument("-m", "--memory", help="Overwrite the memory_limit defined in config file")
   parser.add_argument("-r", "--repo", help="Overwrite the yum/apt repo defined in config file")
 
@@ -341,6 +359,6 @@ def main():
   else:
     parser.print_help()
 
+
 if __name__ == "__main__":
   main()
-
