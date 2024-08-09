@@ -43,7 +43,7 @@ If you don't have RPMs for some components, please only list the components for 
 3) 
 Create a Bigtop Hadoop cluster with a specified number of nodes
 ```
-python3 provisioner/docker/hadoop_docker.py -d -dcp --create 3 --docker-compose-plugin --memory 8g
+python3 provisioner/docker/hadoop_docker.py -d -dcp --create 3 --docker-compose-plugin --memory 8g -L
 ```
 
 This process takes about 10-20 minutes. 
