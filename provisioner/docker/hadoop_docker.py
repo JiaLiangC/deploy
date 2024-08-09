@@ -40,6 +40,7 @@ class BigTopClusterManager:
     self.port_end = self._get_yaml_config('port_end')
     self.nodes = []
     self.enable_local_repo = False
+    self.components = self._get_yaml_config('components')
     logging.info("Configuration loaded successfully.")
 
   def _load_provision_id(self):
@@ -199,7 +200,7 @@ repos:
 user: root
 hosts:
 {hosts}
-components_to_install: ['zookeeper','ambari','hbase','hdfs','yarn','hive','spark','flink','ambari_metrics','infra_solr']
+components_to_install: {self.components}
 
 backup_old_repo: no
 should_deploy_ambari_mpack: false

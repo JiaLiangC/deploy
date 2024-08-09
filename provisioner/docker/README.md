@@ -1,30 +1,10 @@
-    Licensed to the Apache Software Foundation (ASF) under one or more
-    contributor license agreements. See the NOTICE file distributed with
-    this work for additional information regarding copyright ownership.
-    The ASF licenses this file to You under the Apache License, Version 2.0
-    (the "License"); you may not use this file except in compliance with
-    the License. You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-# BigTop Docker provisioner
+#  Docker provisioner
 
 ## Overview
 
-The Docker Compose definition and wrapper script that creates Bigtop virtual Hadoop cluster on top of Docker containers for you, by pulling from existing publishing bigtop repositories.
+The Docker Compose definition and wrapper script that creates Ambari  Hadoop cluster on top of Docker containers for you, by pulling from existing publishing bigtop repositories.
 This cluster can be used:
-
-- to test bigtop smoke tests
-- to test bigtop puppet recipes
-- to run integration test with your application
+test
 
 This has been verified on Docker Engine 1.9.1, with api version 1.15, and Docker Compose 1.5.2 on Amazon Linux 2015.09 release.
 
@@ -33,15 +13,12 @@ This has been verified on Docker Engine 1.9.1, with api version 1.15, and Docker
 ### OS X and Windows
 
 * Install [Docker Toolbox](https://www.docker.com/docker-toolbox)
-* Install Ruby
 
 ### Linux
 
 * Install [Docker](https://docs.docker.com/installation/)
 
 * Install [Docker Compose](https://docs.docker.com/compose/install/)
-
-* Install Ruby
 
 * Start the Docker daemon
 
@@ -51,71 +28,88 @@ service docker start
 
 ## USAGE
 
-1) Create a Bigtop Hadoop cluster by given # of node.
+Remember to place all your compiled RPMs in the following directory before executing the script: ci_tools/resources/pkgs/udh-packages/
 
+1) Set up the environment
 ```
-./docker-hadoop.sh --create 3
+source venv.sh
 ```
+2) Modify the configuration file `provisioner/docker/config.yaml`
+By default, it uses the `bigtop/puppet:trunk-rockylinux-8` image and deploys ['zookeeper', 'ambari', 'hdfs', 'ambari_metrics']. 
+If you don't have RPMs for some components, please only list the components for which you have RPMs.
 
-2) Destroy the cluster.
 
+3) 
+Create a Bigtop Hadoop cluster with a specified number of nodes
 ```
-./docker-hadoop.sh --destroy
-```
-
-3) Get into the first container (the master)
-
-```
-./docker-hadoop.sh --exec 1 bash
-```
-
-4) Execute a command on the second container
-
-```
-./docker-hadoop.sh --exec 2 hadoop fs -ls /
+cd provisioner/docker
+python3 ./hadoop_docker.py -d -dcp --create 3 --docker-compose-plugin --memory 8g
 ```
 
-5) Update your cluster after doing configuration changes on ./config. (re-run puppet apply)
+This process takes about 10-20 minutes. 
+The fewer components you deploy, the faster it will be. Once this step is complete, your cluster is deployed. Congratulations! 
+For additional functionality, refer to the documentation below:
+
+
+
+
+4) Destroy the cluster.
+```
+python3 ./hadoop_docker.py --destroy
+```
+
+5) Get into the first container (the master)
 
 ```
-./docker-hadoop.sh --provision
+python3 ./hadoop_docker.py --exec 1 bash
 ```
 
-6) Run Bigtop smoke tests
+6) Execute a command on the second container
 
 ```
-./docker-hadoop.sh --smoke-tests
+python3 ./hadoop_docker.py --exec 2 hadoop fs -ls /
 ```
 
-7) Chain your operations with-in one command.
+7) Update your cluster after doing configuration changes on ./config
 
 ```
-./docker-hadoop.sh --create 5 --smoke-tests --destroy
+python3 ./hadoop_docker.py --provision
 ```
 
 Commands will be executed by following order:
 
 ```
-create 5 node cluster => run smoke tests => destroy the cluster
+create 5 node cluster => insatll ambari  cluster
 ```
 
 8) See helper message:
 
 ```
-./docker-hadoop.sh -h
-usage: docker-hadoop.sh [-C file ] args
-       -C file                                   Use alternate file for config.yaml
-  commands:
-       -c NUM_INSTANCES, --create NUM_INSTANCES  Create a Docker based Bigtop Hadoop cluster
-       -d, --destroy                             Destroy the cluster
-       -e, --exec INSTANCE_NO|INSTANCE_NAME      Execute command on a specific instance. Instance can be specified by name or number.
-                                                 For example: docker-hadoop.sh --exec 1 bash
-                                                              docker-hadoop.sh --exec docker_bigtop_1 bash
-       -E, --env-check                           Check whether required tools has been installed
-       -l, --list                                List out container status for the cluster
-       -p, --provision                           Deploy configuration changes
-       -s, --smoke-tests                         Run Bigtop smoke tests
-       -h, --help
+python3 ./hadoop_docker.py -h
+usage: hadoop_docker.py [-h] [-C CONF] [-F DOCKER_COMPOSE_YML]
+                        [-c NUM_INSTANCES] [-d] [-dcp] [-e EXEC [EXEC ...]]
+                        [-l] [-L] [-m MEMORY] [-r REPO]
+
+Manage Docker based Bigtop Hadoop cluster
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -C CONF, --conf CONF  Use alternate file for config.yaml
+  -F DOCKER_COMPOSE_YML, --docker-compose-yml DOCKER_COMPOSE_YML
+                        Use alternate file for docker-compose.yml
+  -c NUM_INSTANCES, --create NUM_INSTANCES
+                        Create a Docker based Bigtop Hadoop cluster
+  -d, --destroy         Destroy the cluster
+  -dcp, --docker-compose-plugin
+                        Execute docker compose plugin command 'docker compose'
+  -e EXEC [EXEC ...], --exec EXEC [EXEC ...]
+                        Execute command on a specific instance
+  -l, --list            List out container status for the cluster
+  -L, --enable-local-repo
+                        Whether to use repo created at local file system
+  -m MEMORY, --memory MEMORY
+                        Overwrite the memory_limit defined in config file
+  -r REPO, --repo REPO  Overwrite the yum/apt repo defined in config file
 ```
 
 ## Configurations
@@ -126,7 +120,7 @@ usage: docker-hadoop.sh [-C file ] args
 
 ```
 docker:
-        memory_limit: "2g"
+        memory_limit: "8g"
 
 ```
 
@@ -146,8 +140,3 @@ components: "hadoop, hbase, yarn,..."
 ```
 
 By default, Apache Hadoop and YARN will be installed.
-
-## Experimental
-
-With recent OS versions, like Debian 11  Fedora 35, the cgroupsv2 settings are enabled by default. Running Docker compose seems to require different settings. For example, mounting /sys/fs/cgroup:ro to the containers breaks systemd and dbus when they are installed and started (in the container). The `docker-hadoop.sh` script offers an option, `-F`, to load a different configuration file for Docker compose (by default, `docker-compose.yml` is picked up). The configuration file to load is `docker-compose-cgroupsv2.yml`. More info in BIGTOP-3614, BIGTOP-3665.
-
