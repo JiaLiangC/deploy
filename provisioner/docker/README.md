@@ -51,6 +51,7 @@ The fewer components you deploy, the faster it will be. Once this step is comple
 For additional functionality, refer to the documentation below:
 
 
+After starting the installation, use 'tail -f logs/ansible_playbook.log' to monitor the progress
 
 
 4) Destroy the cluster.
