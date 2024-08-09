@@ -81,6 +81,7 @@ systemctl unmask systemd-logind.service
 
 
 if [ $enable_local_repo == "true" ]; then
+	createrepo -o ${PKGS_DIR} ${PKGS_DIR}
     echo "Enabling local yum."
     if [ "${ID}" != "openEuler" ];then
         yum -y install yum-utils
