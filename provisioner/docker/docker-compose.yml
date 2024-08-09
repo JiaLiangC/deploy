@@ -24,5 +24,6 @@ services:
         - ../../:${PRJ_MOUNT_DIR}
         - ../../conf/hosts:/etc/hosts
         - /sys/fs/cgroup:/sys/fs/cgroup:ro
+        - ${PRJ_MOUNT_DIR}/bin
         ports:
           - "${HOST_PORT}-${HOST_PORT_END}:8080"

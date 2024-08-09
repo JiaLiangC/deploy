@@ -247,19 +247,19 @@ ansible_ssh_port: 22"""
 
   def _cleanup_head_node(self):
     if self.nodes:
-      self.run_command(f"docker exec {self.nodes[0]} bash -c 'umount /etc/hosts; rm -f /etc/hosts'", shell=True)
+      self.run_command(f"docker exec {self.nodes[0]} bash -c 'umount /etc/hosts; rm -f /etc/hosts'", env_vars=self.docker_compose_env, shell=True)
 
   def _stop_and_remove_containers(self):
     if self.provision_id:
-      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} stop", workdir=self.docker_compose_dir,
+      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} stop", workdir=self.docker_compose_dir, env_vars=self.docker_compose_env,
                        shell=True)
-      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} rm -f", workdir=self.docker_compose_dir,
+      self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} rm -f", workdir=self.docker_compose_dir, env_vars=self.docker_compose_env,
                        shell=True)
 
   def _remove_network(self):
-    network_id = self.run_command(f"docker network ls --quiet --filter name={self.provision_id}_default", shell=True)
+    network_id = self.run_command(f"docker network ls --quiet --filter name={self.provision_id}_default",env_vars=self.docker_compose_env, shell=True)
     if network_id:
-      self.run_command(f"docker network rm {self.provision_id}_default", shell=True)
+      self.run_command(f"docker network rm {self.provision_id}_default",env_vars=self.docker_compose_env, shell=True)
 
   def _remove_files(self):
     for file in ['./config', self.provision_id_file] + [f for f in os.listdir('.') if f.startswith(self.error_prefix)]:
@@ -291,11 +291,14 @@ ansible_ssh_port: 22"""
   def list_cluster(self):
     logging.info("Listing cluster status...")
     try:
-      msg = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} ps", workdir=self.docker_compose_dir,
+      exit_code, output, error  = self.run_command(f"{self.docker_compose_cmd} -p {self.provision_id} ps", workdir=self.docker_compose_dir,
                              shell=True)
+      msg = self.get_result(output)
     except subprocess.CalledProcessError:
-      msg = "Cluster hasn't been created yet."
-    logging.info(msg)
+      msg = ["Cluster hasn't been created yet."]
+
+    for info in msg:
+      logging.info(info)
 
   def initialize_config(self, args):
     logging.info("Initializing configuration...")

@@ -32,18 +32,17 @@ Remember to place all your compiled RPMs in the following directory before execu
 
 1) Set up the environment
 ```
+cd bigdata_deploy
 source venv.sh
 ```
-2) Modify the configuration file `provisioner/docker/config.yaml`
+2) Modify the configuration file `conf/docker_deploy_config.yaml`
 By default, it uses the `bigtop/puppet:trunk-rockylinux-8` image and deploys ['zookeeper', 'ambari', 'hdfs', 'ambari_metrics']. 
 If you don't have RPMs for some components, please only list the components for which you have RPMs.
-
 
 3) 
 Create a Bigtop Hadoop cluster with a specified number of nodes
 ```
-cd provisioner/docker
-python3 ./hadoop_docker.py -d -dcp --create 3 --docker-compose-plugin --memory 8g
+python3 provisioner/docker/hadoop_docker.py -d -dcp --create 3 --docker-compose-plugin --memory 8g
 ```
 
 This process takes about 10-20 minutes. 
@@ -55,25 +54,25 @@ For additional functionality, refer to the documentation below:
 
 4) Destroy the cluster.
 ```
-python3 ./hadoop_docker.py --destroy
+python3 provisioner/docker/hadoop_docker.py -d -dcp
 ```
 
 5) Get into the first container (the master)
 
 ```
-python3 ./hadoop_docker.py --exec 1 bash
+python3 provisioner/docker/hadoop_docker.py --exec 1 bash
 ```
 
 6) Execute a command on the second container
 
 ```
-python3 ./hadoop_docker.py --exec 2 hadoop fs -ls /
+python3 provisioner/docker/hadoop_docker.py --exec 2 hadoop fs -ls /
 ```
 
 7) Update your cluster after doing configuration changes on ./config
 
 ```
-python3 ./hadoop_docker.py --provision
+python3 provisioner/docker/hadoop_docker.py --provision
 ```
 
 Commands will be executed by following order:
@@ -85,7 +84,7 @@ create 5 node cluster => insatll ambari  cluster
 8) See helper message:
 
 ```
-python3 ./hadoop_docker.py -h
+python3 provisioner/docker/hadoop_docker.py -h
 usage: hadoop_docker.py [-h] [-C CONF] [-F DOCKER_COMPOSE_YML]
                         [-c NUM_INSTANCES] [-d] [-dcp] [-e EXEC [EXEC ...]]
                         [-l] [-L] [-m MEMORY] [-r REPO]
